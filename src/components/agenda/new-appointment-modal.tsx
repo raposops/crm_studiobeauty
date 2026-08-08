@@ -17,14 +17,14 @@ import {
 import type { Cliente, Servico, Profissional, NovoAgendamentoForm } from '@/types';
 import {
   CLIENTES,
-  SERVICOS,
-  PROFISSIONAIS,
   HORARIOS,
   formatCurrency,
   addMinutesToTime,
 } from '@/data/mock';
 import { supabase } from '@/lib/supabase';
 import { triggerWhatsAppNotification } from '@/lib/whatsapp';
+import { useProfissionais } from '@/hooks/useProfissionais';
+import { useServicos } from '@/hooks/useServicos';
 
 interface NewAppointmentModalProps {
   isOpen: boolean;
@@ -45,6 +45,10 @@ export default function NewAppointmentModal({
   onClose,
   preselectedDate,
 }: NewAppointmentModalProps) {
+  const salaoId = 'default_salao';
+  const { profissionais } = useProfissionais(salaoId);
+  const { servicos } = useServicos(salaoId);
+
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -75,8 +79,8 @@ export default function NewAppointmentModal({
   }, [clientSearch]);
 
   const selectedServices = useMemo(
-    () => SERVICOS.filter((s) => selectedServiceIds.includes(s.id)),
-    [selectedServiceIds]
+    () => servicos.filter((s) => selectedServiceIds.includes(s.id)),
+    [servicos, selectedServiceIds]
   );
 
   const totalPrice = useMemo(
@@ -150,7 +154,7 @@ export default function NewAppointmentModal({
         alert('Erro ao salvar. Verifique a conexão com o Supabase.');
       } else {
         if (sendWhatsApp && selectedClient) {
-          const profObj = PROFISSIONAIS.find((p) => p.id === selectedProfId);
+          const profObj = profissionais.find((p) => p.id === selectedProfId);
           await triggerWhatsAppNotification({
             agendamentoId: insertedData?.[0]?.id || 'mock-id',
             clienteNome: selectedClient.nome,
@@ -176,13 +180,13 @@ export default function NewAppointmentModal({
   // Group services by category
   const servicesByCategory = useMemo(() => {
     const map = new Map<string, Servico[]>();
-    SERVICOS.forEach((s) => {
+    servicos.forEach((s) => {
       const list = map.get(s.categoria) || [];
       list.push(s);
       map.set(s.categoria, list);
     });
     return map;
-  }, []);
+  }, [servicos]);
 
   if (!isOpen) return null;
 
@@ -417,33 +421,37 @@ export default function NewAppointmentModal({
                 <p className="text-sm font-semibold text-foreground mb-2">
                   Profissional responsável
                 </p>
-                <div className="grid grid-cols-2 gap-2">
-                  {PROFISSIONAIS.map((prof) => {
-                    const isSelected = selectedProfId === prof.id;
-                    return (
-                      <button
-                        key={prof.id}
-                        onClick={() => setSelectedProfId(prof.id)}
-                        className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border transition-all duration-200 ${
-                          isSelected
-                            ? 'bg-accent/10 border-accent/30'
-                            : 'bg-card border-border hover:bg-card-hover'
-                        }`}
-                      >
-                        <div
-                          className={`w-8 h-8 rounded-full bg-gradient-to-br ${prof.cor} flex items-center justify-center shrink-0`}
+                {profissionais.length === 0 ? (
+                  <p className="text-xs text-muted">Nenhum profissional cadastrado. Vá em Ajustes &gt; Profissionais.</p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    {profissionais.map((prof) => {
+                      const isSelected = selectedProfId === prof.id;
+                      return (
+                        <button
+                          key={prof.id}
+                          onClick={() => setSelectedProfId(prof.id)}
+                          className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border transition-all duration-200 ${
+                            isSelected
+                              ? 'bg-accent/10 border-accent/30'
+                              : 'bg-card border-border hover:bg-card-hover'
+                          }`}
                         >
-                          <span className="text-[10px] font-bold text-white">
-                            {prof.iniciais}
+                          <div
+                            className={`w-8 h-8 rounded-full bg-gradient-to-br ${prof.cor} flex items-center justify-center shrink-0`}
+                          >
+                            <span className="text-[10px] font-bold text-white">
+                              {prof.iniciais}
+                            </span>
+                          </div>
+                          <span className="text-xs font-semibold text-foreground truncate">
+                            {prof.nome.split(' ')[0]}
                           </span>
-                        </div>
-                        <span className="text-xs font-semibold text-foreground truncate">
-                          {prof.nome.split(' ')[0]}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           )}

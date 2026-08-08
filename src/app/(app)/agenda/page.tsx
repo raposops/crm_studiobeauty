@@ -7,9 +7,9 @@ import ProfessionalFilter from '@/components/agenda/professional-filter';
 import TimeGrid from '@/components/agenda/time-grid';
 import NewAppointmentModal from '@/components/agenda/new-appointment-modal';
 import CheckoutModal from '@/components/agenda/checkout-modal';
-import { PROFISSIONAIS } from '@/data/mock'; // We'll keep PROFISSIONAIS mock for now if not in DB yet
 import type { Agendamento } from '@/types';
 import { useAgenda } from '@/hooks/useAgenda';
+import { useProfissionais } from '@/hooks/useProfissionais';
 
 export default function AgendaPage() {
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -22,6 +22,7 @@ export default function AgendaPage() {
   const salaoId = 'default_salao'; // hardcoded para o MVP por enquanto
 
   const { agendamentos: fetchedAgendamentos, isLoading } = useAgenda(salaoId, dateStr, selectedProfId ?? undefined);
+  const { profissionais } = useProfissionais(salaoId);
 
   // Filter appointments by date and professional (fallback if hook didn't filter fully)
   const filteredAgendamentos = useMemo(() => {
@@ -76,7 +77,7 @@ export default function AgendaPage() {
 
         {/* Professional Filter */}
         <ProfessionalFilter
-          profissionais={PROFISSIONAIS}
+          profissionais={profissionais}
           selectedId={selectedProfId}
           onSelect={setSelectedProfId}
         />

@@ -174,5 +174,92 @@ export const supabaseService = {
       .eq('id', lancamentoId);
 
     if (error) throw error;
+  },
+
+  // ==========================
+  // PROFISSIONAIS
+  // ==========================
+  async fetchProfissionais(salaoId: string) {
+    const { data, error } = await supabase
+      .from('profissionais')
+      .select('*')
+      .eq('salao_id', salaoId)
+      .order('nome');
+
+    if (error) throw error;
+    return data;
+  },
+
+  async criarProfissional(salaoId: string, payload: { nome: string; cor: string; avatar_url?: string }) {
+    const nomeLimpo = payload.nome.trim();
+    const partesNome = nomeLimpo.split(' ');
+    const iniciais = partesNome.length > 1
+      ? `${partesNome[0][0]}${partesNome[1][0]}`.toUpperCase()
+      : nomeLimpo.slice(0, 2).toUpperCase();
+
+    const { data, error } = await supabase
+      .from('profissionais')
+      .insert({
+        salao_id: salaoId,
+        nome: nomeLimpo,
+        iniciais,
+        cor: payload.cor || 'from-purple-500 to-indigo-500',
+        avatar_url: payload.avatar_url,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  async deletarProfissional(id: string) {
+    const { error } = await supabase
+      .from('profissionais')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+  },
+
+  // ==========================
+  // SERVIÇOS
+  // ==========================
+  async fetchServicos(salaoId: string) {
+    const { data, error } = await supabase
+      .from('servicos')
+      .select('*')
+      .eq('salao_id', salaoId)
+      .order('categoria')
+      .order('nome');
+
+    if (error) throw error;
+    return data;
+  },
+
+  async criarServico(salaoId: string, payload: { nome: string; preco: number; duracao_minutos: number; categoria: string }) {
+    const { data, error } = await supabase
+      .from('servicos')
+      .insert({
+        salao_id: salaoId,
+        nome: payload.nome.trim(),
+        preco: payload.preco,
+        duracao_minutos: payload.duracao_minutos,
+        categoria: payload.categoria.trim() || 'Geral',
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  async deletarServico(id: string) {
+    const { error } = await supabase
+      .from('servicos')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
   }
 };
