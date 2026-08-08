@@ -6,6 +6,7 @@ import AppointmentCard from './appointment-card';
 
 interface TimeGridProps {
   agendamentos: Agendamento[];
+  onAppointmentClick?: (agendamento: Agendamento) => void;
 }
 
 function getAgendamentosForHour(
@@ -19,7 +20,7 @@ function getAgendamentosForHour(
   });
 }
 
-export default function TimeGrid({ agendamentos }: TimeGridProps) {
+export default function TimeGrid({ agendamentos, onAppointmentClick }: TimeGridProps) {
   const now = new Date();
   const currentHour = now.getHours();
   const currentMinute = now.getMinutes();
@@ -54,7 +55,7 @@ export default function TimeGrid({ agendamentos }: TimeGridProps) {
             <div className="flex-1 border-t border-border/40 pt-2 pb-3 space-y-2">
               {horaAgendamentos.length > 0 ? (
                 horaAgendamentos.map((ag) => (
-                  <AppointmentCard key={ag.id} agendamento={ag} />
+                  <AppointmentCard key={ag.id} agendamento={ag} onClick={onAppointmentClick} />
                 ))
               ) : (
                 <div className="h-8" /> /* empty space */

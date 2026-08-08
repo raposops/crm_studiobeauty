@@ -1,4 +1,4 @@
-import type { Profissional, Servico, Cliente, Agendamento } from '@/types';
+import type { Profissional, Servico, Cliente, Agendamento, ProdutoExtra, LancamentoFinanceiro, ComissaoProfissional } from '@/types';
 
 // ========================
 // Profissionais Mock
@@ -36,62 +36,29 @@ export const PROFISSIONAIS: Profissional[] = [
 // ========================
 
 export const SERVICOS: Servico[] = [
-  {
-    id: 'serv-1',
-    nome: 'Corte Feminino',
-    preco: 8000,
-    duracao_minutos: 45,
-    categoria: 'Cabelo',
-  },
-  {
-    id: 'serv-2',
-    nome: 'Corte Masculino',
-    preco: 4500,
-    duracao_minutos: 30,
-    categoria: 'Cabelo',
-  },
-  {
-    id: 'serv-3',
-    nome: 'Escova Progressiva',
-    preco: 15000,
-    duracao_minutos: 120,
-    categoria: 'Cabelo',
-  },
-  {
-    id: 'serv-4',
-    nome: 'Coloração',
-    preco: 12000,
-    duracao_minutos: 90,
-    categoria: 'Cabelo',
-  },
-  {
-    id: 'serv-5',
-    nome: 'Barba',
-    preco: 3500,
-    duracao_minutos: 20,
-    categoria: 'Barba',
-  },
-  {
-    id: 'serv-6',
-    nome: 'Manicure',
-    preco: 4000,
-    duracao_minutos: 40,
-    categoria: 'Unhas',
-  },
-  {
-    id: 'serv-7',
-    nome: 'Pedicure',
-    preco: 5000,
-    duracao_minutos: 50,
-    categoria: 'Unhas',
-  },
-  {
-    id: 'serv-8',
-    nome: 'Hidratação',
-    preco: 6000,
-    duracao_minutos: 40,
-    categoria: 'Tratamento',
-  },
+  { id: 'serv-1', nome: 'Corte Feminino', preco: 8000, duracao_minutos: 45, categoria: 'Cabelo' },
+  { id: 'serv-2', nome: 'Corte Masculino', preco: 4500, duracao_minutos: 30, categoria: 'Cabelo' },
+  { id: 'serv-3', nome: 'Escova Progressiva', preco: 15000, duracao_minutos: 120, categoria: 'Cabelo' },
+  { id: 'serv-4', nome: 'Coloração', preco: 12000, duracao_minutos: 90, categoria: 'Cabelo' },
+  { id: 'serv-5', nome: 'Barba', preco: 3500, duracao_minutos: 20, categoria: 'Barba' },
+  { id: 'serv-6', nome: 'Manicure', preco: 4000, duracao_minutos: 40, categoria: 'Unhas' },
+  { id: 'serv-7', nome: 'Pedicure', preco: 5000, duracao_minutos: 50, categoria: 'Unhas' },
+  { id: 'serv-8', nome: 'Hidratação', preco: 6000, duracao_minutos: 40, categoria: 'Tratamento' },
+];
+
+// ========================
+// Produtos Extras (Upsell)
+// ========================
+
+export const PRODUTOS_EXTRAS: ProdutoExtra[] = [
+  { id: 'prod-1', nome: 'Shampoo Profissional', preco: 4500, categoria: 'Cabelo' },
+  { id: 'prod-2', nome: 'Condicionador Premium', preco: 3800, categoria: 'Cabelo' },
+  { id: 'prod-3', nome: 'Óleo Capilar', preco: 2500, categoria: 'Cabelo' },
+  { id: 'prod-4', nome: 'Máscara de Tratamento', preco: 5500, categoria: 'Tratamento' },
+  { id: 'prod-5', nome: 'Pomada Modeladora', preco: 3000, categoria: 'Barba' },
+  { id: 'prod-6', nome: 'Esmalte Importado', preco: 2000, categoria: 'Unhas' },
+  { id: 'prod-7', nome: 'Base Fortalecedora', preco: 1800, categoria: 'Unhas' },
+  { id: 'prod-8', nome: 'Cera Depilatória', preco: 3500, categoria: 'Depilação' },
 ];
 
 // ========================
@@ -190,6 +157,78 @@ export const AGENDAMENTOS_MOCK: Agendamento[] = [
 ];
 
 // ========================
+// Comissão Config
+// ========================
+
+export const COMISSAO_PERCENTUAL = 40; // 40% para o profissional
+
+export function calcularComissao(valorTotal: number): {
+  comissao: number;
+  liquido: number;
+} {
+  const comissao = Math.round((valorTotal * COMISSAO_PERCENTUAL) / 100);
+  return { comissao, liquido: valorTotal - comissao };
+}
+
+// ========================
+// Lançamentos Financeiros Mock (hoje)
+// ========================
+
+export const LANCAMENTOS_MOCK: LancamentoFinanceiro[] = [
+  {
+    id: 'lanc-1',
+    agendamento_id: 'ag-6',
+    cliente_nome: 'Bruno Ferreira',
+    profissional: PROFISSIONAIS[3],
+    servicos: ['Escova Progressiva'],
+    produtos_extras: ['Shampoo Profissional'],
+    forma_pagamento: 'credito',
+    valor_servicos: 15000,
+    valor_produtos: 4500,
+    valor_total: 19500,
+    comissao_profissional: 7800,
+    valor_liquido_salao: 11700,
+    data: today,
+    hora: '10:05',
+    status_pago_profissional: false,
+  },
+  {
+    id: 'lanc-2',
+    agendamento_id: 'ag-prev-1',
+    cliente_nome: 'Ana Beatriz',
+    profissional: PROFISSIONAIS[0],
+    servicos: ['Corte Feminino', 'Hidratação'],
+    produtos_extras: [],
+    forma_pagamento: 'pix',
+    valor_servicos: 14000,
+    valor_produtos: 0,
+    valor_total: 14000,
+    comissao_profissional: 5600,
+    valor_liquido_salao: 8400,
+    data: today,
+    hora: '08:50',
+    status_pago_profissional: true,
+  },
+  {
+    id: 'lanc-3',
+    agendamento_id: 'ag-prev-2',
+    cliente_nome: 'Ricardo Pena',
+    profissional: PROFISSIONAIS[1],
+    servicos: ['Corte Masculino', 'Barba'],
+    produtos_extras: ['Pomada Modeladora'],
+    forma_pagamento: 'dinheiro',
+    valor_servicos: 8000,
+    valor_produtos: 3000,
+    valor_total: 11000,
+    comissao_profissional: 4400,
+    valor_liquido_salao: 6600,
+    data: today,
+    hora: '08:30',
+    status_pago_profissional: false,
+  },
+];
+
+// ========================
 // Helpers
 // ========================
 
@@ -212,4 +251,41 @@ export function addMinutesToTime(time: string, minutes: number): string {
   const newH = Math.floor(totalMinutes / 60);
   const newM = totalMinutes % 60;
   return `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`;
+}
+
+export function getComissoesPorProfissional(
+  lancamentos: LancamentoFinanceiro[]
+): ComissaoProfissional[] {
+  const map = new Map<string, ComissaoProfissional>();
+
+  for (const lanc of lancamentos) {
+    const existing = map.get(lanc.profissional.id);
+    if (existing) {
+      existing.total_atendimentos += 1;
+      existing.total_comissao += lanc.comissao_profissional;
+      if (lanc.status_pago_profissional) {
+        existing.total_pago += lanc.comissao_profissional;
+      } else {
+        existing.total_pendente += lanc.comissao_profissional;
+      }
+      existing.lancamentos.push(lanc);
+    } else {
+      map.set(lanc.profissional.id, {
+        profissional: lanc.profissional,
+        total_atendimentos: 1,
+        total_comissao: lanc.comissao_profissional,
+        total_pago: lanc.status_pago_profissional
+          ? lanc.comissao_profissional
+          : 0,
+        total_pendente: lanc.status_pago_profissional
+          ? 0
+          : lanc.comissao_profissional,
+        lancamentos: [lanc],
+      });
+    }
+  }
+
+  return Array.from(map.values()).sort(
+    (a, b) => b.total_comissao - a.total_comissao
+  );
 }

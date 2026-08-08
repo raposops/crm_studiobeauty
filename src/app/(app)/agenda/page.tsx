@@ -6,12 +6,16 @@ import DateSelector from '@/components/agenda/date-selector';
 import ProfessionalFilter from '@/components/agenda/professional-filter';
 import TimeGrid from '@/components/agenda/time-grid';
 import NewAppointmentModal from '@/components/agenda/new-appointment-modal';
+import CheckoutModal from '@/components/agenda/checkout-modal';
 import { PROFISSIONAIS, AGENDAMENTOS_MOCK } from '@/data/mock';
+import type { Agendamento } from '@/types';
 
 export default function AgendaPage() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedProfId, setSelectedProfId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [checkoutAgendamento, setCheckoutAgendamento] =
+    useState<Agendamento | null>(null);
 
   const dateStr = selectedDate.toISOString().split('T')[0];
 
@@ -30,6 +34,16 @@ export default function AgendaPage() {
   const totalAgendamentos = filteredAgendamentos.filter(
     (ag) => ag.status !== 'cancelado'
   ).length;
+
+  function handleAppointmentClick(agendamento: Agendamento) {
+    // Only allow checkout for non-concluded and non-cancelled appointments
+    if (
+      agendamento.status !== 'concluido' &&
+      agendamento.status !== 'cancelado'
+    ) {
+      setCheckoutAgendamento(agendamento);
+    }
+  }
 
   return (
     <>
@@ -67,7 +81,10 @@ export default function AgendaPage() {
         <div className="h-px bg-border" />
 
         {/* Time Grid */}
-        <TimeGrid agendamentos={filteredAgendamentos} />
+        <TimeGrid
+          agendamentos={filteredAgendamentos}
+          onAppointmentClick={handleAppointmentClick}
+        />
       </div>
 
       {/* FAB - New Appointment */}
@@ -84,6 +101,13 @@ export default function AgendaPage() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         preselectedDate={dateStr}
+      />
+
+      {/* Checkout Modal */}
+      <CheckoutModal
+        agendamento={checkoutAgendamento}
+        isOpen={checkoutAgendamento !== null}
+        onClose={() => setCheckoutAgendamento(null)}
       />
     </>
   );

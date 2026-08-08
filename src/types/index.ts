@@ -99,3 +99,54 @@ export interface NovoAgendamentoForm {
   hora_inicio: string;
   enviar_whatsapp: boolean;
 }
+
+// ========================
+// Financial Types
+// ========================
+
+export type FormaPagamento = 'pix' | 'credito' | 'debito' | 'dinheiro';
+
+export const FORMA_PAGAMENTO_CONFIG: Record<
+  FormaPagamento,
+  { label: string; icon: string }
+> = {
+  pix: { label: 'PIX', icon: 'Smartphone' },
+  credito: { label: 'Cartão de Crédito', icon: 'CreditCard' },
+  debito: { label: 'Cartão de Débito', icon: 'CreditCard' },
+  dinheiro: { label: 'Dinheiro', icon: 'Banknote' },
+};
+
+export interface ProdutoExtra {
+  id: string;
+  nome: string;
+  preco: number; // em centavos
+  categoria: string;
+}
+
+export interface LancamentoFinanceiro {
+  id: string;
+  agendamento_id: string;
+  cliente_nome: string;
+  profissional: Profissional;
+  servicos: string[]; // nomes dos serviços
+  produtos_extras: string[]; // nomes dos produtos extras
+  forma_pagamento: FormaPagamento;
+  valor_servicos: number; // centavos
+  valor_produtos: number; // centavos
+  valor_total: number; // centavos
+  comissao_profissional: number; // centavos
+  valor_liquido_salao: number; // centavos
+  data: string;
+  hora: string;
+  status_pago_profissional: boolean;
+}
+
+export interface ComissaoProfissional {
+  profissional: Profissional;
+  total_atendimentos: number;
+  total_comissao: number; // centavos
+  total_pago: number; // centavos
+  total_pendente: number; // centavos
+  lancamentos: LancamentoFinanceiro[];
+}
+

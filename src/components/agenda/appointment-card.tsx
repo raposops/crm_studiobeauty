@@ -7,13 +7,15 @@ import { Clock, User } from 'lucide-react';
 
 interface AppointmentCardProps {
   agendamento: Agendamento;
+  onClick?: (agendamento: Agendamento) => void;
 }
 
-export default function AppointmentCard({ agendamento }: AppointmentCardProps) {
+export default function AppointmentCard({ agendamento, onClick }: AppointmentCardProps) {
   const config = STATUS_CONFIG[agendamento.status];
 
   return (
     <div
+      onClick={() => onClick?.(agendamento)}
       className={`rounded-xl border-l-4 px-3 py-2.5 cursor-pointer transition-all duration-200 hover:shadow-md active:scale-[0.98] ${config.bg} ${config.border}`}
     >
       <div className="flex items-start justify-between gap-2">
