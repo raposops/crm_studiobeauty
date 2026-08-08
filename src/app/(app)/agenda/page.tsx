@@ -7,8 +7,9 @@ import ProfessionalFilter from '@/components/agenda/professional-filter';
 import TimeGrid from '@/components/agenda/time-grid';
 import NewAppointmentModal from '@/components/agenda/new-appointment-modal';
 import CheckoutModal from '@/components/agenda/checkout-modal';
-import { PROFISSIONAIS, AGENDAMENTOS_MOCK } from '@/data/mock';
+import { PROFISSIONAIS } from '@/data/mock'; // We'll keep PROFISSIONAIS mock for now if not in DB yet
 import type { Agendamento } from '@/types';
+import { useAgenda } from '@/hooks/useAgenda';
 
 export default function AgendaPage() {
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -18,17 +19,20 @@ export default function AgendaPage() {
     useState<Agendamento | null>(null);
 
   const dateStr = selectedDate.toISOString().split('T')[0];
+  const salaoId = 'default_salao'; // hardcoded para o MVP por enquanto
 
-  // Filter appointments by date and professional
+  const { agendamentos: fetchedAgendamentos, isLoading } = useAgenda(salaoId, dateStr, selectedProfId ?? undefined);
+
+  // Filter appointments by date and professional (fallback if hook didn't filter fully)
   const filteredAgendamentos = useMemo(() => {
-    let filtered = AGENDAMENTOS_MOCK.filter((ag) => ag.data === dateStr);
+    let filtered = fetchedAgendamentos || [];
     if (selectedProfId) {
       filtered = filtered.filter(
         (ag) => ag.profissional.id === selectedProfId
       );
     }
     return filtered;
-  }, [dateStr, selectedProfId]);
+  }, [fetchedAgendamentos, selectedProfId]);
 
   // Stats
   const totalAgendamentos = filteredAgendamentos.filter(
@@ -81,10 +85,16 @@ export default function AgendaPage() {
         <div className="h-px bg-border" />
 
         {/* Time Grid */}
-        <TimeGrid
-          agendamentos={filteredAgendamentos}
-          onAppointmentClick={handleAppointmentClick}
-        />
+        {isLoading ? (
+          <div className="py-10 text-center text-sm text-muted animate-pulse">
+            Carregando agenda...
+          </div>
+        ) : (
+          <TimeGrid
+            agendamentos={filteredAgendamentos}
+            onAppointmentClick={handleAppointmentClick}
+          />
+        )}
       </div>
 
       {/* FAB - New Appointment */}

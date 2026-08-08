@@ -23,7 +23,7 @@ import {
   calcularComissao,
   formatCurrency,
 } from '@/data/mock';
-import { supabase } from '@/lib/supabase';
+import { useCaixa } from '@/hooks/useCaixa';
 
 interface CheckoutModalProps {
   agendamento: Agendamento | null;
@@ -74,6 +74,10 @@ export default function CheckoutModal({
   const [formaPagamento, setFormaPagamento] =
     useState<FormaPagamento | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const salaoId = 'default_salao'; // hardcoded fallback
+  // Wait, I need PRODUTOS_EXTRAS and calcularComissao. Let's re-import them correctly.
+  const { concluirAtendimento } = useCaixa(salaoId, agendamento?.data || '');
 
   // Computed
   const valorServicos = agendamento?.valor_total ?? 0;
@@ -136,53 +140,33 @@ export default function CheckoutModal({
         quantidade > 1 ? `${produto.nome} (x${quantidade})` : produto.nome
     );
 
-    const lancamento = {
-      agendamento_id: agendamento.id,
-      cliente_nome: agendamento.cliente.nome,
-      profissional_id: agendamento.profissional.id,
-      servicos: agendamento.servicos.map((s) => s.nome),
-      produtos_extras: produtosExtrasNomes,
-      forma_pagamento: formaPagamento,
-      valor_servicos: valorServicos,
-      valor_produtos: valorProdutos,
-      valor_total: valorTotal,
-      comissao_profissional: comissao,
-      valor_liquido_salao: liquido,
-      data: agendamento.data,
-      hora: new Date().toLocaleTimeString('pt-BR', {
-        hour: '2-digit',
-        minute: '2-digit',
-      }),
-      status_pago_profissional: false,
-    };
-
-    try {
-      // 1. Update agendamento status
-      const { error: updateError } = await supabase
-        .from('agendamentos')
-        .update({ status: 'concluido' })
-        .eq('id', agendamento.id);
-
-      if (updateError) {
-        console.error('Erro ao atualizar agendamento:', updateError);
+    concluirAtendimento.mutate(
+      {
+        agendamentoId: agendamento.id,
+        formaPagamento,
+        valorTotal,
+        comissaoProfissional: comissao,
+        valorLiquidoSalao: liquido,
+        produtosExtrasNomes,
+        valorServicos,
+        valorProdutos,
+        clienteNome: agendamento.cliente.nome,
+        profissionalId: agendamento.profissional.id,
+        servicosNomes: agendamento.servicos.map((s) => s.nome),
+      },
+      {
+        onSuccess: () => {
+          handleClose();
+        },
+        onError: (err) => {
+          console.error('Erro ao concluir atendimento:', err);
+          alert('Erro ao registrar pagamento.');
+        },
+        onSettled: () => {
+          setIsSubmitting(false);
+        }
       }
-
-      // 2. Insert lancamento financeiro
-      const { error: insertError } = await supabase
-        .from('lancamentos_financeiros')
-        .insert(lancamento);
-
-      if (insertError) {
-        console.error('Erro ao inserir lançamento:', insertError);
-      }
-
-      handleClose();
-    } catch (err) {
-      console.error('Erro inesperado:', err);
-      alert('Erro ao registrar pagamento.');
-    } finally {
-      setIsSubmitting(false);
-    }
+    );
   }
 
   if (!isOpen || !agendamento) return null;

@@ -16,12 +16,11 @@ import {
 } from 'lucide-react';
 import type { FormaPagamento } from '@/types';
 import {
-  LANCAMENTOS_MOCK,
   formatCurrency,
   getComissoesPorProfissional,
   COMISSAO_PERCENTUAL,
 } from '@/data/mock';
-import { supabase } from '@/lib/supabase';
+import { useCaixa } from '@/hooks/useCaixa';
 
 type CaixaTab = 'fechamento' | 'comissoes';
 
@@ -42,7 +41,10 @@ const PAYMENT_LABELS: Record<FormaPagamento, string> = {
 export default function CaixaPage() {
   const [activeTab, setActiveTab] = useState<CaixaTab>('fechamento');
   const [expandedProfId, setExpandedProfId] = useState<string | null>(null);
-  const [lancamentos, setLancamentos] = useState(LANCAMENTOS_MOCK);
+  
+  const salaoId = 'default_salao'; // hardcoded fallback
+  const dateStr = new Date().toISOString().split('T')[0];
+  const { lancamentos, isLoading, marcarLancamentoComoPago } = useCaixa(salaoId, dateStr);
 
   // Metrics
   const faturamentoDia = useMemo(
@@ -71,31 +73,8 @@ export default function CaixaPage() {
     [lancamentos]
   );
 
-  async function handleMarcarPago(lancamentoId: string) {
-    // Optimistic update
-    setLancamentos((prev) =>
-      prev.map((l) =>
-        l.id === lancamentoId ? { ...l, status_pago_profissional: true } : l
-      )
-    );
-
-    // Persist to Supabase
-    const { error } = await supabase
-      .from('lancamentos_financeiros')
-      .update({ status_pago_profissional: true })
-      .eq('id', lancamentoId);
-
-    if (error) {
-      console.error('Erro ao marcar como pago:', error);
-      // Revert on error
-      setLancamentos((prev) =>
-        prev.map((l) =>
-          l.id === lancamentoId
-            ? { ...l, status_pago_profissional: false }
-            : l
-        )
-      );
-    }
+  function handleMarcarPago(lancamentoId: string) {
+    marcarLancamentoComoPago.mutate(lancamentoId);
   }
 
   return (
@@ -181,7 +160,11 @@ export default function CaixaPage() {
       </div>
 
       {/* Tab Content */}
-      {activeTab === 'fechamento' ? (
+      {isLoading ? (
+        <div className="py-10 text-center text-sm text-muted animate-pulse">
+          Carregando lançamentos...
+        </div>
+      ) : activeTab === 'fechamento' ? (
         /* ===== Fechamento do Dia ===== */
         <div className="space-y-2 animate-fade-in-up">
           {lancamentosOrdenados.length === 0 ? (
