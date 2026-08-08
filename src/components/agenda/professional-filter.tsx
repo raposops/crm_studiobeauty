@@ -31,7 +31,7 @@ export default function ProfessionalFilter({
         <div
           className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-200 ${
             selectedId === null
-              ? 'border-accent bg-accent/15'
+              ? 'border-accent bg-accent/20 ring-2 ring-purple-500 shadow-lg shadow-purple-500/20'
               : 'border-border bg-card'
           }`}
         >
@@ -66,7 +66,7 @@ export default function ProfessionalFilter({
             <div
               className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-200 ${
                 isActive
-                  ? 'border-accent shadow-lg shadow-accent/20'
+                  ? 'border-purple-500 ring-2 ring-purple-500 shadow-lg shadow-purple-500/30'
                   : 'border-transparent'
               }`}
             >
@@ -80,7 +80,7 @@ export default function ProfessionalFilter({
             </div>
             <span
               className={`text-[10px] font-medium max-w-[56px] truncate ${
-                isActive ? 'text-foreground' : 'text-muted'
+                isActive ? 'text-purple-400 font-bold' : 'text-muted'
               }`}
             >
               {prof.nome.split(' ')[0]}

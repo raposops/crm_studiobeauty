@@ -15,33 +15,33 @@ export const STATUS_CONFIG: Record<
 > = {
   agendado: {
     label: 'Agendado',
-    bg: 'bg-yellow-100',
-    border: 'border-yellow-500',
-    text: 'text-yellow-900',
+    bg: 'bg-yellow-500/10 border-l-yellow-500',
+    border: 'border-l-yellow-500',
+    text: 'text-yellow-400',
   },
   confirmado: {
     label: 'Confirmado',
-    bg: 'bg-green-100',
-    border: 'border-green-500',
-    text: 'text-green-900',
+    bg: 'bg-emerald-500/10 border-l-green-500',
+    border: 'border-l-green-500',
+    text: 'text-emerald-400',
   },
   em_atendimento: {
     label: 'Em Atendimento',
-    bg: 'bg-blue-100',
-    border: 'border-blue-500',
-    text: 'text-blue-900',
+    bg: 'bg-blue-500/10 border-l-blue-500',
+    border: 'border-l-blue-500',
+    text: 'text-blue-400',
   },
   concluido: {
     label: 'Concluído',
-    bg: 'bg-slate-100',
-    border: 'border-slate-400',
-    text: 'text-slate-700',
+    bg: 'bg-slate-500/10 border-l-slate-400',
+    border: 'border-l-slate-400',
+    text: 'text-slate-400',
   },
   cancelado: {
     label: 'Cancelado',
-    bg: 'bg-red-100',
-    border: 'border-red-500',
-    text: 'text-red-900',
+    bg: 'bg-red-500/10 border-l-red-500',
+    border: 'border-l-red-500',
+    text: 'text-red-400',
   },
 };
 

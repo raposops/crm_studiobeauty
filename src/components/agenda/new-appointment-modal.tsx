@@ -24,6 +24,7 @@ import {
   addMinutesToTime,
 } from '@/data/mock';
 import { supabase } from '@/lib/supabase';
+import { triggerWhatsAppNotification } from '@/lib/whatsapp';
 
 interface NewAppointmentModalProps {
   isOpen: boolean;
@@ -139,11 +140,29 @@ export default function NewAppointmentModal({
     };
 
     try {
-      const { error } = await supabase.from('agendamentos').insert(payload);
+      const { data: insertedData, error } = await supabase
+        .from('agendamentos')
+        .insert(payload)
+        .select();
+
       if (error) {
         console.error('Erro ao salvar agendamento:', error);
         alert('Erro ao salvar. Verifique a conexão com o Supabase.');
       } else {
+        if (sendWhatsApp && selectedClient) {
+          const profObj = PROFISSIONAIS.find((p) => p.id === selectedProfId);
+          await triggerWhatsAppNotification({
+            agendamentoId: insertedData?.[0]?.id || 'mock-id',
+            clienteNome: selectedClient.nome,
+            whatsapp: selectedClient.whatsapp,
+            data: selectedDate,
+            hora: selectedTime,
+            servicos: selectedServices.map((s) => s.nome),
+            profissionalNome: profObj?.nome || 'Profissional',
+            status: 'agendado',
+            tipoEvento: 'novo_agendamento',
+          });
+        }
         handleClose();
       }
     } catch (err) {
