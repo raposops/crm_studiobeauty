@@ -19,7 +19,7 @@ export function useAgenda(salaoId: string, data: string, profissionalId?: string
     if (!salaoId) return;
 
     const channel = supabase
-      .channel(`agendamentos_changes`)
+      .channel(`agendamentos_changes_${Math.random().toString(36).substring(2, 9)}`)
       .on(
         'postgres_changes',
         {

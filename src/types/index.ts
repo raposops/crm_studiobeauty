@@ -11,37 +11,42 @@ export type AgendamentoStatus =
 
 export const STATUS_CONFIG: Record<
   AgendamentoStatus,
-  { label: string; bg: string; border: string; text: string }
+  { label: string; bg: string; border: string; text: string; badgeBg: string }
 > = {
   agendado: {
     label: 'Agendado',
-    bg: 'bg-yellow-500/10 border-l-yellow-500',
-    border: 'border-l-yellow-500',
-    text: 'text-yellow-400',
+    bg: 'bg-amber-500/5',
+    border: 'border-l-amber-500',
+    text: 'text-amber-700',
+    badgeBg: 'bg-amber-100/90 text-amber-800 border-amber-300/80',
   },
   confirmado: {
     label: 'Confirmado',
-    bg: 'bg-emerald-500/10 border-l-green-500',
-    border: 'border-l-green-500',
-    text: 'text-emerald-400',
+    bg: 'bg-emerald-500/5',
+    border: 'border-l-emerald-500',
+    text: 'text-emerald-700',
+    badgeBg: 'bg-emerald-100/90 text-emerald-800 border-emerald-300/80',
   },
   em_atendimento: {
     label: 'Em Atendimento',
-    bg: 'bg-blue-500/10 border-l-blue-500',
-    border: 'border-l-blue-500',
-    text: 'text-blue-400',
+    bg: 'bg-sky-500/5',
+    border: 'border-l-sky-500',
+    text: 'text-sky-700',
+    badgeBg: 'bg-sky-100/90 text-sky-800 border-sky-300/80',
   },
   concluido: {
     label: 'Concluído',
-    bg: 'bg-slate-500/10 border-l-slate-400',
+    bg: 'bg-slate-500/5',
     border: 'border-l-slate-400',
-    text: 'text-slate-400',
+    text: 'text-slate-700',
+    badgeBg: 'bg-slate-100/90 text-slate-700 border-slate-300/80',
   },
   cancelado: {
     label: 'Cancelado',
-    bg: 'bg-red-500/10 border-l-red-500',
-    border: 'border-l-red-500',
-    text: 'text-red-400',
+    bg: 'bg-rose-500/5',
+    border: 'border-l-rose-500',
+    text: 'text-rose-700',
+    badgeBg: 'bg-rose-100/90 text-rose-800 border-rose-300/80',
   },
 };
 

@@ -19,7 +19,7 @@ export default function AgendaPage() {
     useState<Agendamento | null>(null);
 
   const dateStr = selectedDate.toISOString().split('T')[0];
-  const salaoId = 'default_salao'; // hardcoded para o MVP por enquanto
+  const salaoId = '00000000-0000-0000-0000-000000000000'; // hardcoded UUID para o MVP
 
   const { agendamentos: fetchedAgendamentos, isLoading } = useAgenda(salaoId, dateStr, selectedProfId ?? undefined);
   const { profissionais } = useProfissionais(salaoId);

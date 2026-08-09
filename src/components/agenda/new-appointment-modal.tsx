@@ -32,6 +32,17 @@ interface NewAppointmentModalProps {
   preselectedDate?: string;
 }
 
+function uuidv4() {
+  if (typeof window !== 'undefined' && window.crypto && window.crypto.randomUUID) {
+    return window.crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
 const AVAILABLE_HOURS = [
   '08:00', '08:30', '09:00', '09:30', '10:00', '10:30',
   '11:00', '11:30', '12:00', '12:30', '13:00', '13:30',
@@ -45,7 +56,7 @@ export default function NewAppointmentModal({
   onClose,
   preselectedDate,
 }: NewAppointmentModalProps) {
-  const salaoId = 'default_salao';
+  const salaoId = '00000000-0000-0000-0000-000000000000';
   const { profissionais } = useProfissionais(salaoId);
   const { servicos } = useServicos(salaoId);
 
@@ -130,33 +141,69 @@ export default function NewAppointmentModal({
     if (!selectedClient || !canSubmit) return;
     setIsSubmitting(true);
 
-    const payload = {
-      cliente_id: selectedClient.id,
-      profissional_id: selectedProfId,
-      servico_ids: selectedServiceIds,
-      data: selectedDate,
-      hora_inicio: selectedTime,
-      hora_fim: endTime,
-      status: 'agendado',
-      valor_total: totalPrice,
-      duracao_total: totalDuration,
-      enviar_whatsapp: sendWhatsApp,
-    };
-
     try {
+      // 1. Ensure client exists in Supabase (and ensure valid UUID)
+      let clienteId = selectedClient.id;
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clienteId);
+
+      if (!isUuid) {
+        const generatedUuid = uuidv4();
+        const { data: newClient, error: clientErr } = await supabase
+          .from('clientes')
+          .insert({
+            id: generatedUuid,
+            salao_id: salaoId,
+            nome: selectedClient.nome,
+            telefone_whatsapp: selectedClient.whatsapp || '00000000000',
+          })
+          .select('id')
+          .single();
+
+        clienteId = (newClient && !clientErr) ? newClient.id : generatedUuid;
+      }
+
+      // 2. Insert into agendamentos (compatible with both schema variants)
+      const agendamentoPayload = {
+        salao_id: salaoId,
+        cliente_id: clienteId,
+        profissional_id: selectedProfId,
+        servico_id: selectedServiceIds[0], // Primary service (schema has single servico_id)
+        data: selectedDate,
+        hora_inicio: selectedTime,
+        hora_fim: endTime,
+        data_hora_inicio: `${selectedDate}T${selectedTime}:00`,
+        data_hora_fim: `${selectedDate}T${endTime || selectedTime}:00`,
+        status: 'agendado',
+        valor_total: totalPrice,
+        valor_servico: totalPrice,
+        duracao_total: totalDuration,
+      };
+
       const { data: insertedData, error } = await supabase
         .from('agendamentos')
-        .insert(payload)
+        .insert(agendamentoPayload)
         .select();
 
       if (error) {
         console.error('Erro ao salvar agendamento:', error);
-        alert('Erro ao salvar. Verifique a conexão com o Supabase.');
+        alert(`Erro ao salvar no Supabase: ${error.message}`);
       } else {
+        const agendamentoId = insertedData?.[0]?.id;
+
+        // 3. Insert junction rows into agendamento_servicos
+        if (agendamentoId && selectedServiceIds.length > 0) {
+          const servicosRows = selectedServiceIds.map((sId) => ({
+            agendamento_id: agendamentoId,
+            servico_id: sId,
+          }));
+          await supabase.from('agendamento_servicos').insert(servicosRows);
+        }
+
+        // 4. Trigger WhatsApp notification
         if (sendWhatsApp && selectedClient) {
           const profObj = profissionais.find((p) => p.id === selectedProfId);
           await triggerWhatsAppNotification({
-            agendamentoId: insertedData?.[0]?.id || 'mock-id',
+            agendamentoId: agendamentoId || 'mock-id',
             clienteNome: selectedClient.nome,
             whatsapp: selectedClient.whatsapp,
             data: selectedDate,
@@ -169,9 +216,9 @@ export default function NewAppointmentModal({
         }
         handleClose();
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro inesperado:', err);
-      alert('Erro inesperado ao salvar.');
+      alert(`Erro ao salvar: ${err?.message || 'Verifique a conexão.'}`);
     } finally {
       setIsSubmitting(false);
     }

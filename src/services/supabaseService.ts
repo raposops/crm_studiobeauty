@@ -9,7 +9,8 @@ export const supabaseService = {
         *,
         cliente:clientes(*),
         profissional:profissionais(*),
-        servicos:agendamento_servicos(servico:servicos(*))
+        servico:servicos!agendamentos_servico_id_fkey(*),
+        servicos:agendamento_servicos(servico:servicos!agendamento_servicos_servico_id_fkey(*))
       `)
       .eq('salao_id', salaoId)
       .eq('data', data);
@@ -22,11 +23,21 @@ export const supabaseService = {
     
     if (error) throw error;
 
-    // Map junction table 'agendamento_servicos' back to 'servicos' array
-    return (result || []).map((ag: any) => ({
-      ...ag,
-      servicos: ag.servicos?.map((s: any) => s.servico) || [],
-    }));
+    // Map junction table 'agendamento_servicos' or fallback to direct column 'servico_id'
+    return (result || []).map((ag: any) => {
+      let mappedServicos = ag.servicos?.map((s: any) => s.servico).filter(Boolean) || [];
+      if (mappedServicos.length === 0 && ag.servico) {
+        mappedServicos = [ag.servico];
+      }
+      return {
+        ...ag,
+        servicos: mappedServicos,
+        cliente: ag.cliente ? {
+          ...ag.cliente,
+          whatsapp: ag.cliente.telefone_whatsapp || ag.cliente.whatsapp,
+        } : null,
+      };
+    });
   },
 
   async fetchLancamentos(salaoId: string, data: string): Promise<LancamentoFinanceiro[]> {
@@ -55,16 +66,14 @@ export const supabaseService = {
         .from('clientes')
         .select('id')
         .eq('salao_id', salaoId)
-        .eq('whatsapp', payload.cliente_nome); // The mock UI didn't have phone input separately, assuming nome was used or etc.
-        // Actually the type NovoAgendamentoForm has no phone. 
-        // We will just insert the client for now.
-        
+        .eq('telefone_whatsapp', payload.cliente_nome); // Fallback
+         
       const { data: newClient, error: clientError } = await supabase
         .from('clientes')
         .insert({
           salao_id: salaoId,
           nome: payload.cliente_nome,
-          whatsapp: '00000000000' // Placeholder if not provided in form
+          telefone_whatsapp: '00000000000' // Placeholder if not provided in form
         })
         .select('id')
         .single();

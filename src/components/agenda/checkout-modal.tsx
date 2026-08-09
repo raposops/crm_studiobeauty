@@ -75,7 +75,7 @@ export default function CheckoutModal({
     useState<FormaPagamento | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const salaoId = 'default_salao'; // hardcoded fallback
+  const salaoId = '00000000-0000-0000-0000-000000000000'; // hardcoded fallback
   // Wait, I need PRODUTOS_EXTRAS and calcularComissao. Let's re-import them correctly.
   const { concluirAtendimento } = useCaixa(salaoId, agendamento?.data || '');
 

@@ -18,7 +18,7 @@ export function useServicos(salaoId: string) {
     if (!salaoId) return;
 
     const channel = supabase
-      .channel('servicos_changes')
+      .channel(`servicos_changes_${Math.random().toString(36).substring(2, 9)}`)
       .on(
         'postgres_changes',
         {

@@ -19,7 +19,7 @@ export function useCaixa(salaoId: string, data: string) {
     if (!salaoId) return;
 
     const channel = supabase
-      .channel(`lancamentos_changes`)
+      .channel(`lancamentos_changes_${Math.random().toString(36).substring(2, 9)}`)
       .on(
         'postgres_changes',
         {

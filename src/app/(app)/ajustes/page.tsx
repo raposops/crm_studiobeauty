@@ -32,7 +32,7 @@ const COLOR_OPTIONS = [
 ];
 
 export default function AjustesPage() {
-  const salaoId = 'default_salao';
+  const salaoId = '00000000-0000-0000-0000-000000000000';
   const [view, setView] = useState<ViewMode>('menu');
 
   // Hooks
@@ -62,38 +62,59 @@ export default function AjustesPage() {
   const [servCategoria, setServCategoria] = useState('Cabelo');
 
   // Handlers
-  async function handleAddProfissional(e: React.FormEvent) {
+  function handleAddProfissional(e: React.FormEvent) {
     e.preventDefault();
     if (!profNome.trim()) return;
 
-    await criarProfissional.mutateAsync({
-      nome: profNome,
-      cor: profCor,
-    });
-
-    setProfNome('');
-    setIsProfModalOpen(false);
+    criarProfissional.mutate(
+      {
+        nome: profNome,
+        cor: profCor,
+      },
+      {
+        onSuccess: () => {
+          setProfNome('');
+          setIsProfModalOpen(false);
+        },
+        onError: (err: any) => {
+          console.error('Erro ao criar profissional:', err);
+          alert(`Erro ao salvar profissional: ${err?.message || 'Verifique sua conexão com o banco.'}`);
+        },
+      }
+    );
   }
 
-  async function handleAddServico(e: React.FormEvent) {
+  function handleAddServico(e: React.FormEvent) {
     e.preventDefault();
     if (!servNome.trim() || !servPreco) return;
 
-    // Convert price (R$) to centavos
     const priceFloat = parseFloat(servPreco.replace(',', '.'));
+    if (isNaN(priceFloat)) {
+      alert('Informe um valor de preço válido.');
+      return;
+    }
     const precoCentavos = Math.round(priceFloat * 100);
 
-    await criarServico.mutateAsync({
-      nome: servNome,
-      preco: precoCentavos,
-      duracao_minutos: parseInt(servDuracao) || 30,
-      categoria: servCategoria,
-    });
-
-    setServNome('');
-    setServPreco('');
-    setServDuracao('30');
-    setIsServModalOpen(false);
+    criarServico.mutate(
+      {
+        nome: servNome,
+        preco: precoCentavos,
+        duracao_minutos: parseInt(servDuracao) || 30,
+        categoria: servCategoria,
+      },
+      {
+        onSuccess: () => {
+          setServNome('');
+          setServPreco('');
+          setServDuracao('30');
+          setIsServModalOpen(false);
+        },
+        onError: (err: any) => {
+          console.error('Erro ao criar serviço:', err);
+          alert(`Erro ao salvar serviço: ${err?.message || 'Verifique sua conexão com o banco.'}`);
+        },
+      }
+    );
   }
 
   return (
@@ -312,7 +333,7 @@ export default function AjustesPage() {
 
       {/* MODAL: NOVO PROFISSIONAL */}
       {isProfModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="w-full max-w-sm bg-background border border-border rounded-3xl p-5 space-y-4 animate-fade-in-up">
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold text-foreground">
@@ -388,7 +409,7 @@ export default function AjustesPage() {
 
       {/* MODAL: NOVO SERVIÇO */}
       {isServModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="w-full max-w-sm bg-background border border-border rounded-3xl p-5 space-y-4 animate-fade-in-up">
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold text-foreground">

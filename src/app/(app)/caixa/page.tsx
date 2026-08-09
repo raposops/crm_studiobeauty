@@ -42,7 +42,7 @@ export default function CaixaPage() {
   const [activeTab, setActiveTab] = useState<CaixaTab>('fechamento');
   const [expandedProfId, setExpandedProfId] = useState<string | null>(null);
   
-  const salaoId = 'default_salao'; // hardcoded fallback
+  const salaoId = '00000000-0000-0000-0000-000000000000';
   const dateStr = new Date().toISOString().split('T')[0];
   const { lancamentos, isLoading, marcarLancamentoComoPago } = useCaixa(salaoId, dateStr);
 

@@ -18,7 +18,7 @@ export function useProfissionais(salaoId: string) {
     if (!salaoId) return;
 
     const channel = supabase
-      .channel('profissionais_changes')
+      .channel(`profissionais_changes_${Math.random().toString(36).substring(2, 9)}`)
       .on(
         'postgres_changes',
         {
