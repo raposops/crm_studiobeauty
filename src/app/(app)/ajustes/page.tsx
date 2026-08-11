@@ -238,7 +238,9 @@ export default function AjustesPage() {
                 <button
                   onClick={() => {
                     const url = typeof window !== 'undefined' ? `${window.location.origin}/agendar` : 'http://localhost:3000/agendar';
-                    navigator.clipboard.writeText(url);
+                    if (navigator?.clipboard?.writeText) {
+                      navigator.clipboard.writeText(url);
+                    }
                     setCopiedLink(true);
                     setTimeout(() => setCopiedLink(false), 2000);
                   }}
