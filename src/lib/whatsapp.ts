@@ -12,8 +12,26 @@ export interface WhatsAppNotificationPayload {
   tipoEvento: 'novo_agendamento' | 'confirmacao' | 'lembrete';
 }
 
+function formatPhone(phone: string): string {
+  if (!phone) return '';
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length === 10 || digits.length === 11) {
+    return `55${digits}`;
+  }
+  return digits;
+}
+
+function formatDate(dateStr: string): string {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  return dateStr;
+}
+
 /**
- * Dispara uma mensagem via Edge Function / Webhook do Supabase para integração com WhatsApp API.
+ * Dispara uma mensagem via Edge Function ou fallback direto para a Evolution API.
  */
 export async function triggerWhatsAppNotification(
   payload: WhatsAppNotificationPayload
@@ -21,34 +39,94 @@ export async function triggerWhatsAppNotification(
   try {
     console.log('[WhatsApp Notification] Disparando evento:', payload);
 
-    // 1. Tenta invocar via Supabase Edge Function 'send-whatsapp'
-    const { data, error } = await supabase.functions.invoke('send-whatsapp', {
-      body: payload,
-    });
+    const phoneRaw = payload.whatsapp || (payload as any).telefone_whatsapp || '';
+    const formattedPhone = formatPhone(phoneRaw);
 
-    if (error) {
-      console.warn(
-        '[WhatsApp Notification] Edge Function warning/error (pode requerer deploy no Supabase):',
-        error.message
-      );
+    if (!formattedPhone) {
+      console.warn('[WhatsApp Notification] Número de WhatsApp não fornecido ou inválido:', phoneRaw);
+      return { success: false, message: 'Número de WhatsApp inválido ou em branco.' };
     }
 
-    // 2. Opcional: Se houver URL de Webhook configurada via var de ambiente
-    const webhookUrl = process.env.NEXT_PUBLIC_WHATSAPP_WEBHOOK_URL;
-    if (webhookUrl) {
-      await fetch(webhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+    const payloadNormalized = {
+      ...payload,
+      whatsapp: formattedPhone,
+    };
+
+    // 1. Tenta invocar via Supabase Edge Function 'send-whatsapp'
+    try {
+      const { data, error } = await supabase.functions.invoke('send-whatsapp', {
+        body: payloadNormalized,
       });
+
+      if (!error && data?.success) {
+        console.log('[WhatsApp Notification] Notificação enviada via Edge Function:', data);
+        return { success: true, message: 'Mensagem enviada via Supabase Edge Function' };
+      }
+
+      if (error) {
+        console.warn('[WhatsApp Notification] Edge Function indisponível ou com erro:', error.message);
+      }
+    } catch (edgeErr: any) {
+      console.warn('[WhatsApp Notification] Falha ao chamar Edge Function:', edgeErr?.message);
+    }
+
+    // 2. Fallback direto para Evolution API
+    const evolutionApiUrl = process.env.NEXT_PUBLIC_EVOLUTION_API_URL || '';
+    const evolutionApiKey = process.env.NEXT_PUBLIC_EVOLUTION_API_KEY || '';
+    const instanceName = process.env.NEXT_PUBLIC_EVOLUTION_INSTANCE_NAME || 'studiobeauty';
+
+    if (evolutionApiUrl && evolutionApiKey) {
+      const dataFormatada = formatDate(payload.data);
+      const servicosFormatados = Array.isArray(payload.servicos) ? payload.servicos.join(', ') : payload.servicos || 'Atendimento';
+
+      let messageText = '';
+      if (payload.tipoEvento === 'novo_agendamento') {
+        messageText = `Olá *${payload.clienteNome}*! 👋
+
+Seu agendamento no *Studio Beauty* foi realizado com sucesso!
+
+📅 *Data:* ${dataFormatada}
+⏰ *Horário:* ${payload.hora}
+💇‍♀️ *Serviços:* ${servicosFormatados}
+👤 *Profissional:* ${payload.profissionalNome}
+
+Por favor, responda a esta mensagem com o número da opção desejada:
+
+1️⃣ - Confirmo presença ✅
+2️⃣ - Desejo cancelar / remarcar ❌`;
+      } else if (payload.tipoEvento === 'confirmacao') {
+        messageText = `Olá *${payload.clienteNome}*! ✅ Seu agendamento para o dia ${dataFormatada} às ${payload.hora} foi *CONFIRMADO*! Te esperamos no Studio Beauty!`;
+      } else {
+        messageText = `Olá *${payload.clienteNome}*! Lembramos do seu agendamento no Studio Beauty dia ${dataFormatada} às ${payload.hora}. Te esperamos!`;
+      }
+
+      const targetUrl = `${evolutionApiUrl.replace(/\/$/, '')}/message/sendText/${instanceName}`;
+      console.log(`[WhatsApp Notification] Enviando via Evolution API (${targetUrl}) para ${formattedPhone}...`);
+
+      const res = await fetch(targetUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': evolutionApiKey,
+        },
+        body: JSON.stringify({
+          number: formattedPhone,
+          text: messageText,
+          options: { delay: 1200, presence: 'composing', linkPreview: false },
+        }),
+      });
+
+      const evoData = await res.json();
+      console.log('[WhatsApp Notification] Resposta Evolution API:', evoData);
+      return { success: true, message: 'Mensagem enviada via Evolution API' };
     }
 
     return {
-      success: true,
-      message: 'Notificação enviada / registrada com sucesso',
+      success: false,
+      message: 'Evolution API não configurada em .env.local (EVOLUTION_API_URL / EVOLUTION_API_KEY)',
     };
   } catch (err) {
-    console.error('[WhatsApp Notification] Erro ao disparar webhook:', err);
+    console.error('[WhatsApp Notification] Erro ao disparar notificação:', err);
     return {
       success: false,
       message: err instanceof Error ? err.message : 'Erro desconhecido',

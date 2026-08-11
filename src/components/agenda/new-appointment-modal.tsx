@@ -25,11 +25,19 @@ import { supabase } from '@/lib/supabase';
 import { triggerWhatsAppNotification } from '@/lib/whatsapp';
 import { useProfissionais } from '@/hooks/useProfissionais';
 import { useServicos } from '@/hooks/useServicos';
+import { useClientes } from '@/hooks/useClientes';
+import { useAgenda } from '@/hooks/useAgenda';
 
 interface NewAppointmentModalProps {
   isOpen: boolean;
   onClose: () => void;
   preselectedDate?: string;
+}
+
+function timeToMinutes(timeStr: string): number {
+  if (!timeStr) return 0;
+  const [h, m] = timeStr.split(':').map((n) => parseInt(n, 10) || 0);
+  return h * 60 + m;
 }
 
 function uuidv4() {
@@ -59,6 +67,7 @@ export default function NewAppointmentModal({
   const salaoId = '00000000-0000-0000-0000-000000000000';
   const { profissionais } = useProfissionais(salaoId);
   const { servicos } = useServicos(salaoId);
+  const { clientes } = useClientes(salaoId);
 
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -78,16 +87,27 @@ export default function NewAppointmentModal({
   const [selectedTime, setSelectedTime] = useState('');
   const [sendWhatsApp, setSendWhatsApp] = useState(true);
 
+  // Fetch existing appointments for selected date and professional to check availability
+  const { agendamentos: existingAgendamentos } = useAgenda(
+    salaoId,
+    selectedDate,
+    selectedProfId || undefined
+  );
+
+  const allClients = useMemo(() => {
+    return clientes && clientes.length > 0 ? clientes : CLIENTES;
+  }, [clientes]);
+
   // Computed values
   const filteredClients = useMemo(() => {
-    if (!clientSearch.trim()) return CLIENTES;
+    if (!clientSearch.trim()) return allClients;
     const query = clientSearch.toLowerCase();
-    return CLIENTES.filter(
+    return allClients.filter(
       (c) =>
         c.nome.toLowerCase().includes(query) ||
-        c.whatsapp.includes(query)
+        (c.whatsapp || (c as any).telefone_whatsapp || '').includes(query)
     );
-  }, [clientSearch]);
+  }, [clientSearch, allClients]);
 
   const selectedServices = useMemo(
     () => servicos.filter((s) => selectedServiceIds.includes(s.id)),
@@ -108,6 +128,39 @@ export default function NewAppointmentModal({
     if (!selectedTime || totalDuration === 0) return '';
     return addMinutesToTime(selectedTime, totalDuration);
   }, [selectedTime, totalDuration]);
+
+  // Compute occupied time slots for the selected professional & date
+  const occupiedSlots = useMemo(() => {
+    if (!existingAgendamentos || existingAgendamentos.length === 0) return new Set<string>();
+
+    const reqDuration = totalDuration > 0 ? totalDuration : 30;
+    const activeAgendamentos = existingAgendamentos.filter((ag) => ag.status !== 'cancelado');
+    const occupied = new Set<string>();
+
+    AVAILABLE_HOURS.forEach((slotTime) => {
+      const slotStart = timeToMinutes(slotTime);
+      const slotEnd = slotStart + reqDuration;
+
+      const hasConflict = activeAgendamentos.some((ag) => {
+        // If a specific professional is selected, filter by professional
+        if (selectedProfId && ag.profissional?.id !== selectedProfId) return false;
+
+        const agStart = timeToMinutes(ag.hora_inicio);
+        const agEnd = ag.hora_fim
+          ? timeToMinutes(ag.hora_fim)
+          : agStart + (ag.duracao_total || 30);
+
+        // Overlap condition: slotStart < agEnd && slotEnd > agStart
+        return slotStart < agEnd && slotEnd > agStart;
+      });
+
+      if (hasConflict) {
+        occupied.add(slotTime);
+      }
+    });
+
+    return occupied;
+  }, [existingAgendamentos, selectedProfId, totalDuration]);
 
   // Validation
   const canGoToStep2 = selectedClient !== null;
@@ -139,6 +192,12 @@ export default function NewAppointmentModal({
 
   async function handleSubmit() {
     if (!selectedClient || !canSubmit) return;
+
+    if (occupiedSlots.has(selectedTime)) {
+      alert('Este horário não está mais disponível para este profissional. Por favor, escolha outro horário.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -202,10 +261,12 @@ export default function NewAppointmentModal({
         // 4. Trigger WhatsApp notification
         if (sendWhatsApp && selectedClient) {
           const profObj = profissionais.find((p) => p.id === selectedProfId);
+          const clientPhone = selectedClient.whatsapp || (selectedClient as any).telefone_whatsapp || '';
+
           await triggerWhatsAppNotification({
             agendamentoId: agendamentoId || 'mock-id',
             clienteNome: selectedClient.nome,
-            whatsapp: selectedClient.whatsapp,
+            whatsapp: clientPhone,
             data: selectedDate,
             hora: selectedTime,
             servicos: selectedServices.map((s) => s.nome),
@@ -544,15 +605,21 @@ export default function NewAppointmentModal({
                 <div className="grid grid-cols-4 gap-1.5 max-h-[180px] overflow-y-auto">
                   {AVAILABLE_HOURS.map((time) => {
                     const isSelected = selectedTime === time;
+                    const isOccupied = occupiedSlots.has(time);
+
                     return (
                       <button
                         key={time}
+                        disabled={isOccupied}
                         onClick={() => setSelectedTime(time)}
-                        className={`py-2 rounded-xl text-xs font-mono font-semibold border transition-all duration-200 ${
-                          isSelected
-                            ? 'bg-accent/15 border-accent/40 text-accent-light'
+                        className={`py-2 rounded-xl text-xs font-mono font-semibold border transition-all duration-200 relative ${
+                          isOccupied
+                            ? 'bg-rose-500/10 border-rose-500/20 text-rose-700/70 line-through cursor-not-allowed opacity-60'
+                            : isSelected
+                            ? 'bg-accent/15 border-accent/40 text-accent-light ring-2 ring-accent/30 font-bold'
                             : 'bg-card border-border text-foreground hover:bg-card-hover'
                         }`}
+                        title={isOccupied ? 'Horário indisponível / ocupado' : undefined}
                       >
                         {time}
                       </button>

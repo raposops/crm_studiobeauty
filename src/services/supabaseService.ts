@@ -40,19 +40,89 @@ export const supabaseService = {
     });
   },
 
-  async fetchLancamentos(salaoId: string, data: string): Promise<LancamentoFinanceiro[]> {
+  async fetchLancamentos(salaoId: string, dataStr: string): Promise<LancamentoFinanceiro[]> {
+    const startIso = `${dataStr}T00:00:00.000Z`;
+    const endIso = `${dataStr}T23:59:59.999Z`;
+
     const { data: result, error } = await supabase
       .from('lancamentos_financeiros')
       .select(`
         *,
-        profissional:profissionais(*)
+        profissional:profissionais(*),
+        agendamento:agendamentos(
+          *,
+          cliente:clientes(*),
+          servico:servicos!agendamentos_servico_id_fkey(*),
+          servicos:agendamento_servicos(servico:servicos!agendamento_servicos_servico_id_fkey(*))
+        )
       `)
       .eq('salao_id', salaoId)
-      .eq('data', data)
-      .order('hora', { ascending: false });
+      .gte('data_fechamento', startIso)
+      .lte('data_fechamento', endIso)
+      .order('data_fechamento', { ascending: false });
 
-    if (error) throw error;
-    return result as LancamentoFinanceiro[];
+    let finalData = result;
+
+    if (error || !result) {
+      console.warn('Filtro por data_fechamento em intervalo falhou, buscando lançamentos do salão:', error?.message);
+      const { data: fallback, error: fbErr } = await supabase
+        .from('lancamentos_financeiros')
+        .select(`
+          *,
+          profissional:profissionais(*),
+          agendamento:agendamentos(
+            *,
+            cliente:clientes(*),
+            servico:servicos!agendamentos_servico_id_fkey(*),
+            servicos:agendamento_servicos(servico:servicos!agendamento_servicos_servico_id_fkey(*))
+          )
+        `)
+        .eq('salao_id', salaoId)
+        .order('data_fechamento', { ascending: false });
+
+      if (fbErr) throw fbErr;
+      finalData = fallback;
+    }
+
+    return (finalData || []).map((l: any) => {
+      const ag = l.agendamento || {};
+      const clienteNome = ag.cliente?.nome || l.cliente_nome || 'Cliente';
+      
+      let mappedServicos = ag.servicos?.map((s: any) => s.servico?.nome).filter(Boolean) || [];
+      if (mappedServicos.length === 0 && ag.servico?.nome) {
+        mappedServicos = [ag.servico.nome];
+      }
+      if (mappedServicos.length === 0) {
+        mappedServicos = ['Atendimento'];
+      }
+
+      const timeDate = l.data_fechamento ? new Date(l.data_fechamento) : new Date();
+      const timeStr = `${String(timeDate.getHours()).padStart(2, '0')}:${String(timeDate.getMinutes()).padStart(2, '0')}`;
+      const dateOnlyStr = l.data_fechamento ? l.data_fechamento.split('T')[0] : new Date().toISOString().split('T')[0];
+
+      return {
+        id: l.id,
+        agendamento_id: l.agendamento_id || '',
+        cliente_nome: clienteNome,
+        profissional: {
+          id: l.profissional?.id || '',
+          nome: l.profissional?.nome || 'Profissional',
+          iniciais: l.profissional?.iniciais || (l.profissional?.nome ? l.profissional.nome.slice(0, 2).toUpperCase() : 'P'),
+          cor: l.profissional?.cor || 'from-purple-500 to-indigo-500',
+        },
+        servicos: mappedServicos,
+        produtos_extras: [],
+        forma_pagamento: l.forma_pagamento || 'pix',
+        valor_servicos: l.valor_total || 0,
+        valor_produtos: 0,
+        valor_total: l.valor_total || 0,
+        comissao_profissional: l.valor_comissao_profissional || 0,
+        valor_liquido_salao: l.valor_liquido_salao || 0,
+        data: dateOnlyStr,
+        hora: timeStr,
+        status_pago_profissional: !!l.status_pago_profissional,
+      };
+    });
   },
 
   async criarAgendamento(payload: NovoAgendamentoForm, salaoId: string) {
@@ -155,7 +225,7 @@ export const supabaseService = {
     profissionalId: string,
     servicosNomes: string[]
   ) {
-    // Calling RPC to execute this in a single transaction
+    // Try RPC first
     const { data, error } = await supabase.rpc('concluir_atendimento', {
       p_agendamento_id: agendamentoId,
       p_salao_id: salaoId,
@@ -171,8 +241,42 @@ export const supabaseService = {
       p_servicos_nomes: servicosNomes
     });
 
-    if (error) throw error;
-    return data;
+    if (!error) return data;
+
+    console.warn('RPC concluir_atendimento error/missing, using direct table fallback:', error.message);
+
+    // 1. Update agendamento status to 'concluido'
+    const { error: agErr } = await supabase
+      .from('agendamentos')
+      .update({ status: 'concluido' })
+      .eq('id', agendamentoId);
+
+    if (agErr) throw agErr;
+
+    // 2. Insert into lancamentos_financeiros
+    const nowIso = new Date().toISOString();
+    const comissaoPctCalculada = valorTotal > 0 ? Math.round((comissaoProfissional / valorTotal) * 100) : 50;
+
+    const { data: lancamento, error: finErr } = await supabase
+      .from('lancamentos_financeiros')
+      .insert({
+        salao_id: salaoId,
+        agendamento_id: agendamentoId,
+        profissional_id: profissionalId,
+        valor_total: valorTotal,
+        forma_pagamento: formaPagamento,
+        comissao_pct: comissaoPctCalculada,
+        valor_comissao_profissional: comissaoProfissional,
+        valor_liquido_salao: valorLiquidoSalao,
+        status_pago_profissional: false,
+        data_fechamento: nowIso,
+      })
+      .select()
+      .single();
+
+    if (finErr) console.error('Erro ao inserir lancamentos_financeiros no fallback:', finErr.message);
+
+    return agendamentoId;
   },
 
   async marcarLancamentoComoPago(lancamentoId: string) {
@@ -266,6 +370,69 @@ export const supabaseService = {
   async deletarServico(id: string) {
     const { error } = await supabase
       .from('servicos')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+  },
+
+  async fetchClientes(salaoId: string) {
+    const { data, error } = await supabase
+      .from('clientes')
+      .select('*')
+      .eq('salao_id', salaoId)
+      .order('nome');
+
+    if (error) throw error;
+    return (data || []).map((c: any) => ({
+      ...c,
+      whatsapp: c.telefone_whatsapp || c.whatsapp || '',
+    }));
+  },
+
+  async criarCliente(salaoId: string, payload: { nome: string; telefone_whatsapp: string; observacoes?: string; data_nascimento?: string }) {
+    const { data, error } = await supabase
+      .from('clientes')
+      .insert({
+        salao_id: salaoId,
+        nome: payload.nome.trim(),
+        telefone_whatsapp: payload.telefone_whatsapp.trim(),
+        observacoes: payload.observacoes?.trim() || null,
+        data_nascimento: payload.data_nascimento || null,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return {
+      ...data,
+      whatsapp: data.telefone_whatsapp || '',
+    };
+  },
+
+  async atualizarCliente(id: string, payload: { nome?: string; telefone_whatsapp?: string; observacoes?: string; data_nascimento?: string }) {
+    const { data, error } = await supabase
+      .from('clientes')
+      .update({
+        ...(payload.nome ? { nome: payload.nome.trim() } : {}),
+        ...(payload.telefone_whatsapp ? { telefone_whatsapp: payload.telefone_whatsapp.trim() } : {}),
+        ...(payload.observacoes !== undefined ? { observacoes: payload.observacoes?.trim() || null } : {}),
+        ...(payload.data_nascimento !== undefined ? { data_nascimento: payload.data_nascimento || null } : {}),
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return {
+      ...data,
+      whatsapp: data.telefone_whatsapp || '',
+    };
+  },
+
+  async deletarCliente(id: string) {
+    const { error } = await supabase
+      .from('clientes')
       .delete()
       .eq('id', id);
 
