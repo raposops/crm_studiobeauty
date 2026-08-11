@@ -55,27 +55,43 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // 2. Extrai e faz o parse do Payload do Webhook
+    // 2. Extrai e faz o parse do Payload do Webhook (Evolution API v1/v2 / Z-API / Baileys)
     const payload = await req.json();
     console.log('[WhatsApp Webhook] Payload recebido:', JSON.stringify(payload));
 
-    // Suporte flexível para múltiplos provedores (Evolution API, Z-API, Baileys, Meta Cloud API)
+    const dataObj = payload.data || payload;
+    const keyObj = dataObj.key || payload.key || {};
+
+    // Ignora mensagens enviadas pelo próprio sistema/salão
+    if (keyObj.fromMe === true) {
+      console.log('[WhatsApp Webhook] Mensagem enviada pelo próprio salão (fromMe=true), ignorando.');
+      return new Response(
+        JSON.stringify({ success: true, action: 'ignored', message: 'Mensagem de saída ignorada.' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const rawPhone =
+      keyObj.remoteJid ||
+      dataObj.remoteJid ||
       payload.remoteJid ||
       payload.phone ||
       payload.from ||
       payload.number ||
       payload.sender ||
-      payload.key?.remoteJid ||
       payload.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.from ||
       '';
 
+    const msgObj = dataObj.message || payload.message || {};
     const rawMessage =
-      payload.messageText ||
+      (typeof payload.messageText === 'string' ? payload.messageText : '') ||
+      msgObj.conversation ||
+      msgObj.extendedTextMessage?.text ||
+      msgObj.buttonsResponseMessage?.selectedButtonId ||
+      msgObj.buttonsResponseMessage?.selectedDisplayText ||
       payload.text?.body ||
       payload.text ||
       payload.body ||
-      payload.message ||
       payload.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.text?.body ||
       '';
 
@@ -107,62 +123,37 @@ serve(async (req) => {
       );
     }
 
-    // 4. Busca o Cliente no Banco de Dados
-    // Faz a busca buscando números de telefone parecidos (com ou sem DDD 55, caracteres)
-    const { data: clientes, error: clientErr } = await supabase
-      .from('clientes')
-      .select('id, nome, telefone_whatsapp')
-      .limit(50);
-
-    if (clientErr) {
-      console.error('[WhatsApp Webhook] Erro ao buscar clientes:', clientErr);
-      throw clientErr;
-    }
-
-    // Encontra o cliente cujo número limpo seja compatível
-    const matchingClient = (clientes || []).find((c) => {
-      const cPhone = cleanPhoneNumber(c.telefone_whatsapp || '');
-      return cPhone.endsWith(clientPhone.slice(-8)) || clientPhone.endsWith(cPhone.slice(-8));
-    });
-
-    if (!matchingClient) {
-      console.log(`[WhatsApp Webhook] Nenhum cliente encontrado para o telefone: ${clientPhone}`);
-      return new Response(
-        JSON.stringify({ success: false, message: 'Cliente não encontrado no cadastro do salão.' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log(`[WhatsApp Webhook] Cliente identificado: ${matchingClient.nome} (ID: ${matchingClient.id})`);
-
-    // 5. Busca o agendamento pendente mais recente do cliente
-    const nowIso = new Date().toISOString();
-
+    // 4. Busca os agendamentos pendentes vinculados a clientes com este número de telefone
     const { data: agendamentos, error: agendamentoErr } = await supabase
       .from('agendamentos')
-      .select('id, status, data, hora_inicio, data_hora_inicio')
-      .eq('cliente_id', matchingClient.id)
+      .select('id, status, data, hora_inicio, cliente:clientes!inner(id, nome, telefone_whatsapp)')
       .in('status', ['agendado', 'confirmado'])
-      .order('data_hora_inicio', { ascending: true })
-      .limit(1);
+      .order('criado_em', { ascending: false });
 
     if (agendamentoErr) {
       console.error('[WhatsApp Webhook] Erro ao buscar agendamentos:', agendamentoErr);
       throw agendamentoErr;
     }
 
-    const agendamentoAlvo = agendamentos && agendamentos.length > 0 ? agendamentos[0] : null;
+    const last8 = clientPhone.slice(-8);
+    const agendamentoAlvo = (agendamentos || []).find((ag: any) => {
+      const cPhone = cleanPhoneNumber(ag.cliente?.telefone_whatsapp || '');
+      return cPhone.endsWith(last8);
+    });
 
     if (!agendamentoAlvo) {
-      console.log(`[WhatsApp Webhook] Nenhum agendamento pendente encontrado para a cliente ${matchingClient.nome}`);
+      console.log(`[WhatsApp Webhook] Nenhum agendamento pendente encontrado para o telefone: ${clientPhone}`);
       return new Response(
         JSON.stringify({
           success: false,
-          message: 'Nenhum agendamento pendente encontrado para este cliente.',
+          message: 'Nenhum agendamento pendente encontrado para este telefone.',
         }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    const matchingClient = agendamentoAlvo.cliente;
+    console.log(`[WhatsApp Webhook] Agendamento encontrado para o cliente: ${matchingClient?.nome} (ID: ${agendamentoAlvo.id})`);
 
     // 6. Atualiza o status no PostgreSQL
     const novoStatus = isConfirm ? 'confirmado' : 'cancelado';
