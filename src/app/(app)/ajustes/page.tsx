@@ -16,6 +16,9 @@ import {
   ChevronRight,
   Clock,
   DollarSign,
+  Share2,
+  Copy,
+  ExternalLink,
 } from 'lucide-react';
 import { useProfissionais } from '@/hooks/useProfissionais';
 import { useServicos } from '@/hooks/useServicos';
@@ -34,6 +37,7 @@ const COLOR_OPTIONS = [
 export default function AjustesPage() {
   const salaoId = '00000000-0000-0000-0000-000000000000';
   const [view, setView] = useState<ViewMode>('menu');
+  const [copiedLink, setCopiedLink] = useState(false);
 
   // Hooks
   const {
@@ -202,6 +206,57 @@ export default function AjustesPage() {
                   className="text-muted/40 group-hover:text-muted transition-colors shrink-0"
                 />
               </button>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <h3 className="text-[10px] uppercase tracking-widest text-muted font-semibold px-1">
+              Agendamento Online dos Clientes
+            </h3>
+            <div className="rounded-2xl bg-card border border-border p-4 space-y-3 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-accent/15 flex items-center justify-center shrink-0">
+                  <Share2 size={18} className="text-accent-light" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-foreground">
+                    Link Público de Agendamento
+                  </p>
+                  <p className="text-[11px] text-muted">
+                    Envie para seus clientes ou coloque na bio do Instagram
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={typeof window !== 'undefined' ? `${window.location.origin}/agendar` : 'http://localhost:3000/agendar'}
+                  className="flex-1 bg-card-hover border border-border rounded-xl px-3 py-2 text-xs font-mono text-foreground focus:outline-none select-all"
+                />
+                <button
+                  onClick={() => {
+                    const url = typeof window !== 'undefined' ? `${window.location.origin}/agendar` : 'http://localhost:3000/agendar';
+                    navigator.clipboard.writeText(url);
+                    setCopiedLink(true);
+                    setTimeout(() => setCopiedLink(false), 2000);
+                  }}
+                  className="px-3 py-2 rounded-xl bg-accent text-white font-semibold text-xs flex items-center gap-1.5 shadow-sm hover:opacity-90 transition-all shrink-0"
+                >
+                  {copiedLink ? <Check size={14} /> : <Copy size={14} />}
+                  {copiedLink ? 'Copiado!' : 'Copiar'}
+                </button>
+                <a
+                  href={typeof window !== 'undefined' ? `${window.location.origin}/agendar` : 'http://localhost:3000/agendar'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 rounded-xl border border-border text-foreground hover:bg-card-hover transition-colors shrink-0"
+                  title="Abrir página de agendamento"
+                >
+                  <ExternalLink size={14} />
+                </a>
+              </div>
             </div>
           </div>
 
