@@ -206,6 +206,9 @@ export default function AgendarPublicPage() {
 
       const agendamentoId = uuidv4();
       const firstServiceId = selectedServiceIds[0] || null;
+      const calculatedEndTime = endTime || selectedTime;
+      const dataHoraInicio = `${selectedDate}T${selectedTime}:00`;
+      const dataHoraFim = `${selectedDate}T${calculatedEndTime}:00`;
 
       const agendamentoPayload = {
         id: agendamentoId,
@@ -215,9 +218,12 @@ export default function AgendarPublicPage() {
         servico_id: firstServiceId,
         data: selectedDate,
         hora_inicio: selectedTime,
-        hora_fim: endTime || selectedTime,
+        hora_fim: calculatedEndTime,
+        data_hora_inicio: dataHoraInicio,
+        data_hora_fim: dataHoraFim,
         duracao_total: totalDuration,
         valor_total: totalPrice,
+        valor_servico: totalPrice,
         status: 'agendado',
         observacoes: observacoes.trim() || 'Agendamento feito via Link Público Online',
       };
