@@ -48,6 +48,14 @@ function uuidv4() {
   });
 }
 
+function getLocalDateStr(): string {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function formatPhoneInput(value: string) {
   const digits = value.replace(/\D/g, '').slice(0, 11);
   if (digits.length <= 2) return digits;
@@ -66,9 +74,7 @@ export default function AgendarPublicPage() {
   // Form State
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
   const [selectedProfId, setSelectedProfId] = useState<string>(''); // empty = qualquer profissional
-  const [selectedDate, setSelectedDate] = useState<string>(
-    new Date().toISOString().split('T')[0]
-  );
+  const [selectedDate, setSelectedDate] = useState<string>(getLocalDateStr());
   const [selectedTime, setSelectedTime] = useState<string>('');
 
   const [clientNome, setClientNome] = useState('');
@@ -167,7 +173,7 @@ export default function AgendarPublicPage() {
       let clienteId = '';
       const { data: existingClients } = await supabase
         .from('clientes')
-        .select('id, telefone_whatsapp')
+        .select('id, nome, telefone_whatsapp')
         .eq('salao_id', salaoId);
 
       const foundClient = (existingClients || []).find((c) => {
@@ -177,6 +183,12 @@ export default function AgendarPublicPage() {
 
       if (foundClient) {
         clienteId = foundClient.id;
+        if (clientNome.trim() && foundClient.nome !== clientNome.trim()) {
+          await supabase
+            .from('clientes')
+            .update({ nome: clientNome.trim() })
+            .eq('id', clienteId);
+        }
       } else {
         const newClientId = uuidv4();
         const { data: createdClient, error: clientErr } = await supabase

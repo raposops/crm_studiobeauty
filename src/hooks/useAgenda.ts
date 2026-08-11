@@ -29,8 +29,8 @@ export function useAgenda(salaoId: string, data: string, profissionalId?: string
           filter: `salao_id=eq.${salaoId}`
         },
         () => {
-          // Invalidate cache to refetch when something changes
-          queryClient.invalidateQueries({ queryKey: ['agendamentos', salaoId, data] });
+          // Invalidate cache to refetch when something changes anywhere
+          queryClient.invalidateQueries({ queryKey: ['agendamentos'] });
         }
       )
       .subscribe();
@@ -43,7 +43,7 @@ export function useAgenda(salaoId: string, data: string, profissionalId?: string
   const criarAgendamento = useMutation({
     mutationFn: (payload: NovoAgendamentoForm) => supabaseService.criarAgendamento(payload, salaoId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['agendamentos', salaoId, data] });
+      queryClient.invalidateQueries({ queryKey: ['agendamentos'] });
     },
   });
 
