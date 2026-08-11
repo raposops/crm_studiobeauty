@@ -26,6 +26,15 @@ function cleanPhoneNumber(phone: string): string {
   return digitsOnly;
 }
 
+function formatDate(dateStr: string): string {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  return dateStr;
+}
+
 /**
  * Normaliza o texto removendo acentos, caracteres especiais e espaços extras.
  */
@@ -170,14 +179,60 @@ serve(async (req) => {
 
     console.log(`[WhatsApp Webhook] Sucesso! Agendamento ${agendamentoAlvo.id} atualizado para status '${novoStatus}'.`);
 
-    // 7. Retorna Resposta de Sucesso HTTP 200
+    // 7. Envia mensagem de conclusão / resposta automática no WhatsApp via Evolution API
+    const evolutionApiUrl = Deno.env.get('EVOLUTION_API_URL') || Deno.env.get('NEXT_PUBLIC_EVOLUTION_API_URL') || 'https://evo.fidustecnologia.com.br';
+    const evolutionApiKey = Deno.env.get('EVOLUTION_API_KEY') || Deno.env.get('NEXT_PUBLIC_EVOLUTION_API_KEY') || '306435C88588-4EE6-AD53-E5882B4EE2AD';
+    const instanceName = Deno.env.get('EVOLUTION_INSTANCE_NAME') || Deno.env.get('NEXT_PUBLIC_EVOLUTION_INSTANCE_NAME') || 'meu_acessor';
+
+    const dataFormatted = formatDate(agendamentoAlvo.data);
+    const horaFormatted = agendamentoAlvo.hora_inicio || '';
+    const clienteNome = matchingClient?.nome || 'Cliente';
+
+    let replyMessageText = '';
+    if (isConfirm) {
+      replyMessageText = `Olá *${clienteNome}*! ✅
+
+Seu agendamento no *Studio Beauty* para dia *${dataFormatted}* às *${horaFormatted}* foi *CONFIRMADO* com sucesso!
+
+Te esperamos! Caso precise de alguma informação, estamos à disposição. 😊`;
+    } else {
+      replyMessageText = `Olá *${clienteNome}*! ❌
+
+Seu agendamento para dia *${dataFormatted}* às *${horaFormatted}* foi *CANCELADO* conforme solicitado.
+
+Caso deseje remarcar um novo horário, acesse nosso link de agendamento online ou fale conosco! 💅✨`;
+    }
+
+    if (evolutionApiUrl && evolutionApiKey) {
+      try {
+        const targetUrl = `${evolutionApiUrl.replace(/\/$/, '')}/message/sendText/${instanceName}`;
+        console.log(`[WhatsApp Webhook] Enviando resposta de conclusão para ${clientPhone}...`);
+
+        await fetch(targetUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': evolutionApiKey,
+          },
+          body: JSON.stringify({
+            number: clientPhone,
+            text: replyMessageText,
+            options: { delay: 1000, presence: 'composing', linkPreview: false },
+          }),
+        });
+      } catch (sendErr) {
+        console.error('[WhatsApp Webhook] Erro ao enviar resposta via Evolution API:', sendErr);
+      }
+    }
+
+    // 8. Retorna Resposta de Sucesso HTTP 200
     return new Response(
       JSON.stringify({
         success: true,
         status: novoStatus,
         agendamento_id: agendamentoAlvo.id,
         cliente: matchingClient.nome,
-        message: `Agendamento marcado como ${novoStatus} com sucesso.`,
+        message: `Agendamento marcado como ${novoStatus} e mensagem de resposta enviada com sucesso.`,
       }),
       {
         status: 200,
