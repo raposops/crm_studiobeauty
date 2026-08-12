@@ -10,16 +10,18 @@ import CheckoutModal from '@/components/agenda/checkout-modal';
 import type { Agendamento } from '@/types';
 import { useAgenda } from '@/hooks/useAgenda';
 import { useProfissionais } from '@/hooks/useProfissionais';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function AgendaPage() {
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const { salaoId } = useAuth();
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedProfId, setSelectedProfId] = useState<string | null>(null);
+  
+  // Modals state
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [checkoutAgendamento, setCheckoutAgendamento] =
-    useState<Agendamento | null>(null);
+  const [checkoutAgendamento, setCheckoutAgendamento] = useState<Agendamento | null>(null);
 
   const dateStr = selectedDate.toISOString().split('T')[0];
-  const salaoId = '00000000-0000-0000-0000-000000000000'; // hardcoded UUID para o MVP
 
   const { agendamentos: fetchedAgendamentos, isLoading } = useAgenda(salaoId, dateStr, selectedProfId ?? undefined);
   const { profissionais } = useProfissionais(salaoId);

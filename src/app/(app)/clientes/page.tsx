@@ -16,9 +16,10 @@ import {
   User,
 } from 'lucide-react';
 import { useClientes } from '@/hooks/useClientes';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function ClientesPage() {
-  const salaoId = '00000000-0000-0000-0000-000000000000';
+  const { salaoId } = useAuth();
   const { clientes, isLoading, criarCliente, deletarCliente } = useClientes(salaoId);
 
   const [searchTerm, setSearchTerm] = useState('');

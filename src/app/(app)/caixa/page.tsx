@@ -21,6 +21,7 @@ import {
   COMISSAO_PERCENTUAL,
 } from '@/data/mock';
 import { useCaixa } from '@/hooks/useCaixa';
+import { useAuth } from '@/contexts/AuthContext';
 
 type CaixaTab = 'fechamento' | 'comissoes';
 
@@ -39,10 +40,10 @@ const PAYMENT_LABELS: Record<FormaPagamento, string> = {
 };
 
 export default function CaixaPage() {
+  const { salaoId } = useAuth();
   const [activeTab, setActiveTab] = useState<CaixaTab>('fechamento');
   const [expandedProfId, setExpandedProfId] = useState<string | null>(null);
   
-  const salaoId = '00000000-0000-0000-0000-000000000000';
   const dateStr = new Date().toISOString().split('T')[0];
   const { lancamentos, isLoading, marcarLancamentoComoPago } = useCaixa(salaoId, dateStr);
 

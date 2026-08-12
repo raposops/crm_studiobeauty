@@ -1,12 +1,19 @@
 'use client';
 
 import { Scissors } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
-interface HeaderProps {
-  salonName?: string;
-}
+export default function Header() {
+  const { salao } = useAuth();
+  const displayName = salao?.nome || 'Studio Beauty';
+  const initials = displayName
+    .split(' ')
+    .filter(Boolean)
+    .map((w) => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
 
-export default function Header({ salonName = 'Studio Beauty' }: HeaderProps) {
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-[var(--nav-bg)] backdrop-blur-xl">
       <div className="mx-auto max-w-md md:max-w-4xl lg:max-w-6xl flex items-center justify-between px-4 py-3 transition-all">
@@ -16,7 +23,7 @@ export default function Header({ salonName = 'Studio Beauty' }: HeaderProps) {
           </div>
           <div>
             <h1 className="text-sm font-bold tracking-tight text-foreground">
-              {salonName}
+              {displayName}
             </h1>
             <p className="text-[10px] text-muted font-medium">
               Gerenciamento
@@ -26,7 +33,7 @@ export default function Header({ salonName = 'Studio Beauty' }: HeaderProps) {
 
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-accent/20 to-indigo-500/20 border border-border flex items-center justify-center">
-            <span className="text-xs font-bold text-accent-light">SB</span>
+            <span className="text-xs font-bold text-accent-light">{initials}</span>
           </div>
         </div>
       </div>

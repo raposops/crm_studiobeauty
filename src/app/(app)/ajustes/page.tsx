@@ -23,6 +23,7 @@ import {
 import { useProfissionais } from '@/hooks/useProfissionais';
 import { useServicos } from '@/hooks/useServicos';
 import { formatCurrency } from '@/data/mock';
+import { useAuth } from '@/contexts/AuthContext';
 
 type ViewMode = 'menu' | 'profissionais' | 'servicos';
 
@@ -35,7 +36,10 @@ const COLOR_OPTIONS = [
 ];
 
 export default function AjustesPage() {
-  const salaoId = '00000000-0000-0000-0000-000000000000';
+  const { salao, salaoId, logout, user } = useAuth();
+  const salaoSlug = salao?.slug || 'studio-beauty';
+  const publicBookingUrl = typeof window !== 'undefined' ? `${window.location.origin}/agendar/${salaoSlug}` : `http://localhost:3000/agendar/${salaoSlug}`;
+
   const [view, setView] = useState<ViewMode>('menu');
   const [copiedLink, setCopiedLink] = useState(false);
 
@@ -232,14 +236,13 @@ export default function AjustesPage() {
                 <input
                   type="text"
                   readOnly
-                  value={typeof window !== 'undefined' ? `${window.location.origin}/agendar` : 'http://localhost:3000/agendar'}
+                  value={publicBookingUrl}
                   className="flex-1 bg-card-hover border border-border rounded-xl px-3 py-2 text-xs font-mono text-foreground focus:outline-none select-all"
                 />
                 <button
                   onClick={() => {
-                    const url = typeof window !== 'undefined' ? `${window.location.origin}/agendar` : 'http://localhost:3000/agendar';
                     if (navigator?.clipboard?.writeText) {
-                      navigator.clipboard.writeText(url);
+                      navigator.clipboard.writeText(publicBookingUrl);
                     }
                     setCopiedLink(true);
                     setTimeout(() => setCopiedLink(false), 2000);
@@ -250,7 +253,7 @@ export default function AjustesPage() {
                   {copiedLink ? 'Copiado!' : 'Copiar'}
                 </button>
                 <a
-                  href={typeof window !== 'undefined' ? `${window.location.origin}/agendar` : 'http://localhost:3000/agendar'}
+                  href={publicBookingUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="p-2 rounded-xl border border-border text-foreground hover:bg-card-hover transition-colors shrink-0"
@@ -262,7 +265,10 @@ export default function AjustesPage() {
             </div>
           </div>
 
-          <button className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl border border-danger/20 text-danger hover:bg-danger/5 transition-all duration-200">
+          <button
+            onClick={() => logout()}
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl border border-danger/20 text-danger hover:bg-danger/5 transition-all duration-200"
+          >
             <LogOut size={16} />
             <span className="text-sm font-semibold">Sair da conta</span>
           </button>
