@@ -253,28 +253,31 @@ export const supabaseService = {
 
     if (agErr) throw agErr;
 
-    // 2. Insert into lancamentos_financeiros
+    // 2. Insert/Upsert into lancamentos_financeiros
     const nowIso = new Date().toISOString();
     const comissaoPctCalculada = valorTotal > 0 ? Math.round((comissaoProfissional / valorTotal) * 100) : 50;
 
     const { data: lancamento, error: finErr } = await supabase
       .from('lancamentos_financeiros')
-      .insert({
-        salao_id: salaoId,
-        agendamento_id: agendamentoId,
-        profissional_id: profissionalId,
-        valor_total: valorTotal,
-        forma_pagamento: formaPagamento,
-        comissao_pct: comissaoPctCalculada,
-        valor_comissao_profissional: comissaoProfissional,
-        valor_liquido_salao: valorLiquidoSalao,
-        status_pago_profissional: false,
-        data_fechamento: nowIso,
-      })
+      .upsert(
+        {
+          salao_id: salaoId,
+          agendamento_id: agendamentoId,
+          profissional_id: profissionalId,
+          valor_total: valorTotal,
+          forma_pagamento: formaPagamento,
+          comissao_pct: comissaoPctCalculada,
+          valor_comissao_profissional: comissaoProfissional,
+          valor_liquido_salao: valorLiquidoSalao,
+          status_pago_profissional: false,
+          data_fechamento: nowIso,
+        },
+        { onConflict: 'agendamento_id' }
+      )
       .select()
-      .single();
+      .maybeSingle();
 
-    if (finErr) console.error('Erro ao inserir lancamentos_financeiros no fallback:', finErr.message);
+    if (finErr) console.error('Erro ao inserir/atualizar lancamentos_financeiros no fallback:', finErr.message);
 
     return agendamentoId;
   },

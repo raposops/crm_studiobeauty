@@ -69,8 +69,8 @@ export function useCaixa(salaoId: string, data: string) {
       args.servicosNomes
     ),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lancamentos', salaoId, data] });
-      queryClient.invalidateQueries({ queryKey: ['agendamentos', salaoId, data] });
+      queryClient.invalidateQueries({ queryKey: ['lancamentos'] });
+      queryClient.invalidateQueries({ queryKey: ['agendamentos'] });
     },
   });
 
