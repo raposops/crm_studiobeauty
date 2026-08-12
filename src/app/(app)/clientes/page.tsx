@@ -149,7 +149,7 @@ export default function ClientesPage() {
         </div>
       ) : filteredClientes.length > 0 ? (
         /* Clientes List Cards Grid */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filteredClientes.map((cliente) => {
             const phone = cliente.telefone_whatsapp || cliente.whatsapp || '';
             const waLink = getWhatsAppLink(phone);
@@ -157,20 +157,20 @@ export default function ClientesPage() {
             return (
               <div
                 key={cliente.id}
-                className="bg-card border border-border/80 rounded-2xl p-4 shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between space-y-3"
+                className="bg-card border border-border/80 rounded-2xl p-4 shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between space-y-3 min-w-0"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3">
+                <div className="flex items-start justify-between gap-2 min-w-0">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
                     <div className="w-11 h-11 rounded-full bg-gradient-to-br from-accent/20 to-accent/40 border border-accent/30 flex items-center justify-center text-accent font-bold text-sm shrink-0 shadow-xs">
                       {getInitials(cliente.nome)}
                     </div>
-                    <div className="min-w-0">
-                      <h3 className="font-bold text-foreground text-base truncate">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-bold text-foreground text-sm sm:text-base truncate leading-tight" title={cliente.nome}>
                         {cliente.nome}
                       </h3>
-                      <div className="flex items-center gap-1.5 text-xs text-muted mt-0.5">
+                      <div className="flex items-center gap-1.5 text-xs text-muted mt-1">
                         <Phone size={12} className="shrink-0" />
-                        <span className="truncate">{phone || 'Sem telefone'}</span>
+                        <span className="truncate block font-mono">{phone || 'Sem telefone'}</span>
                       </div>
                     </div>
                   </div>
@@ -178,7 +178,7 @@ export default function ClientesPage() {
                   {/* Delete Button */}
                   <button
                     onClick={() => setClienteParaDeletar(cliente.id)}
-                    className="p-1.5 rounded-lg text-muted hover:text-red-600 hover:bg-red-500/10 transition-colors"
+                    className="p-1.5 rounded-lg text-muted hover:text-red-600 hover:bg-red-500/10 transition-colors shrink-0"
                     title="Excluir cliente"
                   >
                     <Trash2 size={16} />
