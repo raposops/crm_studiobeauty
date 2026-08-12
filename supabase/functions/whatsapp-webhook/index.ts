@@ -117,8 +117,22 @@ serve(async (req) => {
     }
 
     // 3. Parser de Decisão (Confirmação vs Cancelamento)
-    let isConfirm = CONFIRM_KEYWORDS.some((kw) => textNormalized === kw || textNormalized.startsWith(`${kw} `));
-    let isCancel = CANCEL_KEYWORDS.some((kw) => textNormalized === kw || textNormalized.startsWith(`${kw} `));
+    const isConfirm =
+      textNormalized === '1' ||
+      textNormalized.startsWith('1') ||
+      textNormalized.includes('confirm') ||
+      textNormalized.includes('opcao 1') ||
+      CONFIRM_KEYWORDS.some((kw) => textNormalized === kw || textNormalized.includes(kw));
+
+    const isCancel =
+      !isConfirm && (
+        textNormalized === '2' ||
+        textNormalized.startsWith('2') ||
+        textNormalized.includes('cancel') ||
+        textNormalized.includes('remarc') ||
+        textNormalized.includes('opcao 2') ||
+        CANCEL_KEYWORDS.some((kw) => textNormalized === kw || textNormalized.includes(kw))
+      );
 
     if (!isConfirm && !isCancel) {
       console.log('[WhatsApp Webhook] Mensagem não corresponde a nenhuma palavra-chave conhecida.');
