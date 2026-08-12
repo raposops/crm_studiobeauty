@@ -194,7 +194,10 @@ serve(async (req) => {
     console.log(`[WhatsApp Webhook] Sucesso! Agendamento ${agendamentoAlvo.id} atualizado para status '${novoStatus}'.`);
 
     // 7. Envia mensagem de conclusão / resposta automática no WhatsApp via Evolution API
-    const evolutionApiUrl = Deno.env.get('EVOLUTION_API_URL') || Deno.env.get('NEXT_PUBLIC_EVOLUTION_API_URL') || 'https://evo.fidustecnologia.com.br';
+    let evolutionApiUrl = Deno.env.get('EVOLUTION_API_URL') || Deno.env.get('NEXT_PUBLIC_EVOLUTION_API_URL') || 'https://evo.fidustecnologia.com.br';
+    if (!evolutionApiUrl || evolutionApiUrl.includes('supabase.co')) {
+      evolutionApiUrl = 'https://evo.fidustecnologia.com.br';
+    }
     const evolutionApiKey = Deno.env.get('EVOLUTION_API_KEY') || Deno.env.get('NEXT_PUBLIC_EVOLUTION_API_KEY') || '306435C88588-4EE6-AD53-E5882B4EE2AD';
     const instanceName = Deno.env.get('EVOLUTION_INSTANCE_NAME') || Deno.env.get('NEXT_PUBLIC_EVOLUTION_INSTANCE_NAME') || 'meu_acessor';
 
