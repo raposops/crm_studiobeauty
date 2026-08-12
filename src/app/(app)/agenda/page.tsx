@@ -43,13 +43,7 @@ export default function AgendaPage() {
   ).length;
 
   function handleAppointmentClick(agendamento: Agendamento) {
-    // Only allow checkout for non-concluded and non-cancelled appointments
-    if (
-      agendamento.status !== 'concluido' &&
-      agendamento.status !== 'cancelado'
-    ) {
-      setCheckoutAgendamento(agendamento);
-    }
+    setCheckoutAgendamento(agendamento);
   }
 
   return (

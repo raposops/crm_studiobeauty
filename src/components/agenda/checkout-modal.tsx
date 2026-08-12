@@ -413,7 +413,9 @@ export default function CheckoutModal({
             ) : (
               <>
                 <Check size={18} />
-                Concluir e Registrar Pagamento
+                {agendamento?.status === 'concluido'
+                  ? 'Reconcluir / Atualizar Atendimento'
+                  : 'Concluir e Registrar Pagamento'}
               </>
             )}
           </button>
