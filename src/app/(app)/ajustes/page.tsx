@@ -266,8 +266,13 @@ export default function AjustesPage() {
           </div>
 
           <button
-            onClick={() => logout()}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl border border-danger/20 text-danger hover:bg-danger/5 transition-all duration-200"
+            onClick={async () => {
+              await logout();
+              if (typeof window !== 'undefined') {
+                window.location.href = '/login';
+              }
+            }}
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl border border-danger/20 text-danger hover:bg-danger/5 active:scale-[0.99] cursor-pointer transition-all duration-200"
           >
             <LogOut size={16} />
             <span className="text-sm font-semibold">Sair da conta</span>

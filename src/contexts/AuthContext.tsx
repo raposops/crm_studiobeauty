@@ -127,11 +127,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = async () => {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.warn('Erro no signOut:', err);
+    }
     setUser(null);
     setSession(null);
     setProfile(null);
     setSalao(DEFAULT_SALAO);
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login';
+    }
   };
 
   const salaoId = salao?.id || DEFAULT_SALAO.id;
