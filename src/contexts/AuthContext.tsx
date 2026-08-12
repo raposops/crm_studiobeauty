@@ -64,29 +64,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .eq('id', currentUser.id)
         .single();
 
+      let targetSalaoId = currentUser.user_metadata?.salao_id;
+
       if (userProfile && !profileErr) {
         setProfile(userProfile);
+        targetSalaoId = userProfile.salao_id;
+      } else {
+        // Fallback profile from user metadata if table missing or record not found
+        setProfile({
+          id: currentUser.id,
+          salao_id: targetSalaoId || DEFAULT_SALAO.id,
+          nome: currentUser.user_metadata?.nome || currentUser.email || 'Usuário',
+          email: currentUser.email || '',
+          cargo: 'dona',
+        });
+      }
 
+      if (targetSalaoId) {
         // 2. Fetch associated salao from 'saloes' table
         const { data: salaoData, error: salaoErr } = await supabase
           .from('saloes')
           .select('*')
-          .eq('id', userProfile.salao_id)
+          .eq('id', targetSalaoId)
           .single();
 
         if (salaoData && !salaoErr) {
           setSalao(salaoData);
         } else {
-          setSalao(DEFAULT_SALAO);
+          setSalao({
+            id: targetSalaoId,
+            nome: currentUser.user_metadata?.salao_nome || 'Meu Salão',
+            slug: currentUser.user_metadata?.slug || 'meu-salao',
+          });
         }
       } else {
-        // Fallback for default admin
-        setProfile(null);
         setSalao(DEFAULT_SALAO);
       }
     } catch (err) {
       console.warn('Erro ao carregar dados do salão do usuário:', err);
-      setSalao(DEFAULT_SALAO);
+      const fallbackId = currentUser.user_metadata?.salao_id || DEFAULT_SALAO.id;
+      setSalao({
+        id: fallbackId,
+        nome: currentUser.user_metadata?.salao_nome || DEFAULT_SALAO.nome,
+        slug: currentUser.user_metadata?.slug || DEFAULT_SALAO.slug,
+      });
     }
   };
 

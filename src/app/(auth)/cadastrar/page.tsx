@@ -89,7 +89,11 @@ export default function CadastrarSalaoPage() {
         return;
       }
 
-      // 2. Sign up user in Supabase Auth
+      const newSalaoId = uuidv4();
+      const cleanPhoneDigits = phone.replace(/\D/g, '');
+      const formattedPhone = cleanPhoneDigits ? `55${cleanPhoneDigits}` : '';
+
+      // 2. Sign up user in Supabase Auth (with salao_id in metadata)
       const { data: authData, error: authErr } = await supabase.auth.signUp({
         email: email.trim(),
         password,
@@ -97,6 +101,8 @@ export default function CadastrarSalaoPage() {
           data: {
             nome: ownerNome.trim(),
             salao_nome: salaoNome.trim(),
+            salao_id: newSalaoId,
+            slug: cleanSlug,
           },
         },
       });
@@ -108,38 +114,33 @@ export default function CadastrarSalaoPage() {
       }
 
       const newUserId = authData.user.id;
-      const newSalaoId = uuidv4();
-      const cleanPhoneDigits = phone.replace(/\D/g, '');
-      const formattedPhone = cleanPhoneDigits ? `55${cleanPhoneDigits}` : '';
 
-      // 3. Create Salon Row in 'saloes' table
+      // 3. Create Salon Row in 'saloes' table (ignoring optional/missing columns)
       const { error: salaoErr } = await supabase.from('saloes').insert({
         id: newSalaoId,
         nome: salaoNome.trim(),
-        slug: cleanSlug,
         telefone_whatsapp: formattedPhone,
         plano: 'pro',
-        status: 'ativo',
       });
 
       if (salaoErr) {
         console.warn('Aviso ao criar salao (tabela saloes):', salaoErr.message);
       }
 
-      // 4. Create User Profile Row in 'usuarios' table
-      const { error: userErr } = await supabase.from('usuarios').insert({
-        id: newUserId,
-        salao_id: newSalaoId,
-        nome: ownerNome.trim(),
-        email: email.trim(),
-        cargo: 'dona',
-      });
-
-      if (userErr) {
-        console.warn('Aviso ao criar perfil de usuario:', userErr.message);
+      // 4. Create User Profile Row in 'usuarios' table (if table exists)
+      try {
+        await supabase.from('usuarios').insert({
+          id: newUserId,
+          salao_id: newSalaoId,
+          nome: ownerNome.trim(),
+          email: email.trim(),
+          cargo: 'dona',
+        });
+      } catch (e) {
+        console.warn('Tabela usuarios não encontrada ou erro de permissão:', e);
       }
 
-      // 5. Seed default starter service and professional so the salon starts ready
+      // 5. Seed default starter service and professional for this new salon ID
       await supabase.from('profissionais').insert({
         id: uuidv4(),
         salao_id: newSalaoId,
