@@ -176,23 +176,32 @@ export default function CadastrarSalaoPage() {
   };
 
   return (
-    <div className="min-h-dvh flex flex-col justify-center items-center px-4 py-8 bg-gradient-to-b from-background via-card/50 to-background">
-      <div className="w-full max-w-lg space-y-6">
+    <div className="relative min-h-dvh flex items-center justify-center px-4 py-12 overflow-hidden">
+      {/* Background Salon Image with Dark Overlay */}
+      <div 
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat scale-105 filter brightness-75 transition-all duration-700"
+        style={{ backgroundImage: `url('/images/salon_bg_login.png')` }}
+      />
+      
+      {/* Modern Gradient Backdrop Overlay */}
+      <div className="absolute inset-0 bg-gradient-to-tr from-slate-950/90 via-slate-900/85 to-slate-950/90 backdrop-blur-[2px]" />
+
+      <div className="relative z-10 w-full max-w-lg space-y-6">
         {/* Brand Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-accent to-indigo-600 shadow-lg shadow-accent/20 mb-2">
-            <Scissors className="w-7 h-7 text-white" />
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-accent via-indigo-600 to-purple-600 shadow-2xl shadow-accent/40 mb-2 border border-white/20">
+            <Scissors className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+          <h1 className="text-3xl font-extrabold tracking-tight text-white drop-shadow-md">
             Cadastrar Novo Salão SaaS
           </h1>
-          <p className="text-sm text-muted">
+          <p className="text-xs font-medium text-slate-300">
             Crie a conta da sua empresa em menos de 1 minuto
           </p>
         </div>
 
         {/* Form Card */}
-        <div className="bg-card border border-border/80 rounded-2xl p-6 shadow-xl backdrop-blur-xl space-y-5">
+        <div className="bg-slate-900/80 border border-white/15 rounded-3xl p-7 shadow-2xl backdrop-blur-2xl space-y-5">
           {errorMessage && (
             <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 text-xs flex items-center gap-2">
               <AlertCircle size={16} className="shrink-0" />
@@ -202,35 +211,35 @@ export default function CadastrarSalaoPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Salon Info Section */}
-            <div className="space-y-3 pb-3 border-b border-border/60">
-              <h3 className="text-xs font-bold text-accent uppercase tracking-wider flex items-center gap-1.5">
+            <div className="space-y-3 pb-3 border-b border-white/10">
+              <h3 className="text-xs font-bold text-accent-light uppercase tracking-wider flex items-center gap-1.5">
                 <Building2 size={14} />
                 Dados do Salão / Empresa
               </h3>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground">
+                <label className="text-xs font-bold text-slate-200">
                   Nome do Salão ou Barbearia *
                 </label>
                 <div className="relative">
-                  <Building2 size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
+                  <Building2 size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="text"
                     value={salaoNome}
                     onChange={(e) => handleNomeChange(e.target.value)}
                     placeholder="Ex: Studio Beauty Vip"
                     required
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-background border border-border text-sm text-foreground placeholder:text-muted focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
+                    className="w-full pl-10 pr-4 py-3 rounded-2xl bg-slate-950/60 border border-white/10 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 transition-all"
                   />
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground">
+                <label className="text-xs font-bold text-slate-200">
                   Link Público Personalizado (/agendar/...)
                 </label>
                 <div className="relative">
-                  <Globe size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
+                  <Globe size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="text"
                     value={slug}
@@ -240,29 +249,29 @@ export default function CadastrarSalaoPage() {
                     }}
                     placeholder="ex: studio-beauty-vip"
                     required
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-background border border-border text-sm text-foreground placeholder:text-muted focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
+                    className="w-full pl-10 pr-4 py-3 rounded-2xl bg-slate-950/60 border border-white/10 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 transition-all"
                   />
                 </div>
                 {slug && (
-                  <p className="text-[11px] text-muted flex items-center gap-1">
-                    <CheckCircle2 size={12} className="text-emerald-500" />
-                    Seu link será: <strong className="text-foreground">agendar/{slug}</strong>
+                  <p className="text-[11px] text-slate-300 flex items-center gap-1">
+                    <CheckCircle2 size={12} className="text-emerald-400" />
+                    Seu link será: <strong className="text-white">agendar/{slug}</strong>
                   </p>
                 )}
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground">
+                <label className="text-xs font-bold text-slate-200">
                   WhatsApp do Salão
                 </label>
                 <div className="relative">
-                  <Phone size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
+                  <Phone size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(formatPhoneInput(e.target.value))}
                     placeholder="(51) 99999-9999"
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-background border border-border text-sm text-foreground placeholder:text-muted focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
+                    className="w-full pl-10 pr-4 py-3 rounded-2xl bg-slate-950/60 border border-white/10 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 transition-all"
                   />
                 </div>
               </div>
@@ -270,52 +279,52 @@ export default function CadastrarSalaoPage() {
 
             {/* Owner Info Section */}
             <div className="space-y-3 pt-1">
-              <h3 className="text-xs font-bold text-accent uppercase tracking-wider flex items-center gap-1.5">
+              <h3 className="text-xs font-bold text-accent-light uppercase tracking-wider flex items-center gap-1.5">
                 <User size={14} />
                 Dados do Responsável / Gestor
               </h3>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground">
+                <label className="text-xs font-bold text-slate-200">
                   Seu Nome Completo *
                 </label>
                 <div className="relative">
-                  <User size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
+                  <User size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="text"
                     value={ownerNome}
                     onChange={(e) => setOwnerNome(e.target.value)}
                     placeholder="Ex: Maria Aparecida"
                     required
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-background border border-border text-sm text-foreground placeholder:text-muted focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
+                    className="w-full pl-10 pr-4 py-3 rounded-2xl bg-slate-950/60 border border-white/10 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 transition-all"
                   />
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground">
+                <label className="text-xs font-bold text-slate-200">
                   E-mail de Acesso *
                 </label>
                 <div className="relative">
-                  <Mail size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
+                  <Mail size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="maria@studiobeauty.com"
                     required
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-background border border-border text-sm text-foreground placeholder:text-muted focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
+                    className="w-full pl-10 pr-4 py-3 rounded-2xl bg-slate-950/60 border border-white/10 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 transition-all"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground">
+                  <label className="text-xs font-bold text-slate-200">
                     Senha *
                   </label>
                   <div className="relative">
-                    <Lock size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
+                    <Lock size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input
                       type="password"
                       value={password}
@@ -323,17 +332,17 @@ export default function CadastrarSalaoPage() {
                       placeholder="••••••••"
                       required
                       minLength={6}
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-background border border-border text-sm text-foreground placeholder:text-muted focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
+                      className="w-full pl-10 pr-4 py-3 rounded-2xl bg-slate-950/60 border border-white/10 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 transition-all"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground">
+                  <label className="text-xs font-bold text-slate-200">
                     Confirmar Senha *
                   </label>
                   <div className="relative">
-                    <Lock size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
+                    <Lock size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input
                       type="password"
                       value={confirmPassword}
@@ -341,7 +350,7 @@ export default function CadastrarSalaoPage() {
                       placeholder="••••••••"
                       required
                       minLength={6}
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-background border border-border text-sm text-foreground placeholder:text-muted focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
+                      className="w-full pl-10 pr-4 py-3 rounded-2xl bg-slate-950/60 border border-white/10 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 transition-all"
                     />
                   </div>
                 </div>
@@ -351,7 +360,7 @@ export default function CadastrarSalaoPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-accent to-accent-light text-white text-sm font-semibold shadow-lg shadow-accent/25 hover:shadow-accent/40 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:hover:scale-100 transition-all mt-4"
+              className="w-full flex items-center justify-center gap-2 py-3.5 px-4 rounded-2xl bg-gradient-to-r from-accent via-indigo-600 to-purple-600 text-white text-sm font-bold shadow-xl shadow-accent/30 hover:shadow-accent/50 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:hover:scale-100 transition-all mt-4 cursor-pointer"
             >
               {isLoading ? (
                 <>
@@ -369,14 +378,14 @@ export default function CadastrarSalaoPage() {
         </div>
 
         {/* Footer Link */}
-        <div className="text-center text-xs text-muted space-y-2">
+        <div className="text-center text-xs text-slate-300 space-y-2 font-medium">
           <p>
-            Já possui uma conta?{' '}
+            Já possui uma conta cadastrada?{' '}
             <Link
               href="/login"
-              className="font-bold text-accent hover:underline transition-all"
+              className="font-bold text-accent-light hover:underline transition-all"
             >
-              Fazer Login no CRM
+              Fazer Login no Sistema
             </Link>
           </p>
         </div>

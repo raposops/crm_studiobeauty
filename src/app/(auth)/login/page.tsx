@@ -7,15 +7,11 @@ import { Scissors, Mail, Lock, ArrowRight, AlertCircle, Loader2 } from 'lucide-r
 import { supabase } from '@/lib/supabase';
 
 export default function LoginPage() {
-  const router = Router();
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-
-  function Router() {
-    return useRouter();
-  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,63 +49,73 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-dvh flex flex-col justify-center items-center px-4 py-8 bg-gradient-to-b from-background via-card/50 to-background">
-      <div className="w-full max-w-md space-y-6">
+    <div className="relative min-h-dvh flex items-center justify-center px-4 py-12 overflow-hidden">
+      {/* Background Salon Image with Dark Overlay */}
+      <div 
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat scale-105 filter brightness-75 transition-all duration-700"
+        style={{ backgroundImage: `url('/images/salon_bg_login.png')` }}
+      />
+      
+      {/* Modern Gradient Backdrop & Vignette Overlay */}
+      <div className="absolute inset-0 bg-gradient-to-tr from-slate-950/90 via-slate-900/80 to-slate-950/90 backdrop-blur-[2px]" />
+
+      {/* Main Glassmorphism Card */}
+      <div className="relative z-10 w-full max-w-md space-y-6">
         {/* Brand Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-accent to-indigo-600 shadow-lg shadow-accent/20 mb-2">
-            <Scissors className="w-7 h-7 text-white" />
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-accent via-indigo-600 to-purple-600 shadow-2xl shadow-accent/40 mb-2 border border-white/20">
+            <Scissors className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+          <h1 className="text-3xl font-extrabold tracking-tight text-white drop-shadow-md">
             Studio Beauty CRM
           </h1>
-          <p className="text-sm text-muted">
-            Acesse o sistema de gerenciamento do seu salão
+          <p className="text-xs font-medium text-slate-300">
+            Gestão Inteligente & Agendamento Online para o seu Salão
           </p>
         </div>
 
-        {/* Login Form Card */}
-        <div className="bg-card border border-border/80 rounded-2xl p-6 shadow-xl backdrop-blur-xl space-y-5">
+        {/* Login Form Container */}
+        <div className="bg-slate-900/70 border border-white/15 rounded-3xl p-7 shadow-2xl backdrop-blur-2xl space-y-5">
           {errorMessage && (
-            <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 text-xs flex items-center gap-2">
-              <AlertCircle size={16} className="shrink-0" />
+            <div className="p-3.5 rounded-2xl bg-red-500/20 border border-red-500/30 text-red-200 text-xs flex items-center gap-2.5">
+              <AlertCircle size={18} className="shrink-0 text-red-400" />
               <span>{errorMessage}</span>
             </div>
           )}
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">
+              <label className="text-xs font-bold text-slate-200">
                 E-mail de acesso
               </label>
               <div className="relative">
-                <Mail size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
+                <Mail size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="seuemail@salao.com"
                   required
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-background border border-border text-sm text-foreground placeholder:text-muted focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
+                  className="w-full pl-10 pr-4 py-3 rounded-2xl bg-slate-950/60 border border-white/10 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 transition-all"
                 />
               </div>
             </div>
 
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-foreground">
+                <label className="text-xs font-bold text-slate-200">
                   Senha
                 </label>
               </div>
               <div className="relative">
-                <Lock size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
+                <Lock size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-background border border-border text-sm text-foreground placeholder:text-muted focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
+                  className="w-full pl-10 pr-4 py-3 rounded-2xl bg-slate-950/60 border border-white/10 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 transition-all"
                 />
               </div>
             </div>
@@ -117,7 +123,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-accent to-accent-light text-white text-sm font-semibold shadow-lg shadow-accent/25 hover:shadow-accent/40 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:hover:scale-100 transition-all mt-2"
+              className="w-full flex items-center justify-center gap-2 py-3.5 px-4 rounded-2xl bg-gradient-to-r from-accent via-indigo-600 to-purple-600 text-white text-sm font-bold shadow-xl shadow-accent/30 hover:shadow-accent/50 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:hover:scale-100 transition-all mt-3 cursor-pointer"
             >
               {isLoading ? (
                 <>
@@ -135,12 +141,12 @@ export default function LoginPage() {
         </div>
 
         {/* Footer Link to Registration */}
-        <div className="text-center text-xs text-muted space-y-2">
+        <div className="text-center text-xs text-slate-300 space-y-2 font-medium">
           <p>
             Ainda não cadastrou seu salão?{' '}
             <Link
               href="/cadastrar"
-              className="font-bold text-accent hover:underline transition-all"
+              className="font-bold text-accent-light hover:underline transition-all"
             >
               Cadastrar Salão como SaaS
             </Link>
