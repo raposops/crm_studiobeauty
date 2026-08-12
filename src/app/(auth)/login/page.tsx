@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Scissors, Mail, Lock, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
+import { Scissors, Mail, Lock, ArrowRight, AlertCircle, Loader2, Sparkles } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 export default function LoginPage() {
@@ -50,72 +50,81 @@ export default function LoginPage() {
 
   return (
     <div className="relative min-h-dvh flex items-center justify-center px-4 py-12 overflow-hidden">
-      {/* Background Salon Image with Dark Overlay */}
+      {/* Background Salon Image with Warm Dark Overlay */}
       <div 
         className="absolute inset-0 bg-cover bg-center bg-no-repeat scale-105 filter brightness-75 transition-all duration-700"
         style={{ backgroundImage: `url('/images/salon_bg_login.png')` }}
       />
       
-      {/* Modern Gradient Backdrop & Vignette Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-tr from-slate-950/90 via-slate-900/80 to-slate-950/90 backdrop-blur-[2px]" />
+      {/* Rose Gold Ambient Lighting Backdrop */}
+      <div className="absolute inset-0 bg-gradient-to-tr from-slate-950/95 via-rose-950/60 to-slate-950/95 backdrop-blur-[2px]" />
+
+      {/* Subtle Glowing Radial Highlights */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-rose-500/15 rounded-full filter blur-[100px] pointer-events-none" />
 
       {/* Main Glassmorphism Card */}
       <div className="relative z-10 w-full max-w-md space-y-6">
         {/* Brand Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-accent via-indigo-600 to-purple-600 shadow-2xl shadow-accent/40 mb-2 border border-white/20">
-            <Scissors className="w-8 h-8 text-white" />
+          <div className="relative inline-flex items-center justify-center">
+            <div className="absolute -inset-1.5 bg-gradient-to-r from-rose-500 via-pink-500 to-amber-300 rounded-3xl blur-md opacity-70 animate-pulse" />
+            <div className="relative inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-rose-500 via-pink-600 to-purple-600 shadow-2xl border border-white/30">
+              <Scissors className="w-8 h-8 text-white" />
+            </div>
+            <Sparkles className="absolute -top-2 -right-2 w-5 h-5 text-amber-300 animate-bounce" />
           </div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-white drop-shadow-md">
-            Studio Beauty CRM
+
+          <h1 className="text-3xl font-extrabold tracking-tight text-white drop-shadow-md pt-1">
+            Studio Beauty <span className="bg-gradient-to-r from-rose-300 via-pink-300 to-amber-200 bg-clip-text text-transparent">CRM</span>
           </h1>
-          <p className="text-xs font-medium text-slate-300">
-            Gestão Inteligente & Agendamento Online para o seu Salão
+          <p className="text-xs font-medium text-pink-200/90 flex items-center justify-center gap-1.5">
+            <span>Gestão Inteligente & Agendamento Online</span>
+            <Sparkles size={12} className="text-pink-300 shrink-0" />
           </p>
         </div>
 
         {/* Login Form Container */}
-        <div className="bg-slate-900/70 border border-white/15 rounded-3xl p-7 shadow-2xl backdrop-blur-2xl space-y-5">
+        <div className="bg-slate-950/75 border border-pink-500/25 rounded-3xl p-7 shadow-2xl shadow-rose-950/40 backdrop-blur-2xl space-y-5">
           {errorMessage && (
-            <div className="p-3.5 rounded-2xl bg-red-500/20 border border-red-500/30 text-red-200 text-xs flex items-center gap-2.5">
-              <AlertCircle size={18} className="shrink-0 text-red-400" />
+            <div className="p-3.5 rounded-2xl bg-rose-500/20 border border-rose-500/30 text-rose-200 text-xs flex items-center gap-2.5">
+              <AlertCircle size={18} className="shrink-0 text-rose-400" />
               <span>{errorMessage}</span>
             </div>
           )}
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-200">
+              <label className="text-xs font-bold text-pink-100/90">
                 E-mail de acesso
               </label>
               <div className="relative">
-                <Mail size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Mail size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-rose-300/60" />
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="seuemail@salao.com"
                   required
-                  className="w-full pl-10 pr-4 py-3 rounded-2xl bg-slate-950/60 border border-white/10 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 transition-all"
+                  className="w-full pl-10 pr-4 py-3 rounded-2xl bg-slate-900/80 border border-pink-500/20 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-pink-400 focus:ring-2 focus:ring-pink-500/30 transition-all"
                 />
               </div>
             </div>
 
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-slate-200">
+                <label className="text-xs font-bold text-pink-100/90">
                   Senha
                 </label>
               </div>
               <div className="relative">
-                <Lock size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Lock size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-rose-300/60" />
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="w-full pl-10 pr-4 py-3 rounded-2xl bg-slate-950/60 border border-white/10 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 transition-all"
+                  className="w-full pl-10 pr-4 py-3 rounded-2xl bg-slate-900/80 border border-pink-500/20 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-pink-400 focus:ring-2 focus:ring-pink-500/30 transition-all"
                 />
               </div>
             </div>
@@ -123,7 +132,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full flex items-center justify-center gap-2 py-3.5 px-4 rounded-2xl bg-gradient-to-r from-accent via-indigo-600 to-purple-600 text-white text-sm font-bold shadow-xl shadow-accent/30 hover:shadow-accent/50 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:hover:scale-100 transition-all mt-3 cursor-pointer"
+              className="w-full flex items-center justify-center gap-2 py-3.5 px-4 rounded-2xl bg-gradient-to-r from-rose-500 via-pink-500 to-purple-600 text-white text-sm font-bold shadow-xl shadow-rose-500/35 hover:shadow-rose-500/55 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:hover:scale-100 transition-all mt-3 cursor-pointer border border-pink-400/30"
             >
               {isLoading ? (
                 <>
@@ -141,14 +150,14 @@ export default function LoginPage() {
         </div>
 
         {/* Footer Link to Registration */}
-        <div className="text-center text-xs text-slate-300 space-y-2 font-medium">
+        <div className="text-center text-xs text-pink-200/80 space-y-2 font-medium">
           <p>
             Ainda não cadastrou seu salão?{' '}
             <Link
               href="/cadastrar"
-              className="font-bold text-accent-light hover:underline transition-all"
+              className="font-bold text-rose-300 hover:text-rose-200 hover:underline transition-all"
             >
-              Cadastrar Salão como SaaS
+              Cadastrar Salão como SaaS ✨
             </Link>
           </p>
         </div>
