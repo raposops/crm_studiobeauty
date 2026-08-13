@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
-import type { Agendamento, LancamentoFinanceiro, NovoAgendamentoForm, FormaPagamento } from '@/types';
+import { generateUUID } from '@/lib/uuid';
+import type { Agendamento, LancamentoFinanceiro, NovoAgendamentoForm, FormaPagamento, ModulosSalao, MovimentacaoFluxoCaixa } from '@/types';
 
 export const supabaseService = {
   async fetchAgendamentos(salaoId: string, data: string, profissionalId?: string): Promise<Agendamento[]> {
@@ -277,10 +278,10 @@ export const supabaseService = {
 
     console.warn('RPC concluir_atendimento error/missing, using direct table fallback:', error.message);
 
-    // 1. Update agendamento status to 'concluido'
+    // 1. Update agendamento status to 'concluido' and sync final valor_total
     const { error: agErr } = await supabase
       .from('agendamentos')
-      .update({ status: 'concluido' })
+      .update({ status: 'concluido', valor_total: valorTotal })
       .eq('id', agendamentoId);
 
     if (agErr) throw agErr;
@@ -338,7 +339,7 @@ export const supabaseService = {
     return data;
   },
 
-  async criarProfissional(salaoId: string, payload: { nome: string; cor: string; avatar_url?: string }) {
+  async criarProfissional(salaoId: string, payload: { nome: string; cor: string; avatar_url?: string; comissao_padrao_pct?: number }) {
     const nomeLimpo = payload.nome.trim();
     const partesNome = nomeLimpo.split(' ');
     const iniciais = partesNome.length > 1
@@ -353,7 +354,42 @@ export const supabaseService = {
         iniciais,
         cor: payload.cor || 'from-purple-500 to-indigo-500',
         avatar_url: payload.avatar_url,
+        comissao_padrao_pct: payload.comissao_padrao_pct ?? 40,
       })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  async atualizarProfissional(
+    id: string,
+    payload: {
+      nome?: string;
+      cor?: string;
+      comissao_padrao_pct?: number;
+      avatar_url?: string;
+    }
+  ) {
+    const updateData: Record<string, any> = {};
+    if (payload.nome !== undefined) {
+      const nomeLimpo = payload.nome.trim();
+      const partesNome = nomeLimpo.split(' ');
+      const iniciais = partesNome.length > 1
+        ? `${partesNome[0][0]}${partesNome[1][0]}`.toUpperCase()
+        : nomeLimpo.slice(0, 2).toUpperCase();
+      updateData.nome = nomeLimpo;
+      updateData.iniciais = iniciais;
+    }
+    if (payload.cor !== undefined) updateData.cor = payload.cor;
+    if (payload.comissao_padrao_pct !== undefined) updateData.comissao_padrao_pct = payload.comissao_padrao_pct;
+    if (payload.avatar_url !== undefined) updateData.avatar_url = payload.avatar_url;
+
+    const { data, error } = await supabase
+      .from('profissionais')
+      .update(updateData)
+      .eq('id', id)
       .select()
       .single();
 
@@ -472,5 +508,337 @@ export const supabaseService = {
       .eq('id', id);
 
     if (error) throw error;
+  },
+
+  // ==========================
+  // SUPER ADMIN & MÓDULOS SAAS
+  // ==========================
+  async fetchTodosSaloes() {
+    const { data, error } = await supabase
+      .from('saloes')
+      .select('*')
+      .order('criado_em', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  },
+
+  async atualizarModulosSalao(salaoId: string, modulos: ModulosSalao) {
+    const { data, error } = await supabase
+      .from('saloes')
+      .update({ modulos_ativos: modulos })
+      .eq('id', salaoId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  async atualizarStatusESalao(salaoId: string, payload: { status_assinatura?: string; plano?: string; modulos_ativos?: ModulosSalao }) {
+    const { data, error } = await supabase
+      .from('saloes')
+      .update(payload)
+      .eq('id', salaoId)
+      .select()
+      .single();
+
+    if (error) {
+      if (error.message?.includes('modulos_ativos')) {
+        const { modulos_ativos, ...fallbackPayload } = payload;
+        if (Object.keys(fallbackPayload).length > 0) {
+          await supabase.from('saloes').update(fallbackPayload).eq('id', salaoId);
+        }
+        throw new Error(
+          "A coluna 'modulos_ativos' ainda não existe na tabela 'saloes' do Supabase. Execute o comando SQL no Supabase para ativar a gravação de módulos."
+        );
+      }
+      throw error;
+    }
+    return data;
+  },
+
+  async alternarStatusSalao(salaoId: string, status: string) {
+    const { data, error } = await supabase
+      .from('saloes')
+      .update({ status_assinatura: status })
+      .eq('id', salaoId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  async deletarSalao(salaoId: string) {
+    const { error } = await supabase
+      .from('saloes')
+      .delete()
+      .eq('id', salaoId);
+
+    if (error) throw error;
+  },
+
+  // ==========================
+  // FLUXO DE CAIXA
+  // ==========================
+  // LocalStorage Fallbacks para a tabela fluxo_caixa quando não criada no Supabase
+  getLocalStorageFluxoCaixa(salaoId: string): MovimentacaoFluxoCaixa[] {
+    if (typeof window === 'undefined') return [];
+    try {
+      const stored = localStorage.getItem(`fluxo_caixa_${salaoId}`);
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  },
+
+  setLocalStorageFluxoCaixa(salaoId: string, itens: MovimentacaoFluxoCaixa[]) {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(`fluxo_caixa_${salaoId}`, JSON.stringify(itens));
+    } catch {}
+  },
+
+  async fetchMovimentacoesFluxoCaixa(salaoId: string, dataInicio?: string, dataFim?: string): Promise<MovimentacaoFluxoCaixa[]> {
+    let query = supabase
+      .from('fluxo_caixa')
+      .select('*')
+      .eq('salao_id', salaoId)
+      .order('data', { ascending: false });
+
+    if (dataInicio) {
+      query = query.gte('data', dataInicio);
+    }
+    if (dataFim) {
+      query = query.lte('data', dataFim);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      // Fallback para localStorage caso a tabela ainda não exista no Supabase
+      let localItens = this.getLocalStorageFluxoCaixa(salaoId);
+      if (dataInicio) localItens = localItens.filter((m) => m.data >= dataInicio);
+      if (dataFim) localItens = localItens.filter((m) => m.data <= dataFim);
+      return localItens;
+    }
+    return data || [];
+  },
+
+  async criarMovimentacaoFluxoCaixa(salaoId: string, item: Omit<MovimentacaoFluxoCaixa, 'id' | 'salao_id'>): Promise<MovimentacaoFluxoCaixa> {
+    const novoItem: MovimentacaoFluxoCaixa = {
+      id: generateUUID(),
+      salao_id: salaoId,
+      ...item,
+    };
+
+    const { data, error } = await supabase
+      .from('fluxo_caixa')
+      .insert(novoItem)
+      .select()
+      .single();
+
+    if (error) {
+      // Fallback gracioso para localStorage
+      console.warn('Salvo no modo local (tabela fluxo_caixa pendente no Supabase):', error.message);
+      const localItens = this.getLocalStorageFluxoCaixa(salaoId);
+      localItens.unshift(novoItem);
+      this.setLocalStorageFluxoCaixa(salaoId, localItens);
+      return novoItem;
+    }
+    return data || novoItem;
+  },
+
+  async deletarMovimentacaoFluxoCaixa(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('fluxo_caixa')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      // Fallback local
+      const keys = Object.keys(localStorage).filter((k) => k.startsWith('fluxo_caixa_'));
+      keys.forEach((key) => {
+        try {
+          const stored = JSON.parse(localStorage.getItem(key) || '[]');
+          const filtered = stored.filter((m: MovimentacaoFluxoCaixa) => m.id !== id);
+          localStorage.setItem(key, JSON.stringify(filtered));
+        } catch {}
+      });
+    }
+  },
+
+  // Busca as movimentações automáticas individuais (Atendimentos e Comissões) do Caixa no período
+  async fetchMovimentacoesCaixaAuto(salaoId: string, dataInicio: string, dataFim: string): Promise<MovimentacaoFluxoCaixa[]> {
+    // 1. Tentar buscar lançamentos_financeiros com detalhes de cliente, profissional e serviço
+    const { data: lancamentos, error: finErr } = await supabase
+      .from('lancamentos_financeiros')
+      .select(`
+        *,
+        agendamento:agendamentos(
+          data,
+          cliente:clientes(nome),
+          profissional:profissionais(nome),
+          servico:servicos!agendamentos_servico_id_fkey(nome)
+        )
+      `)
+      .eq('salao_id', salaoId)
+      .gte('criado_em', `${dataInicio}T00:00:00`)
+      .lte('criado_em', `${dataFim}T23:59:59`);
+
+    if (!finErr && lancamentos && lancamentos.length > 0) {
+      const itens: MovimentacaoFluxoCaixa[] = [];
+      lancamentos.forEach((l: any) => {
+        const clienteNome = l.cliente_nome || l.agendamento?.cliente?.nome || 'Cliente';
+        const dataItem = l.data_fechamento?.split('T')[0] || l.agendamento?.data || dataFim;
+
+        // Entrada (Venda / Atendimento + Produtos)
+        if (l.valor_total > 0) {
+          itens.push({
+            id: `auto-ent-${l.id}`,
+            salao_id: salaoId,
+            tipo: 'entrada',
+            categoria: 'caixa_automatico',
+            descricao: `Atendimento: ${clienteNome}`,
+            valor: l.valor_total,
+            data: dataItem,
+            origem_caixa_auto: true,
+            criado_em: l.data_fechamento || new Date().toISOString(),
+          });
+        }
+
+        // Saída (Comissão Profissional)
+        if (l.valor_comissao_profissional > 0) {
+          const profNome = l.profissional?.nome || l.agendamento?.profissional?.nome || 'Profissional';
+          itens.push({
+            id: `auto-com-${l.id}`,
+            salao_id: salaoId,
+            tipo: 'saida',
+            categoria: 'folha_repasse',
+            descricao: `Comissão: ${profNome} (${clienteNome})`,
+            valor: l.valor_comissao_profissional,
+            data: dataItem,
+            origem_caixa_auto: true,
+            criado_em: l.data_fechamento || new Date().toISOString(),
+          });
+        }
+      });
+      return itens;
+    }
+
+    // 2. Fallback: buscar agendamentos concluídos diretamente
+    const { data: agendamentos, error } = await supabase
+      .from('agendamentos')
+      .select(`
+        *,
+        cliente:clientes(nome),
+        profissional:profissionais(nome, comissao_padrao_pct),
+        servico:servicos!agendamentos_servico_id_fkey(nome)
+      `)
+      .eq('salao_id', salaoId)
+      .eq('status', 'concluido')
+      .gte('data', dataInicio)
+      .lte('data', dataFim);
+
+    if (error || !agendamentos || agendamentos.length === 0) return [];
+
+    const itens: MovimentacaoFluxoCaixa[] = [];
+
+    agendamentos.forEach((ag: any) => {
+      const clienteNome = ag.cliente?.nome || 'Cliente';
+      const profNome = ag.profissional?.nome || 'Profissional';
+      const servicoNome = ag.servico?.nome ? ` (${ag.servico.nome})` : '';
+      const vTotal = ag.valor_total || 0;
+      const vServico = ag.valor_servico || vTotal;
+      const pct = ag.profissional?.comissao_padrao_pct ?? 40;
+      const comissaoVal = Math.round((vServico * pct) / 100);
+
+      // Entrada do Atendimento
+      if (vTotal > 0) {
+        itens.push({
+          id: `auto-ag-ent-${ag.id}`,
+          salao_id: salaoId,
+          tipo: 'entrada',
+          categoria: 'caixa_automatico',
+          descricao: `Atendimento: ${clienteNome}${servicoNome}`,
+          valor: vTotal,
+          data: ag.data || dataFim,
+          origem_caixa_auto: true,
+          criado_em: ag.criado_em || new Date().toISOString(),
+        });
+      }
+
+      // Saída da Comissão
+      if (comissaoVal > 0) {
+        itens.push({
+          id: `auto-ag-com-${ag.id}`,
+          salao_id: salaoId,
+          tipo: 'saida',
+          categoria: 'folha_repasse',
+          descricao: `Comissão: ${profNome} (${clienteNome})`,
+          valor: comissaoVal,
+          data: ag.data || dataFim,
+          origem_caixa_auto: true,
+          criado_em: ag.criado_em || new Date().toISOString(),
+        });
+      }
+    });
+
+    return itens;
+  },
+
+  // Consolida Entradas (Total Pago pelo Cliente) e Saídas Automáticas (Comissão dos Profissionais)
+  async obterResumoCaixaAuto(salaoId: string, dataInicio: string, dataFim: string): Promise<{ totalEntradas: number; totalComissoes: number }> {
+    // 1. Tentar buscar pelos lançamentos financeiros
+    const { data: lancamentos, error: finErr } = await supabase
+      .from('lancamentos_financeiros')
+      .select('valor_total, valor_comissao_profissional')
+      .eq('salao_id', salaoId)
+      .gte('criado_em', `${dataInicio}T00:00:00`)
+      .lte('criado_em', `${dataFim}T23:59:59`);
+
+    if (!finErr && lancamentos && lancamentos.length > 0) {
+      const totalEntradas = lancamentos.reduce((acc, curr) => acc + (curr.valor_total || 0), 0);
+      const totalComissoes = lancamentos.reduce((acc, curr) => acc + (curr.valor_comissao_profissional || 0), 0);
+      return { totalEntradas, totalComissoes };
+    }
+
+    // 2. Fallback: buscar agendamentos concluídos diretamente
+    const { data, error } = await supabase
+      .from('agendamentos')
+      .select(`
+        valor_total,
+        valor_servico,
+        profissional:profissionais(comissao_padrao_pct)
+      `)
+      .eq('salao_id', salaoId)
+      .eq('status', 'concluido')
+      .gte('data', dataInicio)
+      .lte('data', dataFim);
+
+    if (error || !data || data.length === 0) {
+      return { totalEntradas: 0, totalComissoes: 0 };
+    }
+
+    let totalEntradas = 0;
+    let totalComissoes = 0;
+
+    data.forEach((ag: any) => {
+      const vTotal = ag.valor_total || 0;
+      const vServico = ag.valor_servico || vTotal;
+      const pct = ag.profissional?.comissao_padrao_pct ?? 40;
+      const comissaoVal = Math.round((vServico * pct) / 100);
+
+      totalEntradas += vTotal;
+      totalComissoes += comissaoVal;
+    });
+
+    return { totalEntradas, totalComissoes };
+  },
+
+  // Consolida as entradas vindas dos atendimentos concluídos no Caixa para o período
+  async obterEntradasCaixaAuto(salaoId: string, dataInicio: string, dataFim: string): Promise<number> {
+    const resumo = await this.obterResumoCaixaAuto(salaoId, dataInicio, dataFim);
+    return resumo.totalEntradas;
   }
 };

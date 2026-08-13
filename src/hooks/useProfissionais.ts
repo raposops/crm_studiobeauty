@@ -39,8 +39,16 @@ export function useProfissionais(salaoId: string) {
   }, [salaoId, queryClient, queryKey]);
 
   const criarProfissional = useMutation({
-    mutationFn: (payload: { nome: string; cor: string; avatar_url?: string }) =>
+    mutationFn: (payload: { nome: string; cor: string; avatar_url?: string; comissao_padrao_pct?: number }) =>
       supabaseService.criarProfissional(salaoId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey });
+    },
+  });
+
+  const atualizarProfissional = useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: { nome?: string; cor?: string; avatar_url?: string; comissao_padrao_pct?: number } }) =>
+      supabaseService.atualizarProfissional(id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
     },
@@ -58,6 +66,7 @@ export function useProfissionais(salaoId: string) {
     isLoading: query.isLoading,
     isError: query.isError,
     criarProfissional,
+    atualizarProfissional,
     deletarProfissional,
   };
 }

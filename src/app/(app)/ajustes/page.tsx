@@ -6,6 +6,7 @@ import {
   Scissors,
   Plus,
   Trash2,
+  Pencil,
   X,
   Check,
   ChevronLeft,
@@ -24,6 +25,7 @@ import { useProfissionais } from '@/hooks/useProfissionais';
 import { useServicos } from '@/hooks/useServicos';
 import { formatCurrency } from '@/data/mock';
 import { useAuth } from '@/contexts/AuthContext';
+import type { Profissional } from '@/types';
 
 type ViewMode = 'menu' | 'profissionais' | 'servicos';
 
@@ -48,6 +50,7 @@ export default function AjustesPage() {
     profissionais,
     isLoading: loadingProfs,
     criarProfissional,
+    atualizarProfissional,
     deletarProfissional,
   } = useProfissionais(salaoId);
 
@@ -60,8 +63,10 @@ export default function AjustesPage() {
 
   // Modals state
   const [isProfModalOpen, setIsProfModalOpen] = useState(false);
+  const [editingProf, setEditingProf] = useState<Profissional | null>(null);
   const [profNome, setProfNome] = useState('');
   const [profCor, setProfCor] = useState(COLOR_OPTIONS[0].class);
+  const [profComissao, setProfComissao] = useState('40');
 
   const [isServModalOpen, setIsServModalOpen] = useState(false);
   const [servNome, setServNome] = useState('');
@@ -69,27 +74,72 @@ export default function AjustesPage() {
   const [servDuracao, setServDuracao] = useState('30');
   const [servCategoria, setServCategoria] = useState('Cabelo');
 
-  // Handlers
-  function handleAddProfissional(e: React.FormEvent) {
+  // Handlers for Profissional Modal
+  function handleOpenNewProfModal() {
+    setEditingProf(null);
+    setProfNome('');
+    setProfCor(COLOR_OPTIONS[0].class);
+    setProfComissao('40');
+    setIsProfModalOpen(true);
+  }
+
+  function handleEditProfissional(prof: Profissional) {
+    setEditingProf(prof);
+    setProfNome(prof.nome);
+    setProfCor(prof.cor || COLOR_OPTIONS[0].class);
+    setProfComissao(String(prof.comissao_padrao_pct ?? 40));
+    setIsProfModalOpen(true);
+  }
+
+  function handleSubmitProfissional(e: React.FormEvent) {
     e.preventDefault();
     if (!profNome.trim()) return;
 
-    criarProfissional.mutate(
-      {
-        nome: profNome,
-        cor: profCor,
-      },
-      {
-        onSuccess: () => {
-          setProfNome('');
-          setIsProfModalOpen(false);
+    const comissaoNum = Math.max(0, Math.min(100, parseFloat(profComissao) || 0));
+
+    if (editingProf) {
+      atualizarProfissional.mutate(
+        {
+          id: editingProf.id,
+          payload: {
+            nome: profNome,
+            cor: profCor,
+            comissao_padrao_pct: comissaoNum,
+          },
         },
-        onError: (err: any) => {
-          console.error('Erro ao criar profissional:', err);
-          alert(`Erro ao salvar profissional: ${err?.message || 'Verifique sua conexão com o banco.'}`);
+        {
+          onSuccess: () => {
+            setEditingProf(null);
+            setProfNome('');
+            setProfComissao('40');
+            setIsProfModalOpen(false);
+          },
+          onError: (err: any) => {
+            console.error('Erro ao atualizar profissional:', err);
+            alert(`Erro ao atualizar profissional: ${err?.message || 'Verifique sua conexão com o banco.'}`);
+          },
+        }
+      );
+    } else {
+      criarProfissional.mutate(
+        {
+          nome: profNome,
+          cor: profCor,
+          comissao_padrao_pct: comissaoNum,
         },
-      }
-    );
+        {
+          onSuccess: () => {
+            setProfNome('');
+            setProfComissao('40');
+            setIsProfModalOpen(false);
+          },
+          onError: (err: any) => {
+            console.error('Erro ao criar profissional:', err);
+            alert(`Erro ao salvar profissional: ${err?.message || 'Verifique sua conexão com o banco.'}`);
+          },
+        }
+      );
+    }
   }
 
   function handleAddServico(e: React.FormEvent) {
@@ -284,7 +334,7 @@ export default function AjustesPage() {
       {view === 'profissionais' && (
         <div className="space-y-4">
           <button
-            onClick={() => setIsProfModalOpen(true)}
+            onClick={handleOpenNewProfModal}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-accent text-white text-sm font-bold shadow-lg shadow-accent/20 hover:bg-accent/90 transition-all active:scale-95"
           >
             <Plus size={18} />
@@ -324,12 +374,35 @@ export default function AjustesPage() {
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => deletarProfissional.mutate(prof.id)}
-                    className="w-8 h-8 rounded-xl bg-danger/10 text-danger flex items-center justify-center hover:bg-danger/20 active:scale-90 transition-all"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`text-xs px-2.5 py-1 rounded-full font-semibold ${
+                        (prof.comissao_padrao_pct ?? 40) === 0
+                          ? 'bg-amber-500/10 text-amber-600 border border-amber-500/20'
+                          : 'bg-accent/10 text-accent border border-accent/20'
+                      }`}
+                    >
+                      {(prof.comissao_padrao_pct ?? 40) === 0
+                        ? 'Sem repasse (0%)'
+                        : `${prof.comissao_padrao_pct ?? 40}% repasse`}
+                    </span>
+
+                    <button
+                      onClick={() => handleEditProfissional(prof)}
+                      className="w-8 h-8 rounded-xl bg-card border border-border text-foreground hover:bg-card-hover flex items-center justify-center active:scale-90 transition-all"
+                      title="Editar profissional"
+                    >
+                      <Pencil size={14} />
+                    </button>
+
+                    <button
+                      onClick={() => deletarProfissional.mutate(prof.id)}
+                      className="w-8 h-8 rounded-xl bg-danger/10 text-danger flex items-center justify-center hover:bg-danger/20 active:scale-90 transition-all"
+                      title="Excluir profissional"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -399,13 +472,13 @@ export default function AjustesPage() {
         </div>
       )}
 
-      {/* MODAL: NOVO PROFISSIONAL */}
+      {/* MODAL: PROFISSIONAL (CRIAR / EDITAR) */}
       {isProfModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="w-full max-w-sm bg-background border border-border rounded-3xl p-5 space-y-4 animate-fade-in-up">
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold text-foreground">
-                Cadastrar Profissional
+                {editingProf ? 'Editar Profissional' : 'Cadastrar Profissional'}
               </h3>
               <button
                 onClick={() => setIsProfModalOpen(false)}
@@ -415,7 +488,7 @@ export default function AjustesPage() {
               </button>
             </div>
 
-            <form onSubmit={handleAddProfissional} className="space-y-4">
+            <form onSubmit={handleSubmitProfissional} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-muted mb-1">
                   Nome Completo
@@ -454,6 +527,30 @@ export default function AjustesPage() {
                 </div>
               </div>
 
+              <div>
+                <label className="block text-xs font-semibold text-muted mb-1">
+                  % de Repasse / Comissão
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    required
+                    placeholder="Ex: 40"
+                    value={profComissao}
+                    onChange={(e) => setProfComissao(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-card border border-border text-sm text-foreground focus:outline-none focus:border-accent pr-8"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted text-sm font-semibold">
+                    %
+                  </span>
+                </div>
+                <p className="text-[11px] text-muted/70 mt-1">
+                  Digite 0 se o profissional for assalariado ou não receber repasse.
+                </p>
+              </div>
+
               <div className="pt-2 flex gap-2">
                 <button
                   type="button"
@@ -464,10 +561,12 @@ export default function AjustesPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={criarProfissional.isPending}
+                  disabled={criarProfissional.isPending || atualizarProfissional.isPending}
                   className="flex-1 py-2.5 rounded-xl bg-accent text-xs font-bold text-white hover:bg-accent/90 disabled:opacity-50"
                 >
-                  {criarProfissional.isPending ? 'Salvando...' : 'Salvar'}
+                  {editingProf
+                    ? (atualizarProfissional.isPending ? 'Atualizando...' : 'Atualizar')
+                    : (criarProfissional.isPending ? 'Salvando...' : 'Salvar')}
                 </button>
               </div>
             </form>

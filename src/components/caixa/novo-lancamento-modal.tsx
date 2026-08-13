@@ -96,6 +96,15 @@ export default function NovoLancamentoModal({
     }
   }, [defaultDate, profissionais, isOpen]);
 
+  useEffect(() => {
+    if (profissionalId && profissionais.length > 0) {
+      const prof = profissionais.find((p) => p.id === profissionalId);
+      if (prof) {
+        setComissaoPct(prof.comissao_padrao_pct ?? COMISSAO_PERCENTUAL);
+      }
+    }
+  }, [profissionalId, profissionais]);
+
   // Computed values
   const valorTotalCentavos = useMemo(() => {
     const parsed = parseFloat(valorInput.replace(',', '.'));

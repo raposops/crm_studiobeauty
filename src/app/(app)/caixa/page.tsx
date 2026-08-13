@@ -21,6 +21,7 @@ import {
   Lock,
   CalendarDays,
   PieChart,
+  Sparkles,
 } from 'lucide-react';
 import type { FormaPagamento, Profissional } from '@/types';
 import {
@@ -53,7 +54,9 @@ const PAYMENT_LABELS: Record<FormaPagamento, string> = {
 };
 
 export default function CaixaPage() {
-  const { salaoId } = useAuth();
+  const { salaoId, hasModule } = useAuth();
+  const temFluxoCaixaAvancado = hasModule('fluxo_caixa_avancado');
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
   const currentMonthStr = useMemo(() => todayStr.slice(0, 7), [todayStr]);
 
@@ -293,13 +296,24 @@ export default function CaixaPage() {
 
             {/* Actions for Day */}
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => setIsNovoLancamentoOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-accent text-white text-xs font-bold shadow-md shadow-accent/20 hover:bg-accent-dark active:scale-95 transition-all"
-              >
-                <PlusCircle size={14} />
-                Lançar Dia Anterior
-              </button>
+              {temFluxoCaixaAvancado ? (
+                <button
+                  onClick={() => setIsNovoLancamentoOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-accent text-white text-xs font-bold shadow-md shadow-accent/20 hover:bg-accent-dark active:scale-95 transition-all"
+                >
+                  <PlusCircle size={14} />
+                  Lançamento Avulso
+                </button>
+              ) : (
+                <button
+                  onClick={() => setIsUpgradeModalOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/20 text-xs font-bold hover:bg-amber-500/20 active:scale-95 transition-all"
+                  title="Módulo de Fluxo de Caixa Avançado desativado"
+                >
+                  <Lock size={14} />
+                  Lançamento Avulso (Pro)
+                </button>
+              )}
 
               <button
                 onClick={() => setIsFechamentoResumoOpen(true)}
@@ -754,6 +768,54 @@ export default function CaixaPage() {
         dateStr={selectedDate}
         lancamentos={lancamentos}
       />
+
+      {/* UPGRADE MODAL PARA MÓDULO BLOQUEADO */}
+      {isUpgradeModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-card border border-border rounded-3xl p-6 space-y-4 animate-fade-in-up text-center shadow-2xl">
+            <div className="w-14 h-14 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center mx-auto border border-amber-500/20 shadow-lg">
+              <Sparkles size={28} />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-lg font-bold text-foreground">
+                Módulo Lançamento Avulso
+              </h3>
+              <p className="text-xs text-muted">
+                Recurso exclusivo para salões com o módulo ativado no sistema
+              </p>
+            </div>
+
+            <div className="p-3.5 bg-background/50 rounded-2xl border border-border/80 text-xs text-left space-y-2">
+              <p className="font-bold text-foreground flex items-center gap-1.5">
+                <Check size={14} className="text-emerald-400" />
+                O que este módulo libera no seu salão?
+              </p>
+              <ul className="list-disc list-inside text-muted space-y-1 pl-1">
+                <li>Lançamento manual de receitas e vendas avulsas</li>
+                <li>Controle de despesas e retiradas de caixa</li>
+                <li>Ajuste fino de comissões por atendimento</li>
+              </ul>
+            </div>
+
+            <div className="pt-2 flex gap-2">
+              <button
+                onClick={() => setIsUpgradeModalOpen(false)}
+                className="flex-1 py-2.5 rounded-xl border border-border text-xs font-semibold text-muted hover:bg-card-hover"
+              >
+                Fechar
+              </button>
+              <a
+                href="https://wa.me/5551998455784?text=Olá!%20Gostaria%20de%20ativar%20o%20Módulo%20Lançamento%20Avulso%20no%20meu%20salão."
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 py-2.5 rounded-xl bg-accent text-xs font-bold text-white hover:bg-accent-dark transition-all flex items-center justify-center gap-1.5 shadow-md shadow-accent/20"
+              >
+                Fazer Upgrade
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

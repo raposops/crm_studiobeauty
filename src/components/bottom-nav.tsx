@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { CalendarDays, Wallet, Users, Settings } from 'lucide-react';
+import { CalendarDays, Wallet, TrendingUp, Users, Settings } from 'lucide-react';
 
 const navItems = [
   { href: '/agenda', label: 'Agenda', icon: CalendarDays },
   { href: '/caixa', label: 'Caixa', icon: Wallet },
+  { href: '/fluxo-de-caixa', label: 'Fluxo', icon: TrendingUp },
   { href: '/clientes', label: 'Clientes', icon: Users },
   { href: '/ajustes', label: 'Ajustes', icon: Settings },
 ];

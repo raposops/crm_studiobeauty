@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, Store, Mail, CheckCircle2 } from 'lucide-react';
 import DateSelector from '@/components/agenda/date-selector';
 import ProfessionalFilter from '@/components/agenda/professional-filter';
 import TimeGrid from '@/components/agenda/time-grid';
@@ -13,7 +13,7 @@ import { useProfissionais } from '@/hooks/useProfissionais';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function AgendaPage() {
-  const { salaoId } = useAuth();
+  const { salao, salaoId, user, profile } = useAuth();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedProfId, setSelectedProfId] = useState<string | null>(null);
   
@@ -49,6 +49,26 @@ export default function AgendaPage() {
   return (
     <>
       <div className="animate-fade-in-up space-y-4">
+        {/* Salon Account Indicator Banner */}
+        <div className="flex items-center justify-between p-3 rounded-2xl bg-card border border-border shadow-xs">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-accent/15 text-accent-light flex items-center justify-center shrink-0">
+              <Store size={16} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-foreground truncate">
+                {salao?.nome || 'Studio Beauty'}
+              </p>
+              <p className="text-[10px] text-muted truncate">
+                {user?.email || profile?.email || 'Conta Conectada'}
+              </p>
+            </div>
+          </div>
+          <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold shrink-0">
+            Conta Ativa
+          </span>
+        </div>
+
         {/* Date Selector */}
         <DateSelector
           selectedDate={selectedDate}

@@ -27,6 +27,7 @@ import { useProfissionais } from '@/hooks/useProfissionais';
 import { useServicos } from '@/hooks/useServicos';
 import { useClientes } from '@/hooks/useClientes';
 import { useAgenda } from '@/hooks/useAgenda';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface NewAppointmentModalProps {
   isOpen: boolean;
@@ -64,7 +65,7 @@ export default function NewAppointmentModal({
   onClose,
   preselectedDate,
 }: NewAppointmentModalProps) {
-  const salaoId = '00000000-0000-0000-0000-000000000000';
+  const { salaoId } = useAuth();
   const { profissionais } = useProfissionais(salaoId);
   const { servicos } = useServicos(salaoId);
   const { clientes } = useClientes(salaoId);
@@ -95,7 +96,7 @@ export default function NewAppointmentModal({
   );
 
   const allClients = useMemo(() => {
-    return clientes && clientes.length > 0 ? clientes : CLIENTES;
+    return clientes || [];
   }, [clientes]);
 
   // Computed values

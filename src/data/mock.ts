@@ -10,24 +10,28 @@ export const PROFISSIONAIS: Profissional[] = [
     nome: 'Ana Silva',
     iniciais: 'AS',
     cor: 'from-purple-500 to-pink-500',
+    comissao_padrao_pct: 50,
   },
   {
     id: 'prof-2',
     nome: 'Carlos Souza',
     iniciais: 'CS',
     cor: 'from-blue-500 to-cyan-500',
+    comissao_padrao_pct: 40,
   },
   {
     id: 'prof-3',
     nome: 'Mariana Lima',
     iniciais: 'ML',
     cor: 'from-amber-500 to-orange-500',
+    comissao_padrao_pct: 30,
   },
   {
     id: 'prof-4',
     nome: 'Roberto Santos',
     iniciais: 'RS',
     cor: 'from-emerald-500 to-teal-500',
+    comissao_padrao_pct: 0,
   },
 ];
 
@@ -162,11 +166,11 @@ export const AGENDAMENTOS_MOCK: Agendamento[] = [
 
 export const COMISSAO_PERCENTUAL = 40; // 40% para o profissional
 
-export function calcularComissao(valorTotal: number): {
+export function calcularComissao(valorTotal: number, comissaoPct: number = COMISSAO_PERCENTUAL): {
   comissao: number;
   liquido: number;
 } {
-  const comissao = Math.round((valorTotal * COMISSAO_PERCENTUAL) / 100);
+  const comissao = Math.round((valorTotal * comissaoPct) / 100);
   return { comissao, liquido: valorTotal - comissao };
 }
 

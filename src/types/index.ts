@@ -60,6 +60,7 @@ export interface Profissional {
   avatar_url?: string;
   iniciais: string;
   cor: string; // Tailwind gradient classes
+  comissao_padrao_pct?: number; // % de repasse para o profissional (ex: 40, 50, 0)
 }
 
 export interface Servico {
@@ -90,6 +91,40 @@ export interface Agendamento {
   duracao_total: number; // em minutos
   observacoes?: string;
 }
+
+// ========================
+// SaaS & Modules Types
+// ========================
+
+export type ModulosSalao = Record<string, boolean>;
+
+export const MODULOS_DISPONIVEIS: Array<{ key: string; nome: string; descricao: string }> = [
+  {
+    key: 'fluxo_de_caixa',
+    nome: 'Fluxo de Caixa (Gestão de Entradas & Saídas)',
+    descricao: 'Controle de despesas fixas (aluguel, internet, contas) e receitas com puxada automática do caixa.',
+  },
+  {
+    key: 'fluxo_caixa_avancado',
+    nome: 'Lançamento Avulso',
+    descricao: 'Permite registrar entradas/saídas avulsas manuais e controlar o saldo do dia',
+  },
+  {
+    key: 'comissao_customizada',
+    nome: 'Comissão Customizada por Profissional',
+    descricao: 'Permite alterar a % de repasse individual de cada profissional no cadastro',
+  },
+  {
+    key: 'whatsapp_automatico',
+    nome: 'Notificações via WhatsApp',
+    descricao: 'Envio automático de lembretes e confirmações por WhatsApp para os clientes',
+  },
+  {
+    key: 'relatorios_avancados',
+    nome: 'Relatórios Financeiros Avançados',
+    descricao: 'Acesso a métricas executivas, faturamento detalhado e gráficos do salão',
+  },
+];
 
 // ========================
 // Form Types
@@ -153,5 +188,43 @@ export interface ComissaoProfissional {
   total_pago: number; // centavos
   total_pendente: number; // centavos
   lancamentos: LancamentoFinanceiro[];
+}
+
+export type CategoriaMovimentacao =
+  | 'caixa_automatico'
+  | 'aluguel'
+  | 'internet'
+  | 'energia_agua'
+  | 'insumos'
+  | 'folha_repasse'
+  | 'manutencao'
+  | 'receita_avulsa'
+  | 'outros';
+
+export const CATEGORIAS_FLUXO_CAIXA: Record<
+  CategoriaMovimentacao,
+  { label: string; tipo: 'entrada' | 'saida' | 'ambos'; cor: string }
+> = {
+  caixa_automatico: { label: 'Caixa do Dia (Automático)', tipo: 'entrada', cor: 'emerald' },
+  receita_avulsa: { label: 'Receita Avulsa / Vendas', tipo: 'entrada', cor: 'teal' },
+  aluguel: { label: 'Aluguel do Salão', tipo: 'saida', cor: 'rose' },
+  internet: { label: 'Internet / Telefone', tipo: 'saida', cor: 'purple' },
+  energia_agua: { label: 'Luz / Água', tipo: 'saida', cor: 'amber' },
+  insumos: { label: 'Insumos & Produtos', tipo: 'saida', cor: 'indigo' },
+  folha_repasse: { label: 'Folha & Repasse de Equipe', tipo: 'saida', cor: 'sky' },
+  manutencao: { label: 'Manutenção / Equipamentos', tipo: 'saida', cor: 'orange' },
+  outros: { label: 'Outras Despesas', tipo: 'saida', cor: 'slate' },
+};
+
+export interface MovimentacaoFluxoCaixa {
+  id: string;
+  salao_id: string;
+  tipo: 'entrada' | 'saida';
+  categoria: CategoriaMovimentacao;
+  descricao: string;
+  valor: number; // em centavos
+  data: string; // YYYY-MM-DD
+  origem_caixa_auto?: boolean;
+  criado_em?: string;
 }
 

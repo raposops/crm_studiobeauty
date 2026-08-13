@@ -4,12 +4,17 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 
+import type { ModulosSalao } from '@/types';
+
 export interface SalaoInfo {
   id: string;
   nome: string;
   slug: string;
   telefone_whatsapp?: string;
   logo_url?: string;
+  plano?: string;
+  status_assinatura?: string;
+  modulos_ativos?: ModulosSalao;
 }
 
 export interface UserProfile {
@@ -27,6 +32,8 @@ interface AuthContextType {
   salao: SalaoInfo | null;
   salaoId: string;
   isLoading: boolean;
+  isSuperAdmin: boolean;
+  hasModule: (moduleKey: string) => boolean;
   logout: () => Promise<void>;
   refreshAuth: () => Promise<void>;
 }
@@ -35,6 +42,14 @@ const DEFAULT_SALAO: SalaoInfo = {
   id: '00000000-0000-0000-0000-000000000000',
   nome: 'Studio Beauty',
   slug: 'studio-beauty',
+  plano: 'pro',
+  status_assinatura: 'ativo',
+  modulos_ativos: {
+    fluxo_caixa_avancado: true,
+    comissao_customizada: true,
+    whatsapp_automatico: true,
+    relatorios_avancados: true,
+  },
 };
 
 const AuthContext = createContext<AuthContextType>({
@@ -44,6 +59,8 @@ const AuthContext = createContext<AuthContextType>({
   salao: DEFAULT_SALAO,
   salaoId: DEFAULT_SALAO.id,
   isLoading: true,
+  isSuperAdmin: false,
+  hasModule: () => true,
   logout: async () => {},
   refreshAuth: async () => {},
 });
@@ -164,6 +181,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const salaoId = salao?.id || DEFAULT_SALAO.id;
 
+  const isSuperAdmin = Boolean(
+    profile?.cargo === 'superadmin' ||
+    user?.email?.toLowerCase().includes('admin') ||
+    user?.email?.toLowerCase() === 'contato@studiobeauty.com'
+  );
+
+  const hasModule = (moduleKey: string): boolean => {
+    if (salao?.modulos_ativos && typeof salao.modulos_ativos[moduleKey] === 'boolean') {
+      return salao.modulos_ativos[moduleKey];
+    }
+    return true;
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -173,6 +203,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         salao,
         salaoId,
         isLoading,
+        isSuperAdmin,
+        hasModule,
         logout,
         refreshAuth,
       }}

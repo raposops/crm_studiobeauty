@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   X,
   User,
@@ -24,6 +24,7 @@ import {
   formatCurrency,
 } from '@/data/mock';
 import { useCaixa } from '@/hooks/useCaixa';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface CheckoutModalProps {
   agendamento: Agendamento | null;
@@ -74,13 +75,23 @@ export default function CheckoutModal({
   const [formaPagamento, setFormaPagamento] =
     useState<FormaPagamento | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [comissaoPct, setComissaoPct] = useState<number>(
+    agendamento?.profissional?.comissao_padrao_pct ?? COMISSAO_PERCENTUAL
+  );
 
-  const salaoId = '00000000-0000-0000-0000-000000000000'; // hardcoded fallback
-  // Wait, I need PRODUTOS_EXTRAS and calcularComissao. Let's re-import them correctly.
+  useEffect(() => {
+    if (agendamento?.profissional) {
+      setComissaoPct(
+        agendamento.profissional.comissao_padrao_pct ?? COMISSAO_PERCENTUAL
+      );
+    }
+  }, [agendamento]);
+
+  const { salaoId } = useAuth();
   const { concluirAtendimento } = useCaixa(salaoId, agendamento?.data || '');
 
   // Computed
-  const valorServicos = agendamento?.valor_total ?? 0;
+  const valorServicos = (agendamento as any)?.valor_servico || agendamento?.valor_total || 0;
 
   const valorProdutos = useMemo(() => {
     let total = 0;
@@ -91,7 +102,9 @@ export default function CheckoutModal({
   }, [selectedExtras]);
 
   const valorTotal = valorServicos + valorProdutos;
-  const { comissao, liquido } = calcularComissao(valorTotal);
+  // Commission % applies ONLY to services (excluding extra products)
+  const { comissao } = calcularComissao(valorServicos, comissaoPct);
+  const liquido = valorTotal - comissao;
 
   function toggleExtra(produto: ProdutoExtra) {
     setSelectedExtras((prev) => {
@@ -382,11 +395,21 @@ export default function CheckoutModal({
             </div>
             <div className="h-px bg-border/50" />
             <div className="flex items-center justify-between text-xs">
-              <div className="flex items-center gap-1">
-                <Percent size={10} className="text-muted" />
-                <span className="text-muted">
-                  Comissão ({COMISSAO_PERCENTUAL}%)
-                </span>
+              <div className="flex items-center gap-1.5">
+                <Percent size={12} className="text-muted" />
+                <span className="text-muted">Comissão ({comissaoPct}%):</span>
+                <div className="flex items-center bg-card border border-border px-1.5 py-0.5 rounded-md focus-within:border-accent">
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={comissaoPct}
+                    onChange={(e) => setComissaoPct(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                    className="w-7 text-center text-xs font-bold bg-transparent text-foreground focus:outline-none"
+                    title="Ajustar % de comissão para este atendimento"
+                  />
+                  <span className="text-[10px] text-muted font-semibold">%</span>
+                </div>
               </div>
               <span className="text-warning font-semibold">
                 {formatCurrency(comissao)}
