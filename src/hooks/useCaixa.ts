@@ -4,14 +4,14 @@ import { supabase } from '@/lib/supabase';
 import { useEffect } from 'react';
 import type { LancamentoFinanceiro, FormaPagamento } from '@/types';
 
-export function useCaixa(salaoId: string, data: string) {
+export function useCaixa(salaoId: string, filterStr: string, modo: 'dia' | 'mes' = 'dia') {
   const queryClient = useQueryClient();
-  const queryKey = ['lancamentos', salaoId, data];
+  const queryKey = ['lancamentos', salaoId, modo, filterStr];
 
   const query = useQuery({
     queryKey,
-    queryFn: () => supabaseService.fetchLancamentos(salaoId, data),
-    enabled: !!salaoId && !!data,
+    queryFn: () => supabaseService.fetchLancamentos(salaoId, filterStr, modo),
+    enabled: !!salaoId && !!filterStr,
   });
 
   // Setup Realtime Subscription
@@ -29,9 +29,8 @@ export function useCaixa(salaoId: string, data: string) {
           filter: `salao_id=eq.${salaoId}`
         },
         () => {
-          queryClient.invalidateQueries({ queryKey: ['lancamentos', salaoId, data] });
-          // Also invalidate agenda since status changed to concluido
-          queryClient.invalidateQueries({ queryKey: ['agendamentos', salaoId, data] });
+          queryClient.invalidateQueries({ queryKey: ['lancamentos'] });
+          queryClient.invalidateQueries({ queryKey: ['agendamentos'] });
         }
       )
       .subscribe();
@@ -39,7 +38,7 @@ export function useCaixa(salaoId: string, data: string) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [salaoId, data, queryClient]);
+  }, [salaoId, queryClient]);
 
   const concluirAtendimento = useMutation({
     mutationFn: (args: {
@@ -74,10 +73,29 @@ export function useCaixa(salaoId: string, data: string) {
     },
   });
 
+  const criarLancamentoManual = useMutation({
+    mutationFn: (args: {
+      clienteNome: string;
+      profissionalId: string;
+      servicoNome: string;
+      valorTotal: number;
+      formaPagamento: FormaPagamento;
+      dataFechamento: string;
+      comissaoPct: number;
+    }) => supabaseService.criarLancamentoManual({
+      salaoId,
+      ...args,
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lancamentos'] });
+      queryClient.invalidateQueries({ queryKey: ['agendamentos'] });
+    },
+  });
+
   const marcarLancamentoComoPago = useMutation({
     mutationFn: (lancamentoId: string) => supabaseService.marcarLancamentoComoPago(lancamentoId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lancamentos', salaoId, data] });
+      queryClient.invalidateQueries({ queryKey: ['lancamentos'] });
     },
   });
 
@@ -86,6 +104,7 @@ export function useCaixa(salaoId: string, data: string) {
     isLoading: query.isLoading,
     isError: query.isError,
     concluirAtendimento,
+    criarLancamentoManual,
     marcarLancamentoComoPago,
   };
 }

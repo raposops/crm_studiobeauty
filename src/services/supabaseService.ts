@@ -40,9 +40,25 @@ export const supabaseService = {
     });
   },
 
-  async fetchLancamentos(salaoId: string, dataStr: string): Promise<LancamentoFinanceiro[]> {
-    const startIso = `${dataStr}T00:00:00.000Z`;
-    const endIso = `${dataStr}T23:59:59.999Z`;
+  async fetchLancamentos(
+    salaoId: string, 
+    filterStr: string, 
+    modo: 'dia' | 'mes' = 'dia'
+  ): Promise<LancamentoFinanceiro[]> {
+    let startIso: string;
+    let endIso: string;
+
+    if (modo === 'mes') {
+      const [yearStr, monthStr] = filterStr.split('-');
+      const year = parseInt(yearStr, 10);
+      const month = parseInt(monthStr, 10);
+      const lastDay = new Date(year, month, 0).getDate();
+      startIso = `${filterStr}-01T00:00:00.000Z`;
+      endIso = `${filterStr}-${String(lastDay).padStart(2, '0')}T23:59:59.999Z`;
+    } else {
+      startIso = `${filterStr}T00:00:00.000Z`;
+      endIso = `${filterStr}T23:59:59.999Z`;
+    }
 
     const { data: result, error } = await supabase
       .from('lancamentos_financeiros')
@@ -61,32 +77,14 @@ export const supabaseService = {
       .lte('data_fechamento', endIso)
       .order('data_fechamento', { ascending: false });
 
-    let finalData = result;
-
-    if (error || !result) {
-      console.warn('Filtro por data_fechamento em intervalo falhou, buscando lançamentos do salão:', error?.message);
-      const { data: fallback, error: fbErr } = await supabase
-        .from('lancamentos_financeiros')
-        .select(`
-          *,
-          profissional:profissionais(*),
-          agendamento:agendamentos(
-            *,
-            cliente:clientes(*),
-            servico:servicos!agendamentos_servico_id_fkey(*),
-            servicos:agendamento_servicos(servico:servicos!agendamento_servicos_servico_id_fkey(*))
-          )
-        `)
-        .eq('salao_id', salaoId)
-        .order('data_fechamento', { ascending: false });
-
-      if (fbErr) throw fbErr;
-      finalData = fallback;
+    if (error) {
+      console.error('Erro ao buscar lançamentos financeiros:', error.message);
+      throw error;
     }
 
-    return (finalData || []).map((l: any) => {
+    return (result || []).map((l: any) => {
       const ag = l.agendamento || {};
-      const clienteNome = ag.cliente?.nome || l.cliente_nome || 'Cliente';
+      const clienteNome = ag.cliente?.nome || l.cliente_nome || 'Cliente Avulso';
       
       let mappedServicos = ag.servicos?.map((s: any) => s.servico?.nome).filter(Boolean) || [];
       if (mappedServicos.length === 0 && ag.servico?.nome) {
@@ -123,6 +121,40 @@ export const supabaseService = {
         status_pago_profissional: !!l.status_pago_profissional,
       };
     });
+  },
+
+  async criarLancamentoManual(payload: {
+    salaoId: string;
+    clienteNome: string;
+    profissionalId: string;
+    servicoNome: string;
+    valorTotal: number;
+    formaPagamento: FormaPagamento;
+    dataFechamento: string;
+    comissaoPct: number;
+  }) {
+    const comissaoVal = Math.round((payload.valorTotal * payload.comissaoPct) / 100);
+    const liquidoVal = payload.valorTotal - comissaoVal;
+
+    const { data, error } = await supabase
+      .from('lancamentos_financeiros')
+      .insert({
+        salao_id: payload.salaoId,
+        cliente_nome: payload.clienteNome.trim() || 'Cliente Avulso',
+        profissional_id: payload.profissionalId,
+        valor_total: payload.valorTotal,
+        forma_pagamento: payload.formaPagamento,
+        comissao_pct: payload.comissaoPct,
+        valor_comissao_profissional: comissaoVal,
+        valor_liquido_salao: liquidoVal,
+        status_pago_profissional: false,
+        data_fechamento: payload.dataFechamento,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
   },
 
   async criarAgendamento(payload: NovoAgendamentoForm, salaoId: string) {
