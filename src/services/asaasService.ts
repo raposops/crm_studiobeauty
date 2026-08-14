@@ -58,11 +58,14 @@ export interface AsaasPixQrCode {
 
 class AsaasService {
   private get baseUrl(): string {
-    return (
-      process.env.ASAAS_API_URL ||
-      process.env.NEXT_PUBLIC_ASAAS_API_URL ||
-      'https://sandbox.asaas.com/api/v3'
-    ).replace(/\/$/, '');
+    if (process.env.ASAAS_API_URL) {
+      return process.env.ASAAS_API_URL.replace(/\/$/, '');
+    }
+    const env = (process.env.ASAAS_ENVIRONMENT || '').toLowerCase();
+    if (env === 'production' || env === 'producao') {
+      return 'https://api.asaas.com/v3';
+    }
+    return 'https://sandbox.asaas.com/api/v3';
   }
 
   private get apiKey(): string {
