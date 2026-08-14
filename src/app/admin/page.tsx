@@ -38,6 +38,8 @@ interface SalaoRow {
   status_assinatura?: string;
   criado_em?: string;
   modulos_ativos?: ModulosSalao;
+  asaas_customer_id?: string;
+  asaas_payment_id?: string;
 }
 
 export default function AdminPage() {
@@ -466,7 +468,14 @@ export default function AdminPage() {
                           </div>
                           <div>
                             <p className="font-bold text-white text-sm">{salao.nome}</p>
-                            <p className="text-[10px] font-mono text-slate-500">ID: {salao.id.slice(0, 8)}...</p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-[10px] font-mono text-slate-500">ID: {salao.id.slice(0, 8)}...</p>
+                              {salao.asaas_customer_id && (
+                                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                  Asaas: {salao.asaas_customer_id}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </td>

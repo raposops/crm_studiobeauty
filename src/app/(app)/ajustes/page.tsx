@@ -20,11 +20,14 @@ import {
   Share2,
   Copy,
   ExternalLink,
+  CreditCard,
+  Sparkles,
 } from 'lucide-react';
 import { useProfissionais } from '@/hooks/useProfissionais';
 import { useServicos } from '@/hooks/useServicos';
 import { formatCurrency } from '@/data/mock';
 import { useAuth } from '@/contexts/AuthContext';
+import AssinaturaModal from '@/components/ajustes/assinatura-modal';
 import type { Profissional } from '@/types';
 
 type ViewMode = 'menu' | 'profissionais' | 'servicos';
@@ -67,6 +70,8 @@ export default function AjustesPage() {
   const [profNome, setProfNome] = useState('');
   const [profCor, setProfCor] = useState(COLOR_OPTIONS[0].class);
   const [profComissao, setProfComissao] = useState('40');
+
+  const [isAssinaturaModalOpen, setIsAssinaturaModalOpen] = useState(false);
 
   const [isServModalOpen, setIsServModalOpen] = useState(false);
   const [servNome, setServNome] = useState('');
@@ -311,6 +316,42 @@ export default function AjustesPage() {
                 >
                   <ExternalLink size={14} />
                 </a>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <h3 className="text-[10px] uppercase tracking-widest text-muted font-semibold px-1">
+              Plano & Faturamento (Asaas)
+            </h3>
+            <div className="rounded-2xl bg-card border border-border p-4 space-y-3 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-purple-500/15 text-purple-400 flex items-center justify-center shrink-0">
+                    <CreditCard size={18} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-bold text-foreground">
+                        Minha Assinatura SaaS
+                      </p>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent/10 text-accent font-bold uppercase">
+                        {salao?.plano || 'PRO'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-muted">
+                      R$ 97,00/mês &middot; Status: <strong className="text-emerald-500">{salao?.status_assinatura === 'inadimplente' ? 'Pendente' : 'Ativo'}</strong>
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setIsAssinaturaModalOpen(true)}
+                  className="px-3 py-2 rounded-xl bg-purple-600 text-white font-semibold text-xs flex items-center gap-1.5 shadow-sm hover:bg-purple-500 active:scale-95 transition-all shrink-0 cursor-pointer"
+                >
+                  <CreditCard size={14} />
+                  <span>Ver Fatura / PIX</span>
+                </button>
               </div>
             </div>
           </div>
@@ -674,6 +715,12 @@ export default function AjustesPage() {
           </div>
         </div>
       )}
+
+      {/* MODAL: ASSINATURA & PLANO ASAAS */}
+      <AssinaturaModal
+        isOpen={isAssinaturaModalOpen}
+        onClose={() => setIsAssinaturaModalOpen(false)}
+      />
     </div>
   );
 }

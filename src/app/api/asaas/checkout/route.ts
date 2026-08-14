@@ -1,0 +1,106 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { supabase } from '@/lib/supabase';
+import { asaasService } from '@/services/asaasService';
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { salaoId, plano = 'pro', valor = 97.00, billingType = 'PIX', cpfCnpj: reqCpfCnpj } = body;
+
+    if (!salaoId) {
+      return NextResponse.json(
+        { error: 'Parâmetro salaoId é obrigatório.' },
+        { status: 400 }
+      );
+    }
+
+    // 1. Busca os dados do Salão no Supabase
+    const { data: salao, error: salaoErr } = await supabase
+      .from('saloes')
+      .select('*')
+      .eq('id', salaoId)
+      .single();
+
+    if (salaoErr || !salao) {
+      return NextResponse.json(
+        { error: 'Salão não encontrado no banco de dados.' },
+        { status: 404 }
+      );
+    }
+
+    // 2. Busca e-mail do gestor do salão na tabela usuarios
+    const { data: usuario } = await supabase
+      .from('usuarios')
+      .select('*')
+      .eq('salao_id', salaoId)
+      .limit(1)
+      .maybeSingle();
+
+    const clientEmail = usuario?.email || `${salao.slug || 'salao'}@crmstudiobeauty.com.br`;
+    const clientPhone = salao.telefone_whatsapp || usuario?.telefone || '';
+    const finalCpfCnpj = reqCpfCnpj || salao.documento || '04987115000108'; // Default CNPJ se não informado em teste
+
+    // 3. Cria ou busca o cliente no Asaas
+    const asaasCustomer = await asaasService.criarOuBuscarCliente({
+      name: salao.nome,
+      email: clientEmail,
+      phone: clientPhone,
+      mobilePhone: clientPhone,
+      cpfCnpj: finalCpfCnpj,
+      externalReference: salaoId,
+    });
+
+    // 4. Cria a cobrança ou assinatura no Asaas
+    const descricao = `Plano ${plano.toUpperCase()} - CRM Studio Beauty (Mensalidade)`;
+    
+    // Cria uma cobrança imediata para gerar o PIX
+    const payment = await asaasService.criarCobrancaAvulsa({
+      customerId: asaasCustomer.id,
+      value: Number(valor) || 97.00,
+      description: descricao,
+      externalReference: salaoId,
+      billingType: billingType as any,
+    });
+
+    // 5. Gera os dados de PIX QR Code
+    let pixData = null;
+    try {
+      pixData = await asaasService.obterPixQrCode(payment.id);
+    } catch (pixErr) {
+      console.warn('[Asaas Checkout] Não foi possível gerar QR Code PIX imediato:', pixErr);
+    }
+
+    // 6. Atualiza o ID do cliente Asaas no Supabase
+    try {
+      await supabase
+        .from('saloes')
+        .update({
+          asaas_customer_id: asaasCustomer.id,
+          asaas_payment_id: payment.id,
+        })
+        .eq('id', salaoId);
+    } catch (dbErr) {
+      console.warn('[Asaas Checkout] Aviso ao salvar asaas_customer_id na tabela saloes:', dbErr);
+    }
+
+    return NextResponse.json({
+      success: true,
+      customer: asaasCustomer,
+      payment: {
+        id: payment.id,
+        value: payment.value,
+        status: payment.status,
+        dueDate: payment.dueDate,
+        invoiceUrl: payment.invoiceUrl,
+        bankSlipUrl: payment.bankSlipUrl,
+      },
+      pix: pixData,
+    });
+  } catch (error: any) {
+    console.error('[Asaas Checkout Error]:', error);
+    return NextResponse.json(
+      { error: error?.message || 'Erro ao processar cobrança no Asaas.' },
+      { status: 500 }
+    );
+  }
+}
