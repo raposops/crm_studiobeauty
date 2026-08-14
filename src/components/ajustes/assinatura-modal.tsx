@@ -28,7 +28,7 @@ export default function AssinaturaModal({ isOpen, onClose }: AssinaturaModalProp
   const { salao, salaoId, refreshAuth } = useAuth();
 
   const [selectedPlanId, setSelectedPlanId] = useState<'basico' | 'pro'>((salao?.plano === 'basico' ? 'basico' : 'pro'));
-  const [cpfCnpj, setCpfCnpj] = useState(salao?.documento || '');
+  const [cpfCnpj, setCpfCnpj] = useState((salao as any)?.documento || '');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [copiedPix, setCopiedPix] = useState(false);

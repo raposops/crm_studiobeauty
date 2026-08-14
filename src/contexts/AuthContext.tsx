@@ -11,10 +11,13 @@ export interface SalaoInfo {
   nome: string;
   slug: string;
   telefone_whatsapp?: string;
+  documento?: string;
   logo_url?: string;
   plano?: string;
   status_assinatura?: string;
   modulos_ativos?: ModulosSalao;
+  asaas_customer_id?: string;
+  asaas_payment_id?: string;
 }
 
 export interface UserProfile {
