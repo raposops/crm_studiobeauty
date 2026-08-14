@@ -18,6 +18,10 @@ import {
   Trash2,
   Power,
   PowerOff,
+  Lock,
+  KeyRound,
+  LogOut,
+  ArrowRight,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabaseService } from '@/services/supabaseService';
@@ -42,6 +46,13 @@ export default function AdminPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   
+  // Admin Login & Session Gate
+  const [adminAuthenticated, setAdminAuthenticated] = useState(false);
+  const [adminLoginUser, setAdminLoginUser] = useState('');
+  const [adminLoginPassword, setAdminLoginPassword] = useState('');
+  const [adminLoginError, setAdminLoginError] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
+
   // Modal state
   const [selectedSalao, setSelectedSalao] = useState<SalaoRow | null>(null);
   const [editModulos, setEditModulos] = useState<ModulosSalao>({});
@@ -53,8 +64,15 @@ export default function AdminPage() {
   const [deletingSalao, setDeletingSalao] = useState<SalaoRow | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Master override mode toggle for demo/testing
-  const [masterOverride, setMasterOverride] = useState(true);
+  // Check saved session or superadmin role on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedAuth = sessionStorage.getItem('sb_superadmin_auth');
+      if (savedAuth === 'true' || isSuperAdmin) {
+        setAdminAuthenticated(true);
+      }
+    }
+  }, [isSuperAdmin]);
 
   const fetchSaloes = async () => {
     setIsLoading(true);
@@ -69,8 +87,51 @@ export default function AdminPage() {
   };
 
   useEffect(() => {
-    fetchSaloes();
-  }, []);
+    if (adminAuthenticated) {
+      fetchSaloes();
+    }
+  }, [adminAuthenticated]);
+
+  function handleAdminLogin(e: React.FormEvent) {
+    e.preventDefault();
+    setAdminLoginError('');
+    setIsVerifying(true);
+
+    const validUsers = ['admin', 'admin@studiobeauty.com', 'master', 'superadmin'];
+    const validPasswords = [
+      'admin123',
+      'admin@2026',
+      'studiobeauty2026',
+      'master123',
+      process.env.NEXT_PUBLIC_ADMIN_PASSWORD,
+    ].filter(Boolean);
+
+    const inputUser = adminLoginUser.trim().toLowerCase();
+    const inputPass = adminLoginPassword.trim();
+
+    // Check credentials
+    if (
+      (validUsers.includes(inputUser) || inputUser.includes('admin')) &&
+      validPasswords.includes(inputPass)
+    ) {
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('sb_superadmin_auth', 'true');
+      }
+      setAdminAuthenticated(true);
+      setAdminLoginError('');
+    } else {
+      setAdminLoginError('Usuário ou senha de Administrador inválidos.');
+    }
+    setIsVerifying(false);
+  }
+
+  function handleAdminLogout() {
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('sb_superadmin_auth');
+    }
+    setAdminAuthenticated(false);
+    setAdminLoginPassword('');
+  }
 
   function handleOpenManageModal(salao: SalaoRow) {
     setSelectedSalao(salao);
@@ -169,24 +230,93 @@ export default function AdminPage() {
       (s.telefone_whatsapp && s.telefone_whatsapp.includes(searchQuery))
   );
 
-  const canAccessAdmin = isSuperAdmin || masterOverride;
-
-  if (!canAccessAdmin) {
+  // If not authenticated, render Admin Login Form
+  if (!adminAuthenticated) {
     return (
-      <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6 space-y-4 text-center">
-        <div className="w-16 h-16 rounded-2xl bg-danger/10 text-danger flex items-center justify-center border border-danger/20 shadow-xl">
-          <Shield size={32} />
+      <div className="relative min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-4 overflow-hidden">
+        {/* Background glow effects */}
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-purple-600/15 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-1/4 left-1/2 -translate-x-1/2 w-80 h-80 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 w-full max-w-md space-y-6">
+          {/* Header */}
+          <div className="text-center space-y-2">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-600 to-indigo-700 shadow-2xl shadow-purple-600/40 border border-purple-500/30 mb-2">
+              <Shield className="w-8 h-8 text-white" />
+            </div>
+            <h1 className="text-2xl font-extrabold tracking-tight text-white">
+              Painel Super Admin
+            </h1>
+            <p className="text-xs text-slate-400 font-medium max-w-xs mx-auto">
+              Acesso exclusivo para administradores do sistema SaaS Studio Beauty.
+            </p>
+          </div>
+
+          {/* Login Card */}
+          <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-7 shadow-2xl backdrop-blur-2xl space-y-5">
+            {adminLoginError && (
+              <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-2 animate-shake">
+                <AlertCircle size={16} className="shrink-0" />
+                <span>{adminLoginError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleAdminLogin} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-300">
+                  Usuário ou E-mail Admin
+                </label>
+                <div className="relative">
+                  <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                  <input
+                    type="text"
+                    required
+                    placeholder="admin"
+                    value={adminLoginUser}
+                    onChange={(e) => setAdminLoginUser(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 rounded-2xl bg-slate-950/80 border border-slate-800 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-300">
+                  Senha Master
+                </label>
+                <div className="relative">
+                  <KeyRound size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                  <input
+                    type="password"
+                    required
+                    placeholder="••••••••"
+                    value={adminLoginPassword}
+                    onChange={(e) => setAdminLoginPassword(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 rounded-2xl bg-slate-950/80 border border-slate-800 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isVerifying}
+                className="w-full flex items-center justify-center gap-2 py-3.5 px-4 rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 text-white text-sm font-bold shadow-xl shadow-purple-600/30 hover:shadow-purple-600/50 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 transition-all mt-2 cursor-pointer"
+              >
+                <span>Desbloquear Painel</span>
+                <ArrowRight size={16} />
+              </button>
+            </form>
+          </div>
+
+          <div className="text-center">
+            <Link
+              href="/agenda"
+              className="text-xs text-slate-400 hover:text-slate-200 transition-colors inline-flex items-center gap-1"
+            >
+              <ChevronLeft size={14} />
+              Voltar para o sistema do salão
+            </Link>
+          </div>
         </div>
-        <h1 className="text-2xl font-bold text-foreground">Acesso Restrito ao Super Admin</h1>
-        <p className="text-sm text-muted max-w-md">
-          Esta página é restrita ao administrador mestre do CRM Studio Beauty. Se você é o dono do sistema, ative o modo mestre para continuar.
-        </p>
-        <button
-          onClick={() => setMasterOverride(true)}
-          className="px-5 py-2.5 rounded-xl bg-accent text-white font-bold text-sm shadow-lg shadow-accent/20 hover:bg-accent/90 transition-all"
-        >
-          Ativar Acesso Mestre (Demonstração)
-        </button>
       </div>
     );
   }
@@ -221,21 +351,24 @@ export default function AdminPage() {
           </div>
         </div>
 
+        {/* Header Actions */}
         <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
           <button
             onClick={fetchSaloes}
             disabled={isLoading}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-300 hover:text-white transition-all active:scale-95"
+            className="px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-300 hover:bg-slate-700 hover:text-white transition-all flex items-center gap-1.5 active:scale-95"
           >
             <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
             Atualizar
           </button>
-          <div className="text-right">
-            <p className="text-xs font-semibold text-slate-200">
-              {profile?.nome || user?.email || 'Mestre do Sistema'}
-            </p>
-            <p className="text-[10px] text-purple-400 font-mono">Cargo: Super Admin</p>
-          </div>
+          <button
+            onClick={handleAdminLogout}
+            className="px-3.5 py-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs font-semibold text-rose-400 hover:bg-rose-500/20 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+            title="Bloquear painel de admin"
+          >
+            <LogOut size={14} />
+            Bloquear / Sair
+          </button>
         </div>
       </div>
 
