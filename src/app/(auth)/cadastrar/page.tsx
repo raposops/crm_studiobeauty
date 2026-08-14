@@ -3,9 +3,10 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Scissors, Building2, User, Mail, Lock, Phone, Globe, ArrowRight, AlertCircle, Loader2, CheckCircle2 } from 'lucide-react';
+import { Scissors, Building2, User, Mail, Lock, Phone, Globe, ArrowRight, AlertCircle, Loader2, CheckCircle2, CreditCard, Check } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { generateUUID as uuidv4 } from '@/lib/uuid';
+import { PLANOS_SAAS } from '@/types';
 
 function generateSlug(text: string): string {
   return text
@@ -38,6 +39,7 @@ export default function CadastrarSalaoPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [planoEscolhido, setPlanoEscolhido] = useState<'basico' | 'pro'>('pro');
 
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -115,13 +117,14 @@ export default function CadastrarSalaoPage() {
 
       const newUserId = authData.user.id;
 
-      // 3. Create Salon Row in 'saloes' table (ignoring optional/missing columns)
+      // 3. Create Salon Row in 'saloes' table with pending subscription
       const { error: salaoErr } = await supabase.from('saloes').insert({
         id: newSalaoId,
         nome: salaoNome.trim(),
         slug: cleanSlug,
         telefone_whatsapp: formattedPhone,
-        plano: 'pro',
+        plano: planoEscolhido,
+        status_assinatura: 'pendente',
       });
 
       if (salaoErr) {
@@ -169,8 +172,8 @@ export default function CadastrarSalaoPage() {
         },
       ]);
 
-      // Success -> Redirect to agenda
-      router.push('/agenda');
+      // Success -> Redireciona imediatamente para o checkout do plano antes de acessar a plataforma
+      router.push(`/assinar?salaoId=${newSalaoId}&plano=${planoEscolhido}`);
     } catch (err: any) {
       setErrorMessage(err?.message || 'Erro inesperado ao cadastrar salão.');
       setIsLoading(false);
@@ -359,6 +362,51 @@ export default function CadastrarSalaoPage() {
               </div>
             </div>
 
+            {/* Plano de Assinatura Selector */}
+            <div className="space-y-2 pt-2">
+              <label className="text-xs font-bold text-slate-200 flex items-center justify-between">
+                <span>Escolha seu Plano SaaS</span>
+                <span className="text-[10px] text-purple-400 font-medium">Liberação Imediata</span>
+              </label>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {(['basico', 'pro'] as const).map((pKey) => {
+                  const p = PLANOS_SAAS[pKey];
+                  const isSelected = planoEscolhido === pKey;
+                  return (
+                    <div
+                      key={p.id}
+                      onClick={() => setPlanoEscolhido(pKey)}
+                      className={`relative p-3.5 rounded-2xl border transition-all cursor-pointer select-none ${
+                        isSelected
+                          ? 'bg-purple-950/60 border-purple-500 ring-2 ring-purple-500/30 shadow-lg'
+                          : 'bg-slate-950/40 border-white/10 hover:border-white/20'
+                      }`}
+                    >
+                      {p.destaque && (
+                        <span className="absolute -top-2.5 right-3 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-sm">
+                          Mais Escolhido
+                        </span>
+                      )}
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-bold text-white">{p.nome}</p>
+                        <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${isSelected ? 'bg-purple-600 border-purple-500' : 'border-slate-600'}`}>
+                          {isSelected && <Check size={10} className="text-white" />}
+                        </div>
+                      </div>
+                      <div className="flex items-baseline gap-1 mt-1">
+                        <span className="text-base font-extrabold text-white">{p.precoFormatado}</span>
+                        <span className="text-[10px] text-slate-400">/mês</span>
+                      </div>
+                      <p className="text-[10px] text-slate-400 mt-1 line-clamp-2 leading-relaxed">
+                        {p.descricao}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
             <button
               type="submit"
               disabled={isLoading}
@@ -371,7 +419,7 @@ export default function CadastrarSalaoPage() {
                 </>
               ) : (
                 <>
-                  <span>Criar Meu Salão SaaS</span>
+                  <span>Prosseguir para Ativação ({PLANOS_SAAS[planoEscolhido].precoFormatado})</span>
                   <ArrowRight size={16} />
                 </>
               )}

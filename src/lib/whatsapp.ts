@@ -133,3 +133,52 @@ Por favor, responda a esta mensagem com o número da opção desejada:
     };
   }
 }
+
+/**
+ * Envia uma mensagem de texto direta para qualquer WhatsApp (usada para avisos ao administrador)
+ */
+export async function sendDirectWhatsAppMessage({
+  phone,
+  message,
+}: {
+  phone: string;
+  message: string;
+}): Promise<{ success: boolean; data?: any; error?: string }> {
+  try {
+    const formattedPhone = formatPhone(phone);
+    if (!formattedPhone) return { success: false, error: 'Telefone inválido' };
+
+    const evolutionApiUrl =
+      process.env.NEXT_PUBLIC_EVOLUTION_API_URL ||
+      process.env.EVOLUTION_API_URL ||
+      'https://evo.fidustecnologia.com.br';
+    const evolutionApiKey =
+      process.env.NEXT_PUBLIC_EVOLUTION_API_KEY ||
+      process.env.EVOLUTION_API_KEY ||
+      '9858375C8262-4CCB-83D2-E66974D498A1';
+    const instanceName =
+      process.env.NEXT_PUBLIC_EVOLUTION_INSTANCE_NAME ||
+      process.env.EVOLUTION_INSTANCE_NAME ||
+      'fidus';
+
+    const targetUrl = `${evolutionApiUrl.replace(/\/$/, '')}/message/sendText/${instanceName}`;
+    const res = await fetch(targetUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: evolutionApiKey,
+      },
+      body: JSON.stringify({
+        number: formattedPhone,
+        text: message,
+        options: { delay: 1200, presence: 'composing', linkPreview: false },
+      }),
+    });
+
+    const data = await res.json().catch(() => null);
+    return { success: res.ok, data };
+  } catch (err: any) {
+    console.error('Erro ao enviar mensagem WhatsApp direta:', err);
+    return { success: false, error: err?.message };
+  }
+}

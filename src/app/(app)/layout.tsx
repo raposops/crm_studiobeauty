@@ -7,14 +7,18 @@ import Header from '@/components/header';
 import BottomNav from '@/components/bottom-nav';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useAuth();
+  const { user, salao, isLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoading && !user) {
-      router.replace('/login');
+    if (!isLoading) {
+      if (!user) {
+        router.replace('/login');
+      } else if (salao && salao.status_assinatura && salao.status_assinatura !== 'ativo') {
+        router.replace(`/assinar?salaoId=${salao.id}&plano=${salao.plano || 'pro'}`);
+      }
     }
-  }, [user, isLoading, router]);
+  }, [user, salao, isLoading, router]);
 
   if (isLoading) {
     return (
