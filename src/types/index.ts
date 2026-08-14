@@ -126,6 +126,63 @@ export const MODULOS_DISPONIVEIS: Array<{ key: string; nome: string; descricao: 
   },
 ];
 
+export interface PlanoSaaS {
+  id: 'basico' | 'pro';
+  nome: string;
+  preco: number;
+  precoFormatado: string;
+  descricao: string;
+  destaque?: boolean;
+  recursos: string[];
+  modulosPadrao: ModulosSalao;
+}
+
+export const PLANOS_SAAS: Record<'basico' | 'pro', PlanoSaaS> = {
+  basico: {
+    id: 'basico',
+    nome: 'Plano Básico',
+    preco: 49.99,
+    precoFormatado: 'R$ 49,99',
+    descricao: 'Essencial para salões e profissionais autônomos com automação de agenda e mensagens.',
+    recursos: [
+      'Comissão customizada por profissional',
+      'Notificações automáticas via WhatsApp',
+      'Relatórios financeiros do salão',
+      'Agenda multi-profissional inteligente',
+      'Link público para agendamento online',
+    ],
+    modulosPadrao: {
+      comissao_customizada: true,
+      whatsapp_automatico: true,
+      relatorios_avancados: true,
+      fluxo_de_caixa: false,
+      fluxo_caixa_avancado: false,
+    },
+  },
+  pro: {
+    id: 'pro',
+    nome: 'Plano PRO Completo',
+    preco: 69.90,
+    precoFormatado: 'R$ 69,90',
+    descricao: 'Tudo do plano básico + Fluxo de Caixa completo, despesas fixas e lançamentos avulsos.',
+    destaque: true,
+    recursos: [
+      'Todos os benefícios do Plano Básico',
+      'Fluxo de Caixa com controle de receitas e despesas fixas',
+      'Lançamento Avulso de entradas e saídas',
+      'Relatórios financeiros avançados e gráficos executivos',
+      'Suporte prioritário e integração total',
+    ],
+    modulosPadrao: {
+      comissao_customizada: true,
+      whatsapp_automatico: true,
+      relatorios_avancados: true,
+      fluxo_de_caixa: true,
+      fluxo_caixa_avancado: true,
+    },
+  },
+};
+
 // ========================
 // Form Types
 // ========================

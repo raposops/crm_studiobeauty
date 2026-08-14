@@ -564,13 +564,31 @@ export default function AdminPage() {
                 </label>
                 <select
                   value={editPlano}
-                  onChange={(e) => setEditPlano(e.target.value)}
+                  onChange={(e) => {
+                    const newPlan = e.target.value;
+                    setEditPlano(newPlan);
+                    if (newPlan === 'basico') {
+                      setEditModulos({
+                        comissao_customizada: true,
+                        whatsapp_automatico: true,
+                        relatorios_avancados: true,
+                        fluxo_de_caixa: false,
+                        fluxo_caixa_avancado: false,
+                      });
+                    } else if (newPlan === 'pro') {
+                      setEditModulos({
+                        comissao_customizada: true,
+                        whatsapp_automatico: true,
+                        relatorios_avancados: true,
+                        fluxo_de_caixa: true,
+                        fluxo_caixa_avancado: true,
+                      });
+                    }
+                  }}
                   className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs font-bold text-white focus:outline-none focus:border-purple-500"
                 >
-                  <option value="trial">Trial (Degustação)</option>
-                  <option value="basico">Plano Básico</option>
-                  <option value="pro">Plano Pro</option>
-                  <option value="enterprise">Plano Enterprise (Completo)</option>
+                  <option value="basico">Plano Básico (R$ 49,99/mês)</option>
+                  <option value="pro">Plano Pro Completo (R$ 69,90/mês)</option>
                 </select>
               </div>
 

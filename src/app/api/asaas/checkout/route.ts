@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { asaasService } from '@/services/asaasService';
+import { PLANOS_SAAS } from '@/types';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { salaoId, plano = 'pro', valor = 97.00, billingType = 'PIX', cpfCnpj: reqCpfCnpj } = body;
+    const { salaoId, plano = 'pro', billingType = 'PIX', cpfCnpj: reqCpfCnpj } = body;
 
     if (!salaoId) {
       return NextResponse.json(
@@ -13,6 +14,10 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    const planoKey = (plano === 'basico' ? 'basico' : 'pro') as 'basico' | 'pro';
+    const planoInfo = PLANOS_SAAS[planoKey];
+    const valorCobrado = planoInfo.preco;
 
     // 1. Busca os dados do Salão no Supabase
     const { data: salao, error: salaoErr } = await supabase
@@ -51,12 +56,12 @@ export async function POST(req: NextRequest) {
     });
 
     // 4. Cria a cobrança ou assinatura no Asaas
-    const descricao = `Plano ${plano.toUpperCase()} - CRM Studio Beauty (Mensalidade)`;
+    const descricao = `${planoInfo.nome} - CRM Studio Beauty (Mensalidade ${planoInfo.precoFormatado})`;
     
     // Cria uma cobrança imediata para gerar o PIX
     const payment = await asaasService.criarCobrancaAvulsa({
       customerId: asaasCustomer.id,
-      value: Number(valor) || 97.00,
+      value: valorCobrado,
       description: descricao,
       externalReference: salaoId,
       billingType: billingType as any,

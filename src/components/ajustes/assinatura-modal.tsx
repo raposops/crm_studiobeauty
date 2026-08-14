@@ -14,8 +14,10 @@ import {
   AlertCircle,
   Loader2,
   Clock,
+  ChevronRight,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { PLANOS_SAAS, PlanoSaaS } from '@/types';
 
 interface AssinaturaModalProps {
   isOpen: boolean;
@@ -25,6 +27,7 @@ interface AssinaturaModalProps {
 export default function AssinaturaModal({ isOpen, onClose }: AssinaturaModalProps) {
   const { salao, salaoId, refreshAuth } = useAuth();
 
+  const [selectedPlanId, setSelectedPlanId] = useState<'basico' | 'pro'>((salao?.plano === 'basico' ? 'basico' : 'pro'));
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [copiedPix, setCopiedPix] = useState(false);
@@ -39,6 +42,7 @@ export default function AssinaturaModal({ isOpen, onClose }: AssinaturaModalProp
 
   if (!isOpen) return null;
 
+  const currentPlan = PLANOS_SAAS[selectedPlanId];
   const statusAssinatura = salao?.status_assinatura || 'ativo';
   const isAtivo = statusAssinatura === 'ativo';
 
@@ -51,8 +55,7 @@ export default function AssinaturaModal({ isOpen, onClose }: AssinaturaModalProp
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           salaoId,
-          plano: salao?.plano || 'pro',
-          valor: 97.00,
+          plano: selectedPlanId,
           billingType: 'PIX',
         }),
       });
@@ -86,8 +89,8 @@ export default function AssinaturaModal({ isOpen, onClose }: AssinaturaModalProp
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
-      <div className="w-full max-w-md bg-background border border-border rounded-3xl p-6 space-y-5 shadow-2xl animate-fade-in-up max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+      <div className="w-full max-w-lg bg-background border border-border rounded-3xl p-6 space-y-5 shadow-2xl animate-fade-in-up max-h-[92vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -96,9 +99,9 @@ export default function AssinaturaModal({ isOpen, onClose }: AssinaturaModalProp
             </div>
             <div>
               <h3 className="text-base font-bold text-foreground">
-                Minha Assinatura SaaS
+                Planos & Assinatura SaaS
               </h3>
-              <p className="text-xs text-muted">Gestão do Plano & Pagamento Asaas</p>
+              <p className="text-xs text-muted">Escolha o plano ideal para o seu salão</p>
             </div>
           </div>
 
@@ -118,49 +121,77 @@ export default function AssinaturaModal({ isOpen, onClose }: AssinaturaModalProp
           </div>
         )}
 
-        {/* Plan Card */}
-        <div className="relative overflow-hidden rounded-3xl border border-accent/30 bg-gradient-to-br from-accent/10 via-card to-background p-5 space-y-4 shadow-sm">
+        {/* Plan Selector Grid */}
+        <div className="grid grid-cols-2 gap-3">
+          {(['basico', 'pro'] as const).map((pKey) => {
+            const p = PLANOS_SAAS[pKey];
+            const isSelected = selectedPlanId === pKey;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => {
+                  setSelectedPlanId(pKey);
+                  setPixData(null);
+                }}
+                className={`relative text-left p-4 rounded-2xl border transition-all cursor-pointer ${
+                  isSelected
+                    ? 'bg-accent/10 border-accent ring-2 ring-accent/30 shadow-md'
+                    : 'bg-card border-border hover:bg-card-hover'
+                }`}
+              >
+                {p.destaque && (
+                  <span className="absolute -top-2.5 right-3 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-sm">
+                    Mais Completo
+                  </span>
+                )}
+                <p className="text-xs font-bold text-foreground">{p.nome}</p>
+                <div className="flex items-baseline gap-1 mt-1.5">
+                  <span className="text-lg font-extrabold text-foreground">{p.precoFormatado}</span>
+                  <span className="text-[10px] text-muted">/mês</span>
+                </div>
+                <p className="text-[10px] text-muted mt-1.5 line-clamp-2">
+                  {p.descricao}
+                </p>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Selected Plan Details */}
+        <div className="relative overflow-hidden rounded-3xl border border-accent/25 bg-gradient-to-br from-accent/5 via-card to-background p-5 space-y-3.5 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-full bg-accent/20 text-accent-light border border-accent/30 flex items-center gap-1">
-              <Sparkles size={12} />
-              Plano {salao?.plano?.toUpperCase() || 'PRO'}
-            </span>
+            <div className="flex items-center gap-2">
+              <Sparkles size={16} className="text-accent-light" />
+              <h4 className="text-sm font-bold text-foreground">
+                Recursos inclusos no {currentPlan.nome}
+              </h4>
+            </div>
 
             <span
-              className={`text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1 ${
+              className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1.5 ${
                 isAtivo
                   ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20'
                   : 'bg-amber-500/10 text-amber-600 border border-amber-500/20'
               }`}
             >
-              <span className={`w-2 h-2 rounded-full ${isAtivo ? 'bg-emerald-500' : 'bg-amber-500'} animate-pulse`} />
-              {isAtivo ? 'Assinatura Ativa' : 'Pendente de Pagamento'}
+              <span className={`w-1.5 h-1.5 rounded-full ${isAtivo ? 'bg-emerald-500' : 'bg-amber-500'} animate-pulse`} />
+              {isAtivo ? 'Assinatura Ativa' : 'Pendente'}
             </span>
           </div>
 
-          <div>
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-3xl font-extrabold text-foreground">R$ 97,00</span>
-              <span className="text-xs text-muted font-medium">/ mês</span>
-            </div>
-            <p className="text-xs text-muted mt-1">
-              Cobrança processada de forma segura via <strong>Asaas Gateway</strong>.
-            </p>
+          <div className="space-y-2 pt-1 text-xs text-foreground/85">
+            {currentPlan.recursos.map((rec, idx) => (
+              <div key={idx} className="flex items-center gap-2">
+                <ShieldCheck size={14} className="text-emerald-500 shrink-0" />
+                <span>{rec}</span>
+              </div>
+            ))}
           </div>
 
-          <div className="space-y-2 pt-2 border-t border-border/50 text-xs text-foreground/80">
-            <div className="flex items-center gap-2">
-              <ShieldCheck size={15} className="text-emerald-500 shrink-0" />
-              <span>Acesso ilimitado à Agenda & Profissionais</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Zap size={15} className="text-accent-light shrink-0" />
-              <span>Controle Financeiro & Fluxo de Caixa Completo</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Sparkles size={15} className="text-purple-400 shrink-0" />
-              <span>Disparo Automático de WhatsApp com Evolution API</span>
-            </div>
+          <div className="pt-2 border-t border-border/50 flex items-center justify-between text-xs text-muted">
+            <span>Processamento seguro via Asaas Gateway</span>
+            <span className="font-bold text-foreground">{currentPlan.precoFormatado} / mês</span>
           </div>
         </div>
 
@@ -169,7 +200,7 @@ export default function AssinaturaModal({ isOpen, onClose }: AssinaturaModalProp
           <div className="rounded-3xl bg-card border border-border p-5 space-y-4 text-center animate-fade-in">
             <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-accent-light">
               <QrCode size={16} />
-              <span>Pague com PIX Instantâneo</span>
+              <span>PIX Gerado para {currentPlan.nome} ({currentPlan.precoFormatado})</span>
             </div>
 
             {/* QR Code Image */}
@@ -188,7 +219,7 @@ export default function AssinaturaModal({ isOpen, onClose }: AssinaturaModalProp
             )}
 
             <p className="text-[11px] text-muted max-w-xs mx-auto">
-              Abra o aplicativo do seu banco, escolha <strong>Pagar com QR Code</strong> ou use a opção <strong>PIX Copia e Cola</strong> abaixo:
+              Abra o app do seu banco, escolha <strong>Pagar com QR Code</strong> ou use a opção <strong>PIX Copia e Cola</strong>:
             </p>
 
             {/* Copia e Cola Button */}
@@ -214,9 +245,9 @@ export default function AssinaturaModal({ isOpen, onClose }: AssinaturaModalProp
               )}
             </div>
 
-            <div className="pt-2 flex items-center justify-center gap-1 text-[10px] text-muted">
+            <div className="pt-1 flex items-center justify-center gap-1 text-[10px] text-muted">
               <Clock size={12} />
-              <span>A confirmação do PIX ativa sua conta em segundos.</span>
+              <span>A confirmação do PIX ativa sua conta automaticamente.</span>
             </div>
           </div>
         ) : (
@@ -230,12 +261,12 @@ export default function AssinaturaModal({ isOpen, onClose }: AssinaturaModalProp
               {isLoading ? (
                 <>
                   <Loader2 size={18} className="animate-spin" />
-                  <span>Gerando PIX no Asaas Sandbox...</span>
+                  <span>Gerando PIX ({currentPlan.precoFormatado})...</span>
                 </>
               ) : (
                 <>
                   <QrCode size={18} />
-                  <span>Gerar PIX da Mensalidade (Asaas)</span>
+                  <span>Gerar PIX do {currentPlan.nome} ({currentPlan.precoFormatado})</span>
                 </>
               )}
             </button>

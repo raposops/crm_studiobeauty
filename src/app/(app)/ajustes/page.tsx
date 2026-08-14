@@ -340,7 +340,7 @@ export default function AjustesPage() {
                       </span>
                     </div>
                     <p className="text-[11px] text-muted">
-                      R$ 97,00/mês &middot; Status: <strong className="text-emerald-500">{salao?.status_assinatura === 'inadimplente' ? 'Pendente' : 'Ativo'}</strong>
+                      {(salao?.plano === 'basico' ? 'R$ 49,99' : 'R$ 69,90')}/mês &middot; Status: <strong className="text-emerald-500">{salao?.status_assinatura === 'inadimplente' ? 'Pendente' : 'Ativo'}</strong>
                     </p>
                   </div>
                 </div>
