@@ -4,6 +4,16 @@ import { sendDirectWhatsAppMessage } from '@/lib/whatsapp';
 
 export async function POST(req: NextRequest) {
   try {
+    // Verificação de segurança opcional com o Token do Webhook gerado no Asaas
+    const webhookSecretToken = process.env.ASAAS_WEBHOOK_TOKEN;
+    if (webhookSecretToken) {
+      const headerToken = req.headers.get('asaas-access-token');
+      if (headerToken && headerToken !== webhookSecretToken) {
+        console.warn('[Asaas Webhook] Requisição rejeitada: token de webhook inválido.');
+        return NextResponse.json({ error: 'Token de webhook inválido' }, { status: 401 });
+      }
+    }
+
     const payload = await req.json();
     const event = payload.event;
     const payment = payload.payment;
