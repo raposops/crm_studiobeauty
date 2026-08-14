@@ -70,7 +70,7 @@ class AsaasService {
       process.env.ASAAS_API_KEY ||
       process.env.NEXT_PUBLIC_ASAAS_API_KEY ||
       ''
-    ).trim();
+    ).trim().replace(/^["']|["']$/g, '');
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
