@@ -119,6 +119,7 @@ export default function CadastrarSalaoPage() {
       const { error: salaoErr } = await supabase.from('saloes').insert({
         id: newSalaoId,
         nome: salaoNome.trim(),
+        slug: cleanSlug,
         telefone_whatsapp: formattedPhone,
         plano: 'pro',
       });
