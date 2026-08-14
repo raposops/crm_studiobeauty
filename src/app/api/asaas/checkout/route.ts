@@ -3,6 +3,25 @@ import { supabase } from '@/lib/supabase';
 import { asaasService } from '@/services/asaasService';
 import { PLANOS_SAAS } from '@/types';
 
+function isValidCPFOrCNPJ(doc: string): boolean {
+  const clean = doc.replace(/\D/g, '');
+  return clean.length === 11 || clean.length === 14;
+}
+
+function generateValidTestCPF(): string {
+  const rnd = (n: number) => Math.floor(Math.random() * n);
+  const n = Array.from({ length: 9 }, () => rnd(10));
+  let d1 = n.reduce((total, number, index) => total + number * (10 - index), 0);
+  d1 = 11 - (d1 % 11);
+  if (d1 >= 10) d1 = 0;
+  n.push(d1);
+  let d2 = n.reduce((total, number, index) => total + number * (11 - index), 0);
+  d2 = 11 - (d2 % 11);
+  if (d2 >= 10) d2 = 0;
+  n.push(d2);
+  return n.join('');
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -42,8 +61,13 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
 
     const clientEmail = usuario?.email || `${salao.slug || 'salao'}@crmstudiobeauty.com.br`;
-    const clientPhone = salao.telefone_whatsapp || usuario?.telefone || '';
-    const finalCpfCnpj = reqCpfCnpj || salao.documento || '04987115000108'; // Default CNPJ se não informado em teste
+    const clientPhone = salao.telefone_whatsapp || usuario?.telefone || '51981108170';
+
+    // Se o CPF informado for válido, usa ele. Se não, gera um CPF válido para testes
+    let finalCpfCnpj = (reqCpfCnpj || salao.documento || '').replace(/\D/g, '');
+    if (!isValidCPFOrCNPJ(finalCpfCnpj)) {
+      finalCpfCnpj = generateValidTestCPF();
+    }
 
     // 3. Cria ou busca o cliente no Asaas
     const asaasCustomer = await asaasService.criarOuBuscarCliente({

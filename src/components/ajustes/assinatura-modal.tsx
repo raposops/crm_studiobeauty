@@ -28,6 +28,7 @@ export default function AssinaturaModal({ isOpen, onClose }: AssinaturaModalProp
   const { salao, salaoId, refreshAuth } = useAuth();
 
   const [selectedPlanId, setSelectedPlanId] = useState<'basico' | 'pro'>((salao?.plano === 'basico' ? 'basico' : 'pro'));
+  const [cpfCnpj, setCpfCnpj] = useState(salao?.documento || '');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [copiedPix, setCopiedPix] = useState(false);
@@ -56,6 +57,7 @@ export default function AssinaturaModal({ isOpen, onClose }: AssinaturaModalProp
         body: JSON.stringify({
           salaoId,
           plano: selectedPlanId,
+          cpfCnpj: cpfCnpj.trim(),
           billingType: 'PIX',
         }),
       });
@@ -156,6 +158,21 @@ export default function AssinaturaModal({ isOpen, onClose }: AssinaturaModalProp
               </button>
             );
           })}
+        </div>
+
+        {/* CPF / CNPJ Input */}
+        <div className="space-y-1">
+          <label className="text-xs font-bold text-foreground flex items-center justify-between">
+            <span>CPF ou CNPJ do Salão</span>
+            <span className="text-[10px] text-muted font-normal">Necessário para emissão do PIX</span>
+          </label>
+          <input
+            type="text"
+            placeholder="000.000.000-00 ou 00.000.000/0000-00"
+            value={cpfCnpj}
+            onChange={(e) => setCpfCnpj(e.target.value)}
+            className="w-full px-3.5 py-2.5 rounded-2xl bg-card border border-border text-xs text-foreground placeholder:text-muted focus:outline-none focus:border-accent transition-all"
+          />
         </div>
 
         {/* Selected Plan Details */}
