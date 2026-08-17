@@ -223,6 +223,7 @@ export const supabaseService = {
         status: 'agendado',
         valor_total: valorTotal,
         duracao_total: duracaoTotal,
+        origem: payload.origem || 'presencial',
       })
       .select('id')
       .single();
@@ -840,5 +841,104 @@ export const supabaseService = {
   async obterEntradasCaixaAuto(salaoId: string, dataInicio: string, dataFim: string): Promise<number> {
     const resumo = await this.obterResumoCaixaAuto(salaoId, dataInicio, dataFim);
     return resumo.totalEntradas;
+  },
+
+  // ==========================
+  // DASHBOARD
+  // ==========================
+  async fetchDashboardStats(salaoId: string, dataInicio: string, dataFim: string) {
+    // Busca Agendamentos
+    const { data: agendamentos, error: agErr } = await supabase
+      .from('agendamentos')
+      .select('*, profissional:profissionais(nome)')
+      .eq('salao_id', salaoId)
+      .gte('data', dataInicio)
+      .lte('data', dataFim);
+
+    // Busca Lançamentos Financeiros (para Receita e Formas de Pagamento)
+    const { data: lancamentos, error: lanErr } = await supabase
+      .from('lancamentos_financeiros')
+      .select('*, agendamento:agendamentos(servico:servicos!agendamentos_servico_id_fkey(nome), servicos:agendamento_servicos(servico:servicos!agendamento_servicos_servico_id_fkey(nome)))')
+      .eq('salao_id', salaoId)
+      .gte('data_fechamento', `${dataInicio}T00:00:00.000Z`)
+      .lte('data_fechamento', `${dataFim}T23:59:59.999Z`);
+
+    if (agErr) console.error(agErr);
+    if (lanErr) console.error(lanErr);
+
+    const ag = agendamentos || [];
+    const lan = lancamentos || [];
+
+    // 1. Receita Total (Soma dos lançamentos financeiros onde valor_total > 0)
+    const receitaTotal = lan.reduce((acc, curr) => acc + (curr.valor_total || 0), 0);
+
+    // 2. Ticket Médio
+    const ticketMedio = lan.length > 0 ? Math.round(receitaTotal / lan.length) : 0;
+
+    // 3. Agendamentos Hoje (Count de agendamentos com data = hoje)
+    const hoje = new Date().toISOString().split('T')[0];
+    const agendamentosHoje = ag.filter(a => a.data === hoje).length;
+
+    // 4. Gráfico: Online vs Presencial
+    let onlineCount = 0;
+    let presencialCount = 0;
+    ag.forEach(a => {
+      // Fallback for missing column or explicit value
+      if (a.origem === 'online' || (a.observacoes && a.observacoes.includes('Link Público Online'))) {
+        onlineCount++;
+      } else {
+        presencialCount++;
+      }
+    });
+
+    const chartOrigem = [
+      { name: 'Online (Link)', value: onlineCount, fill: '#8b5cf6' }, // violet-500
+      { name: 'Presencial', value: presencialCount, fill: '#ec4899' } // pink-500
+    ];
+
+    // 5. Gráfico: Formas de Pagamento
+    const pagamentosMap: Record<string, number> = {
+      pix: 0, credito: 0, debito: 0, dinheiro: 0
+    };
+    lan.forEach(l => {
+      if (l.forma_pagamento && pagamentosMap[l.forma_pagamento] !== undefined) {
+        pagamentosMap[l.forma_pagamento]++;
+      }
+    });
+    
+    const chartPagamentos = [
+      { name: 'PIX', value: pagamentosMap.pix, fill: '#10b981' }, // emerald-500
+      { name: 'Crédito', value: pagamentosMap.credito, fill: '#3b82f6' }, // blue-500
+      { name: 'Débito', value: pagamentosMap.debito, fill: '#6366f1' }, // indigo-500
+      { name: 'Dinheiro', value: pagamentosMap.dinheiro, fill: '#f59e0b' } // amber-500
+    ].filter(item => item.value > 0);
+
+    // 6. Gráfico: Atendimentos por Profissional
+    const profMap: Record<string, number> = {};
+    ag.forEach(a => {
+      // Apenas consideramos agendamentos não cancelados para contar volume por profissional
+      if (a.status !== 'cancelado') {
+        const pName = a.profissional?.nome || 'Sem Profissional';
+        profMap[pName] = (profMap[pName] || 0) + 1;
+      }
+    });
+
+    const chartProfissionais = Object.keys(profMap).map((key, i) => {
+      const colors = ['#f43f5e', '#8b5cf6', '#0ea5e9', '#f59e0b', '#10b981'];
+      return {
+        name: key,
+        value: profMap[key],
+        fill: colors[i % colors.length]
+      };
+    }).sort((a, b) => b.value - a.value);
+
+    return {
+      receitaTotal,
+      ticketMedio,
+      agendamentosHoje,
+      chartOrigem,
+      chartPagamentos,
+      chartProfissionais
+    };
   }
 };

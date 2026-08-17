@@ -2,9 +2,10 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { CalendarDays, Wallet, TrendingUp, Users, Settings } from 'lucide-react';
+import { CalendarDays, Wallet, TrendingUp, Users, Settings, Home } from 'lucide-react';
 
 const navItems = [
+  { href: '/', label: 'Início', icon: Home, exact: true },
   { href: '/agenda', label: 'Agenda', icon: CalendarDays },
   { href: '/caixa', label: 'Caixa', icon: Wallet },
   { href: '/fluxo-de-caixa', label: 'Fluxo', icon: TrendingUp },
@@ -20,7 +21,7 @@ export default function BottomNav() {
       <div className="mx-auto max-w-md md:max-w-4xl lg:max-w-6xl transition-all">
         <div className="flex items-center justify-around py-2">
           {navItems.map((item) => {
-            const isActive = pathname.startsWith(item.href);
+            const isActive = item.exact ? pathname === item.href : pathname.startsWith(item.href);
             const Icon = item.icon;
 
             return (

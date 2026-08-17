@@ -233,6 +233,7 @@ export default function AgendarPublicSlugPage({ params }: { params: Promise<{ sl
         valor_total: totalPrice,
         valor_servico: totalPrice,
         status: 'agendado',
+        origem: 'online',
         observacoes: observacoes.trim() || 'Agendamento feito via Link Público Online',
       };
 

@@ -40,7 +40,7 @@ export default function LoginPage() {
       }
 
       if (data.user) {
-        router.push('/agenda');
+        router.push('/');
       }
     } catch (err: any) {
       setErrorMessage(err?.message || 'Erro inesperado ao realizar login.');

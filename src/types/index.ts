@@ -89,6 +89,7 @@ export interface Agendamento {
   status: AgendamentoStatus;
   valor_total: number; // em centavos
   duracao_total: number; // em minutos
+  origem?: 'online' | 'presencial';
   observacoes?: string;
 }
 
@@ -194,6 +195,7 @@ export interface NovoAgendamentoForm {
   profissional_id: string;
   data: string;
   hora_inicio: string;
+  origem?: 'online' | 'presencial';
   enviar_whatsapp: boolean;
 }
 
