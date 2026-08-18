@@ -139,6 +139,8 @@ export default function LandingPage() {
         }
         .lp-divider { background: linear-gradient(90deg, transparent, rgba(168,85,247,0.5), rgba(236,72,153,0.5), transparent); height: 1px; }
         @media (max-width: 768px) {
+          .lp-desktop-nav { display: none !important; }
+          .lp-hero-section { align-items: flex-start !important; padding-top: 120px !important; }
           .lp-hero-title { font-size: 2.2rem !important; }
           .lp-hero-sub { font-size: 0.95rem !important; }
           .lp-mockup-grid { grid-template-columns: 1fr !important; }
@@ -165,7 +167,7 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <nav style={{ display: 'flex', alignItems: 'center', gap: 32, fontSize: '0.9rem' }}>
+          <nav className="lp-desktop-nav" style={{ display: 'flex', alignItems: 'center', gap: 32, fontSize: '0.9rem' }}>
             <a href="#beneficios" style={{ color: '#cbd5e1', textDecoration: 'none' }}>Benefícios</a>
             <a href="#como-funciona" style={{ color: '#cbd5e1', textDecoration: 'none' }}>Como Funciona</a>
             <a href="#depoimentos" style={{ color: '#cbd5e1', textDecoration: 'none' }}>Depoimentos</a>
@@ -178,7 +180,7 @@ export default function LandingPage() {
       </header>
 
       {/* HERO */}
-      <section style={{ position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'center', overflow: 'hidden', paddingTop: 80 }}>
+      <section className="lp-hero-section" style={{ position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'center', overflow: 'hidden', paddingTop: 80 }}>
         <div style={{ position: 'absolute', inset: 0 }}>
           <Image src="/images/landing_salon_bg.jpg" alt="Salao de beleza" fill style={{ objectFit: 'cover', objectPosition: 'center top' }} priority />
           <div style={{
@@ -210,7 +212,7 @@ export default function LandingPage() {
             borderRadius: 30, padding: '8px 20px', marginBottom: 32, backdropFilter: 'blur(10px)',
           }}>
             <span style={{ fontSize: '0.75rem', color: '#a855f7', fontWeight: 700, letterSpacing: '0.1em' }}>
-              ✨ SISTEMA DE GESTAO PARA SALOES DE BELEZA
+              ✨ SISTEMA DE GESTÃO PARA SALÕES DE BELEZA
             </span>
           </div>
 
@@ -222,9 +224,9 @@ export default function LandingPage() {
           </h1>
 
           <p className="lp-hero-sub" style={{ fontSize: '1.2rem', color: '#cbd5e1', maxWidth: 680, margin: '0 auto 48px', lineHeight: 1.7 }}>
-            O CRM Studio Beauty é o sistema completo que transforma a gestao do seu salao:
-            {' '}<strong style={{ color: '#f472b6' }}>agenda online, WhatsApp automatico, controle financeiro e muito mais</strong>.
-            Tudo em um so lugar. Sem tecnico. Sem treinamento. Voce ja usa hoje.
+            O CRM Studio Beauty é o sistema completo que transforma a gestão do seu salão:
+            {' '}<strong style={{ color: '#f472b6' }}>agenda online, WhatsApp automático, controle financeiro e muito mais</strong>.
+            Tudo em um só lugar. Sem técnico. Sem treinamento. Você já usa hoje.
           </p>
 
           {/* Social proof avatars */}
@@ -240,7 +242,7 @@ export default function LandingPage() {
               ))}
             </div>
             <p style={{ fontSize: '0.92rem', color: '#94a3b8' }}>
-              <strong style={{ color: '#f472b6' }}>+500 saloes</strong> ja automatizaram sua gestao
+              <strong style={{ color: '#f472b6' }}>+500 salões</strong> já automatizaram sua gestão
             </p>
           </div>
 
