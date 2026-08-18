@@ -19,6 +19,7 @@ import { useProfissionais } from '@/hooks/useProfissionais';
 import { useAgenda } from '@/hooks/useAgenda';
 import { supabase } from '@/lib/supabase';
 import { generateUUID as uuidv4 } from '@/lib/uuid';
+import { triggerWhatsAppNotification } from '@/lib/whatsapp';
 
 const TIME_SLOTS = [
   '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
@@ -258,29 +259,21 @@ export default function AgendarPublicSlugPage({ params }: { params: Promise<{ sl
 
       // Trigger automatic WhatsApp notification
       try {
-        const { data: fullAg } = await supabase
-          .from('agendamentos')
-          .select(`
-            *,
-            cliente:clientes(*),
-            profissional:profissionais(*),
-            servico:servicos!agendamentos_servico_id_fkey(*)
-          `)
-          .eq('id', agendamentoId)
-          .single();
-
-        if (fullAg) {
-          fetch('/api/notifications/whatsapp', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              type: 'NOVO_AGENDAMENTO',
-              agendamento: fullAg,
-            }),
-          }).catch((err) => console.warn('Erro ao disparar webhook local:', err));
-        }
+        const profObj = profissionais.find((p) => p.id === finalProfId);
+        await triggerWhatsAppNotification({
+          agendamentoId: agendamentoId,
+          clienteNome: clientNome.trim(),
+          whatsapp: formattedPhone,
+          data: selectedDate,
+          hora: selectedTime,
+          servicos: selectedServices.map((s) => s.nome),
+          profissionalNome: profObj?.nome || 'Equipe',
+          salaoNome: salaoNome || 'Studio Beauty',
+          status: 'agendado',
+          tipoEvento: 'novo_agendamento',
+        });
       } catch (err) {
-        console.warn('Notification trigger warn:', err);
+        console.warn('Erro ao disparar notificação WhatsApp:', err);
       }
 
       setIsSubmitting(false);

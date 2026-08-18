@@ -8,6 +8,7 @@ export interface WhatsAppNotificationPayload {
   hora: string;
   servicos: string[];
   profissionalNome: string;
+  salaoNome?: string;
   status: string;
   tipoEvento: 'novo_agendamento' | 'confirmacao' | 'lembrete';
 }
@@ -78,12 +79,13 @@ export async function triggerWhatsAppNotification(
     if (evolutionApiUrl && evolutionApiKey) {
       const dataFormatada = formatDate(payload.data);
       const servicosFormatados = Array.isArray(payload.servicos) ? payload.servicos.join(', ') : payload.servicos || 'Atendimento';
+      const nomeEstabelecimento = payload.salaoNome || 'Studio Beauty';
 
       let messageText = '';
       if (payload.tipoEvento === 'novo_agendamento') {
         messageText = `Olá *${payload.clienteNome}*! 👋
 
-Seu agendamento no *Studio Beauty* foi realizado com sucesso!
+Seu agendamento em *${nomeEstabelecimento}* foi realizado com sucesso!
 
 📅 *Data:* ${dataFormatada}
 ⏰ *Horário:* ${payload.hora}
@@ -95,9 +97,9 @@ Por favor, responda a esta mensagem com o número da opção desejada:
 1️⃣ - Confirmo presença ✅
 2️⃣ - Desejo cancelar / remarcar ❌`;
       } else if (payload.tipoEvento === 'confirmacao') {
-        messageText = `Olá *${payload.clienteNome}*! ✅ Seu agendamento para o dia ${dataFormatada} às ${payload.hora} foi *CONFIRMADO*! Te esperamos no Studio Beauty!`;
+        messageText = `Olá *${payload.clienteNome}*! ✅ Seu agendamento em *${nomeEstabelecimento}* para o dia ${dataFormatada} às ${payload.hora} foi *CONFIRMADO*! Te esperamos!`;
       } else {
-        messageText = `Olá *${payload.clienteNome}*! Lembramos do seu agendamento no Studio Beauty dia ${dataFormatada} às ${payload.hora}. Te esperamos!`;
+        messageText = `Olá *${payload.clienteNome}*! Lembramos do seu agendamento em *${nomeEstabelecimento}* dia ${dataFormatada} às ${payload.hora}. Te esperamos!`;
       }
 
       const targetUrl = `${evolutionApiUrl.replace(/\/$/, '')}/message/sendText/${instanceName}`;

@@ -45,6 +45,7 @@ serve(async (req) => {
       hora,
       servicos,
       profissionalNome,
+      salaoNome,
       tipoEvento = 'novo_agendamento',
     } = payload;
 
@@ -65,11 +66,12 @@ serve(async (req) => {
     let messageText = '';
     const servicosFormatados = Array.isArray(servicos) ? servicos.join(', ') : servicos || 'Atendimento';
     const dataFormatada = formatDate(data);
+    const nomeEstabelecimento = salaoNome || 'Studio Beauty';
 
     if (tipoEvento === 'novo_agendamento') {
       messageText = `Olá *${clienteNome}*! 👋
 
-Seu agendamento no *Studio Beauty* foi realizado com sucesso!
+Seu agendamento em *${nomeEstabelecimento}* foi realizado com sucesso!
 
 📅 *Data:* ${dataFormatada}
 ⏰ *Horário:* ${hora}
@@ -81,9 +83,9 @@ Por favor, responda a esta mensagem com o número da opção desejada:
 1️⃣ - Confirmo presença ✅
 2️⃣ - Desejo cancelar / remarcar ❌`;
     } else if (tipoEvento === 'confirmacao') {
-      messageText = `Olá *${clienteNome}*! ✅ Seu agendamento para o dia ${dataFormatada} às ${hora} foi *CONFIRMADO*! Te esperamos no Studio Beauty!`;
+      messageText = `Olá *${clienteNome}*! ✅ Seu agendamento em *${nomeEstabelecimento}* para o dia ${dataFormatada} às ${hora} foi *CONFIRMADO*! Te esperamos!`;
     } else {
-      messageText = `Olá *${clienteNome}*! Lembramos do seu agendamento no Studio Beauty dia ${dataFormatada} às ${hora}. Te esperamos!`;
+      messageText = `Olá *${clienteNome}*! Lembramos do seu agendamento em *${nomeEstabelecimento}* dia ${dataFormatada} às ${hora}. Te esperamos!`;
     }
 
     console.log(`[send-whatsapp] Enviando mensagem para ${formattedPhone} via Evolution API (${instanceName})...`);

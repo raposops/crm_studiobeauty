@@ -149,7 +149,7 @@ serve(async (req) => {
     // 4. Busca os agendamentos pendentes vinculados a clientes com este número de telefone
     const { data: agendamentos, error: agendamentoErr } = await supabase
       .from('agendamentos')
-      .select('id, status, data, hora_inicio, cliente:clientes!inner(id, nome, telefone_whatsapp)')
+      .select('id, status, data, hora_inicio, salao_id, cliente:clientes!inner(id, nome, telefone_whatsapp), salao:saloes(id, nome)')
       .in('status', ['agendado', 'confirmado'])
       .order('criado_em', { ascending: false });
 
@@ -176,7 +176,8 @@ serve(async (req) => {
     }
 
     const matchingClient = agendamentoAlvo.cliente;
-    console.log(`[WhatsApp Webhook] Agendamento encontrado para o cliente: ${matchingClient?.nome} (ID: ${agendamentoAlvo.id})`);
+    const salaoNome = agendamentoAlvo.salao?.nome || 'Studio Beauty';
+    console.log(`[WhatsApp Webhook] Agendamento encontrado para o cliente: ${matchingClient?.nome} (Salão: ${salaoNome}, ID: ${agendamentoAlvo.id})`);
 
     // 6. Atualiza o status no PostgreSQL
     const novoStatus = isConfirm ? 'confirmado' : 'cancelado';
@@ -209,13 +210,13 @@ serve(async (req) => {
     if (isConfirm) {
       replyMessageText = `Olá *${clienteNome}*! ✅
 
-Seu agendamento no *Studio Beauty* para dia *${dataFormatted}* às *${horaFormatted}* foi *CONFIRMADO* com sucesso!
+Seu agendamento em *${salaoNome}* para dia *${dataFormatted}* às *${horaFormatted}* foi *CONFIRMADO* com sucesso!
 
 Te esperamos! Caso precise de alguma informação, estamos à disposição. 😊`;
     } else {
       replyMessageText = `Olá *${clienteNome}*! ❌
 
-Seu agendamento para dia *${dataFormatted}* às *${horaFormatted}* foi *CANCELADO* conforme solicitado.
+Seu agendamento em *${salaoNome}* para dia *${dataFormatted}* às *${horaFormatted}* foi *CANCELADO* conforme solicitado.
 
 Caso deseje remarcar um novo horário, acesse nosso link de agendamento online ou fale conosco! 💅✨`;
     }

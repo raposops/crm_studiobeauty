@@ -65,7 +65,7 @@ export default function NewAppointmentModal({
   onClose,
   preselectedDate,
 }: NewAppointmentModalProps) {
-  const { salaoId } = useAuth();
+  const { salaoId, salao } = useAuth();
   const { profissionais } = useProfissionais(salaoId);
   const { servicos } = useServicos(salaoId);
   const { clientes } = useClientes(salaoId);
@@ -272,6 +272,7 @@ export default function NewAppointmentModal({
             hora: selectedTime,
             servicos: selectedServices.map((s) => s.nome),
             profissionalNome: profObj?.nome || 'Profissional',
+            salaoNome: salao?.nome || 'Studio Beauty',
             status: 'agendado',
             tipoEvento: 'novo_agendamento',
           });
