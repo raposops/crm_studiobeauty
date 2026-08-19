@@ -75,6 +75,9 @@ export interface Cliente {
   id: string;
   nome: string;
   whatsapp: string;
+  telefone_whatsapp?: string;
+  data_nascimento?: string;
+  observacoes?: string;
   avatar_url?: string;
 }
 

@@ -14,16 +14,19 @@ import {
   Check,
   ChevronRight,
   User,
+  Pencil,
 } from 'lucide-react';
 import { useClientes } from '@/hooks/useClientes';
 import { useAuth } from '@/contexts/AuthContext';
+import type { Cliente } from '@/types';
 
 export default function ClientesPage() {
   const { salaoId } = useAuth();
-  const { clientes, isLoading, criarCliente, deletarCliente } = useClientes(salaoId);
+  const { clientes, isLoading, criarCliente, atualizarCliente, deletarCliente } = useClientes(salaoId);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
   const [clienteParaDeletar, setClienteParaDeletar] = useState<string | null>(null);
 
   // Form State
@@ -43,6 +46,26 @@ export default function ClientesPage() {
     });
   }, [clientes, searchTerm]);
 
+  const handleOpenNovoCliente = () => {
+    setEditingCliente(null);
+    setNome('');
+    setWhatsapp('');
+    setDataNascimento('');
+    setObservacoes('');
+    setFormError('');
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEditarCliente = (cliente: Cliente) => {
+    setEditingCliente(cliente);
+    setNome(cliente.nome || '');
+    setWhatsapp(cliente.telefone_whatsapp || cliente.whatsapp || '');
+    setDataNascimento(cliente.data_nascimento || '');
+    setObservacoes(cliente.observacoes || '');
+    setFormError('');
+    setIsModalOpen(true);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nome.trim()) {
@@ -56,21 +79,34 @@ export default function ClientesPage() {
 
     setFormError('');
     try {
-      await criarCliente.mutateAsync({
-        nome,
-        telefone_whatsapp: whatsapp,
-        data_nascimento: dataNascimento || undefined,
-        observacoes: observacoes || undefined,
-      });
+      if (editingCliente) {
+        await atualizarCliente.mutateAsync({
+          id: editingCliente.id,
+          payload: {
+            nome: nome.trim(),
+            telefone_whatsapp: whatsapp.trim(),
+            data_nascimento: dataNascimento || undefined,
+            observacoes: observacoes || undefined,
+          },
+        });
+      } else {
+        await criarCliente.mutateAsync({
+          nome: nome.trim(),
+          telefone_whatsapp: whatsapp.trim(),
+          data_nascimento: dataNascimento || undefined,
+          observacoes: observacoes || undefined,
+        });
+      }
 
       // Reset & close
       setNome('');
       setWhatsapp('');
       setDataNascimento('');
       setObservacoes('');
+      setEditingCliente(null);
       setIsModalOpen(false);
     } catch (err: any) {
-      setFormError(err?.message || 'Erro ao cadastrar cliente no Supabase');
+      setFormError(err?.message || 'Erro ao salvar cliente no Supabase');
     }
   };
 
@@ -112,8 +148,8 @@ export default function ClientesPage() {
           </p>
         </div>
         <button
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-accent to-accent-light text-white text-sm font-semibold shadow-md shadow-accent/20 hover:shadow-accent/40 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+          onClick={handleOpenNovoCliente}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-accent to-accent-light text-white text-sm font-semibold shadow-md shadow-accent/20 hover:shadow-accent/40 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer"
         >
           <UserPlus size={18} />
           Novo Cliente
@@ -136,7 +172,7 @@ export default function ClientesPage() {
         {searchTerm && (
           <button
             onClick={() => setSearchTerm('')}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-foreground text-xs"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-foreground text-xs cursor-pointer"
           >
             Limpar
           </button>
@@ -176,14 +212,23 @@ export default function ClientesPage() {
                     </div>
                   </div>
 
-                  {/* Delete Button */}
-                  <button
-                    onClick={() => setClienteParaDeletar(cliente.id)}
-                    className="p-1.5 rounded-lg text-muted hover:text-red-600 hover:bg-red-500/10 transition-colors shrink-0"
-                    title="Excluir cliente"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  {/* Header Actions: Edit & Delete */}
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={() => handleOpenEditarCliente(cliente)}
+                      className="p-1.5 rounded-lg text-muted hover:text-accent hover:bg-accent/10 transition-colors cursor-pointer"
+                      title="Editar cliente"
+                    >
+                      <Pencil size={15} />
+                    </button>
+                    <button
+                      onClick={() => setClienteParaDeletar(cliente.id)}
+                      className="p-1.5 rounded-lg text-muted hover:text-red-600 hover:bg-red-500/10 transition-colors cursor-pointer"
+                      title="Excluir cliente"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Additional Info */}
@@ -205,16 +250,24 @@ export default function ClientesPage() {
                 )}
 
                 {/* Actions */}
-                <div className="pt-2 border-t border-border/40 flex items-center justify-between">
+                <div className="pt-2 border-t border-border/40 flex items-center justify-between gap-2">
                   <a
                     href={waLink}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 text-xs font-bold transition-all border border-emerald-500/20"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20 text-xs font-bold transition-all border border-emerald-500/20 cursor-pointer"
                   >
                     <MessageCircle size={14} />
                     WhatsApp
                   </a>
+
+                  <button
+                    onClick={() => handleOpenEditarCliente(cliente)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-card border border-border text-muted hover:text-foreground hover:bg-card-hover text-xs font-semibold transition-all cursor-pointer"
+                  >
+                    <Pencil size={13} />
+                    Editar
+                  </button>
                 </div>
               </div>
             );
@@ -238,8 +291,8 @@ export default function ClientesPage() {
           </div>
           {!searchTerm && (
             <button
-              onClick={() => setIsModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-accent text-white text-xs font-semibold shadow-md hover:bg-accent/90 transition-all"
+              onClick={handleOpenNovoCliente}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-accent text-white text-xs font-semibold shadow-md hover:bg-accent/90 transition-all cursor-pointer"
             >
               <UserPlus size={16} />
               Cadastrar Primeiro Cliente
@@ -248,27 +301,39 @@ export default function ClientesPage() {
         </div>
       )}
 
-      {/* Modal Cadastro de Cliente */}
+      {/* Modal Cadastro / Edição de Cliente */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in">
           <div className="w-full max-w-md bg-card border border-border rounded-2xl p-6 shadow-2xl space-y-5 animate-scale-up">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-accent/10 flex items-center justify-center text-accent">
-                  <UserPlus size={20} />
+                  {editingCliente ? <Pencil size={18} /> : <UserPlus size={20} />}
                 </div>
-                <h3 className="text-lg font-bold text-foreground">Novo Cliente</h3>
+                <div>
+                  <h3 className="text-lg font-bold text-foreground">
+                    {editingCliente ? 'Editar Cliente' : 'Novo Cliente'}
+                  </h3>
+                  <p className="text-[11px] text-muted">
+                    {editingCliente
+                      ? 'Atualize os dados e informações do cliente'
+                      : 'Cadastre um novo cliente no seu salão'}
+                  </p>
+                </div>
               </div>
               <button
-                onClick={() => setIsModalOpen(false)}
-                className="p-1 rounded-lg text-muted hover:text-foreground hover:bg-card-hover transition-colors"
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setEditingCliente(null);
+                }}
+                className="p-1 rounded-lg text-muted hover:text-foreground hover:bg-card-hover transition-colors cursor-pointer"
               >
                 <X size={20} />
               </button>
             </div>
 
             {formError && (
-              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-700 text-xs font-semibold">
+              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-700 dark:text-rose-400 text-xs font-semibold">
                 {formError}
               </div>
             )}
@@ -297,7 +362,7 @@ export default function ClientesPage() {
                   required
                   value={whatsapp}
                   onChange={(e) => setWhatsapp(e.target.value)}
-                  placeholder="Ex: (11) 99999-8888"
+                  placeholder="Ex: (51) 99999-8888"
                   className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-sm text-foreground focus:outline-none focus:border-accent/60 focus:ring-2 focus:ring-accent/20 transition-all"
                 />
               </div>
@@ -330,22 +395,25 @@ export default function ClientesPage() {
               <div className="pt-2 flex items-center justify-end gap-3">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl text-sm font-semibold text-muted hover:text-foreground hover:bg-card-hover transition-all"
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    setEditingCliente(null);
+                  }}
+                  className="px-4 py-2.5 rounded-xl text-sm font-semibold text-muted hover:text-foreground hover:bg-card-hover transition-all cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  disabled={criarCliente.isPending}
-                  className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-accent text-white text-sm font-bold shadow-md shadow-accent/20 hover:bg-accent-light transition-all disabled:opacity-50"
+                  disabled={criarCliente.isPending || atualizarCliente.isPending}
+                  className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-accent text-white text-sm font-bold shadow-md shadow-accent/20 hover:bg-accent-light transition-all disabled:opacity-50 cursor-pointer"
                 >
-                  {criarCliente.isPending ? (
+                  {criarCliente.isPending || atualizarCliente.isPending ? (
                     <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
                   ) : (
                     <Check size={16} />
                   )}
-                  Salvar Cliente
+                  {editingCliente ? 'Salvar Alterações' : 'Salvar Cliente'}
                 </button>
               </div>
             </form>
@@ -364,14 +432,14 @@ export default function ClientesPage() {
             <div className="flex items-center justify-end gap-3 pt-2">
               <button
                 onClick={() => setClienteParaDeletar(null)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-muted hover:text-foreground hover:bg-card-hover transition-all"
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-muted hover:text-foreground hover:bg-card-hover transition-all cursor-pointer"
               >
                 Cancelar
               </button>
               <button
                 onClick={() => handleDeletar(clienteParaDeletar)}
                 disabled={deletarCliente.isPending}
-                className="px-4 py-2 rounded-xl bg-red-600 text-white text-xs font-bold shadow-md hover:bg-red-700 transition-all disabled:opacity-50"
+                className="px-4 py-2 rounded-xl bg-red-600 text-white text-xs font-bold shadow-md hover:bg-red-700 transition-all disabled:opacity-50 cursor-pointer"
               >
                 {deletarCliente.isPending ? 'Excluindo...' : 'Sim, Excluir'}
               </button>
@@ -382,3 +450,4 @@ export default function ClientesPage() {
     </div>
   );
 }
+
