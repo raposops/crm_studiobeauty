@@ -7,6 +7,7 @@ import { Scissors, Building2, User, Mail, Lock, Phone, Globe, ArrowRight, AlertC
 import { supabase } from '@/lib/supabase';
 import { generateUUID as uuidv4 } from '@/lib/uuid';
 import { PLANOS_SAAS } from '@/types';
+import { sendDirectWhatsAppMessage } from '@/lib/whatsapp';
 
 function generateSlug(text: string): string {
   return text
@@ -171,6 +172,17 @@ export default function CadastrarSalaoPage() {
           categoria: 'Unhas',
         },
       ]);
+
+      // Notificar Super Admin via WhatsApp
+      try {
+        const msgAdmin = `🚀 *Novo Salão SaaS Cadastrado!*\n\n🏢 *Salão:* ${salaoNome.trim()}\n👤 *Responsável:* ${ownerNome.trim()}\n📧 *Email:* ${email.trim()}\n📱 *Telefone:* ${phone.trim()}\n📦 *Plano Escolhido:* ${planoEscolhido}\n\n🎉 Uhuuu! Mais um cliente na plataforma!`;
+        await sendDirectWhatsAppMessage({
+          phone: '5551981108170',
+          message: msgAdmin,
+        });
+      } catch (notifyErr) {
+        console.warn('Erro ao notificar super-admin via WhatsApp:', notifyErr);
+      }
 
       // Success -> Redireciona imediatamente para o checkout do plano antes de acessar a plataforma
       router.push(`/assinar?salaoId=${newSalaoId}&plano=${planoEscolhido}`);
