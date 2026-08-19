@@ -39,7 +39,7 @@ export function useClientes(salaoId: string) {
   }, [salaoId, queryClient, queryKey]);
 
   const criarCliente = useMutation({
-    mutationFn: (payload: { nome: string; telefone_whatsapp: string; observacoes?: string; data_nascimento?: string }) =>
+    mutationFn: (payload: { nome: string; telefone_whatsapp: string; observacoes?: string; data_nascimento?: string; saldo_credito?: number }) =>
       supabaseService.criarCliente(salaoId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
@@ -47,7 +47,7 @@ export function useClientes(salaoId: string) {
   });
 
   const atualizarCliente = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: { nome?: string; telefone_whatsapp?: string; observacoes?: string; data_nascimento?: string } }) =>
+    mutationFn: ({ id, payload }: { id: string; payload: { nome?: string; telefone_whatsapp?: string; observacoes?: string; data_nascimento?: string; saldo_credito?: number } }) =>
       supabaseService.atualizarCliente(id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
