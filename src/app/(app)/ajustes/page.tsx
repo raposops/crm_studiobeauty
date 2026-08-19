@@ -22,6 +22,8 @@ import {
   ExternalLink,
   CreditCard,
   Sparkles,
+  Headphones,
+  Globe,
 } from 'lucide-react';
 import { useProfissionais } from '@/hooks/useProfissionais';
 import { useServicos } from '@/hooks/useServicos';
@@ -352,6 +354,81 @@ export default function AjustesPage() {
                   <CreditCard size={14} />
                   <span>Ver Fatura / PIX</span>
                 </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Suporte & Fidus Connect */}
+          <div className="space-y-2">
+            <h3 className="text-[10px] uppercase tracking-widest text-muted font-semibold px-1">
+              Suporte & Fidus Connect
+            </h3>
+            <div className="rounded-2xl bg-card border border-border p-4 space-y-3 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-accent/15 flex items-center justify-center shrink-0">
+                  <Headphones size={18} className="text-accent-light" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-foreground">
+                    Canais Oficiais & Suporte
+                  </p>
+                  <p className="text-[11px] text-muted">
+                    Atendimento técnico humanizado e redes oficiais da Fidus Connect
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+                {/* WhatsApp Suporte */}
+                <a
+                  href="https://wa.me/5551981108170?text=Ol%C3%A1!%20Preciso%20de%20suporte%20no%20CRM%20Studio%20Beauty."
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between gap-2.5 px-3.5 py-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/25 text-xs font-semibold transition-all hover:scale-[1.01] active:scale-[0.99] group cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <WhatsAppIcon className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 group-hover:scale-110 transition-transform" />
+                    <div className="truncate">
+                      <p className="font-bold text-foreground truncate">Suporte WhatsApp</p>
+                      <p className="text-[10px] text-muted truncate">(51) 98110-8170</p>
+                    </div>
+                  </div>
+                  <ExternalLink size={14} className="text-muted/60 group-hover:text-foreground shrink-0" />
+                </a>
+
+                {/* Instagram Fidus Connect */}
+                <a
+                  href="https://www.instagram.com/fidusconnect/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between gap-2.5 px-3.5 py-3 rounded-xl bg-pink-500/10 hover:bg-pink-500/20 text-pink-700 dark:text-pink-300 border border-pink-500/25 text-xs font-semibold transition-all hover:scale-[1.01] active:scale-[0.99] group cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <InstagramIcon className="w-4 h-4 text-pink-600 dark:text-pink-400 shrink-0 group-hover:scale-110 transition-transform" />
+                    <div className="truncate">
+                      <p className="font-bold text-foreground truncate">Instagram</p>
+                      <p className="text-[10px] text-muted truncate">@fidusconnect</p>
+                    </div>
+                  </div>
+                  <ExternalLink size={14} className="text-muted/60 group-hover:text-foreground shrink-0" />
+                </a>
+
+                {/* Site Fidus Tecnologia */}
+                <a
+                  href="https://www.fidustecnologia.com.br"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between gap-2.5 px-3.5 py-3 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-500/25 text-xs font-semibold transition-all hover:scale-[1.01] active:scale-[0.99] group cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <Globe size={16} className="text-blue-600 dark:text-blue-400 shrink-0 group-hover:scale-110 transition-transform" />
+                    <div className="truncate">
+                      <p className="font-bold text-foreground truncate">Site Oficial</p>
+                      <p className="text-[10px] text-muted truncate">fidustecnologia.com.br</p>
+                    </div>
+                  </div>
+                  <ExternalLink size={14} className="text-muted/60 group-hover:text-foreground shrink-0" />
+                </a>
               </div>
             </div>
           </div>
@@ -722,5 +799,35 @@ export default function AjustesPage() {
         onClose={() => setIsAssinaturaModalOpen(false)}
       />
     </div>
+  );
+}
+
+function WhatsAppIcon({ className = 'w-4 h-4' }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+    >
+      <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.598 2.664-.698c.95.539 1.782.808 2.795.808 3.184 0 5.77-2.586 5.77-5.767.001-3.18-2.585-5.766-5.769-5.766zm3.374 8.163c-.144.405-.837.774-1.17.825-.312.048-.687.087-2.213-.544-1.631-.676-2.753-2.316-2.836-2.428-.083-.111-.664-.883-.664-1.684 0-.802.417-1.196.565-1.358.149-.163.325-.204.434-.204.108 0 .217.001.312.006.1.006.234-.038.366.279.136.326.467 1.137.508 1.22.041.083.069.181.014.29-.055.109-.083.177-.164.272-.082.095-.172.212-.246.284-.082.08-.168.167-.072.332.096.165.428.706.918 1.142.631.562 1.163.736 1.328.818.166.082.263.072.361-.041.099-.114.423-.493.536-.662.113-.169.227-.141.381-.084.154.057.978.461 1.146.545.168.084.281.125.322.195.041.07.041.407-.103.812zM12 2C6.477 2 2 6.477 2 12c0 1.891.526 3.662 1.442 5.177L2 22l4.981-1.306C8.423 21.547 10.154 22 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2z" />
+    </svg>
+  );
+}
+
+function InstagramIcon({ className = 'w-4 h-4' }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
+      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+      <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
+    </svg>
   );
 }
