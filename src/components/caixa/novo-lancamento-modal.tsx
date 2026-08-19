@@ -13,6 +13,7 @@ import {
   Percent,
   Check,
   PlusCircle,
+  Sparkles,
 } from 'lucide-react';
 import type { FormaPagamento, Profissional } from '@/types';
 import { formatCurrency, COMISSAO_PERCENTUAL } from '@/data/mock';
@@ -62,6 +63,12 @@ const FORMAS_PAGAMENTO: {
     label: 'Dinheiro',
     icon: <Banknote size={18} />,
     color: 'from-green-500 to-emerald-500',
+  },
+  {
+    id: 'saldo',
+    label: 'Saldo / Crédito',
+    icon: <Sparkles size={18} />,
+    color: 'from-amber-500 to-yellow-500',
   },
 ];
 

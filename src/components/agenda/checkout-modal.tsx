@@ -15,6 +15,8 @@ import {
   Minus,
   Receipt,
   Percent,
+  Sparkles,
+  Wallet,
 } from 'lucide-react';
 import type { Agendamento, FormaPagamento, ProdutoExtra } from '@/types';
 import {
@@ -79,11 +81,22 @@ export default function CheckoutModal({
     agendamento?.profissional?.comissao_padrao_pct ?? COMISSAO_PERCENTUAL
   );
 
+  // Estados de Crédito e Dinheiro
+  const [usarCredito, setUsarCredito] = useState(false);
+  const [valorDinheiroEntregueInput, setValorDinheiroEntregueInput] = useState('');
+  const [deixarTrocoComoCredito, setDeixarTrocoComoCredito] = useState(true);
+
   useEffect(() => {
     if (agendamento?.profissional) {
       setComissaoPct(
         agendamento.profissional.comissao_padrao_pct ?? COMISSAO_PERCENTUAL
       );
+    }
+    // Auto sugerir usar crédito se a cliente tiver saldo
+    if (agendamento?.cliente?.saldo_credito && agendamento.cliente.saldo_credito > 0) {
+      setUsarCredito(true);
+    } else {
+      setUsarCredito(false);
     }
   }, [agendamento]);
 
@@ -101,10 +114,41 @@ export default function CheckoutModal({
     return total;
   }, [selectedExtras]);
 
-  const valorTotal = valorServicos + valorProdutos;
-  // Commission % applies ONLY to services (excluding extra products)
+  const valorTotalBruto = valorServicos + valorProdutos;
+  
+  // Saldo da cliente disponível
+  const saldoCliente = agendamento?.cliente?.saldo_credito || 0;
+  
+  // Abatimento de crédito
+  const valorCreditoAbatido = usarCredito ? Math.min(saldoCliente, valorTotalBruto) : 0;
+  const valorRestanteAPagar = Math.max(0, valorTotalBruto - valorCreditoAbatido);
+
+  // Se o saldo cobrir 100% da conta, a forma de pagamento é saldo
+  useEffect(() => {
+    if (valorRestanteAPagar === 0 && valorTotalBruto > 0 && usarCredito) {
+      setFormaPagamento('saldo');
+    } else if (formaPagamento === 'saldo' && valorRestanteAPagar > 0) {
+      setFormaPagamento(null);
+    }
+  }, [valorRestanteAPagar, valorTotalBruto, usarCredito, formaPagamento]);
+
+  // Cálculo de troco quando em dinheiro
+  const valorDinheiroEntregueCentavos = useMemo(() => {
+    const parsed = parseFloat(valorDinheiroEntregueInput.replace(',', '.'));
+    if (isNaN(parsed) || parsed < 0) return 0;
+    return Math.round(parsed * 100);
+  }, [valorDinheiroEntregueInput]);
+
+  const trocoCentavos = useMemo(() => {
+    if (formaPagamento !== 'dinheiro') return 0;
+    return Math.max(0, valorDinheiroEntregueCentavos - valorRestanteAPagar);
+  }, [formaPagamento, valorDinheiroEntregueCentavos, valorRestanteAPagar]);
+
+  const creditoGerado = formaPagamento === 'dinheiro' && deixarTrocoComoCredito ? trocoCentavos : 0;
+
+  // Comissão: aplicada sobre o valor bruto dos serviços
   const { comissao } = calcularComissao(valorServicos, comissaoPct);
-  const liquido = valorTotal - comissao;
+  const liquido = valorTotalBruto - comissao;
 
   function toggleExtra(produto: ProdutoExtra) {
     setSelectedExtras((prev) => {
@@ -136,6 +180,9 @@ export default function CheckoutModal({
   function resetForm() {
     setSelectedExtras(new Map());
     setFormaPagamento(null);
+    setUsarCredito(false);
+    setValorDinheiroEntregueInput('');
+    setDeixarTrocoComoCredito(true);
     setIsSubmitting(false);
   }
 
@@ -145,7 +192,10 @@ export default function CheckoutModal({
   }
 
   async function handleSubmit() {
-    if (!agendamento || !formaPagamento) return;
+    if (!agendamento) return;
+    const finalFormaPagamento = (valorRestanteAPagar === 0 && valorCreditoAbatido > 0) ? 'saldo' : formaPagamento;
+    if (!finalFormaPagamento) return;
+
     setIsSubmitting(true);
 
     const produtosExtrasNomes = Array.from(selectedExtras.values()).map(
@@ -156,8 +206,8 @@ export default function CheckoutModal({
     concluirAtendimento.mutate(
       {
         agendamentoId: agendamento.id,
-        formaPagamento,
-        valorTotal,
+        formaPagamento: finalFormaPagamento,
+        valorTotal: valorTotalBruto,
         comissaoProfissional: comissao,
         valorLiquidoSalao: liquido,
         produtosExtrasNomes,
@@ -166,6 +216,11 @@ export default function CheckoutModal({
         clienteNome: agendamento.cliente.nome,
         profissionalId: agendamento.profissional.id,
         servicosNomes: agendamento.servicos.map((s) => s.nome),
+        opcoesCredito: {
+          clienteId: agendamento.cliente.id,
+          creditoUtilizado: valorCreditoAbatido,
+          creditoGerado: creditoGerado,
+        },
       },
       {
         onSuccess: () => {
@@ -262,6 +317,38 @@ export default function CheckoutModal({
             </div>
           </div>
 
+          {/* CRÉDITO DISPONÍVEL DA CLIENTE */}
+          {saldoCliente > 0 && (
+            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/30 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                  <Sparkles size={16} />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-foreground">
+                    Crédito: {formatCurrency(saldoCliente)}
+                  </p>
+                  <p className="text-[11px] text-muted">
+                    {usarCredito
+                      ? `Abatendo ${formatCurrency(valorCreditoAbatido)} nesta comanda`
+                      : 'Cliente possui saldo em haver acumulado'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setUsarCredito(!usarCredito)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  usarCredito
+                    ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20 active:scale-95'
+                    : 'bg-card border border-border text-foreground hover:bg-card-hover'
+                }`}
+              >
+                {usarCredito ? 'Abatido ✓' : 'Usar Crédito'}
+              </button>
+            </div>
+          )}
+
           {/* Upsell - Extra Products */}
           <div className="space-y-2">
             <div className="flex items-center gap-1.5">
@@ -335,40 +422,106 @@ export default function CheckoutModal({
           </div>
 
           {/* Payment Method */}
-          <div className="space-y-2">
-            <span className="text-sm font-semibold text-foreground">
-              Forma de Pagamento
-            </span>
-            <div className="grid grid-cols-2 gap-2">
-              {FORMAS_PAGAMENTO.map((fp) => {
-                const isSelected = formaPagamento === fp.id;
-                return (
-                  <button
-                    key={fp.id}
-                    onClick={() => setFormaPagamento(fp.id)}
-                    className={`flex items-center gap-2.5 px-3 py-3 rounded-xl border transition-all duration-200 ${
-                      isSelected
-                        ? 'bg-accent/10 border-accent/30'
-                        : 'bg-card border-border hover:bg-card-hover'
-                    }`}
-                  >
-                    <div
-                      className={`w-8 h-8 rounded-lg flex items-center justify-center text-white bg-gradient-to-br ${fp.color}`}
-                    >
-                      {fp.icon}
-                    </div>
-                    <span
-                      className={`text-xs font-semibold ${
-                        isSelected ? 'text-accent-light' : 'text-foreground'
+          {valorRestanteAPagar === 0 && valorCreditoAbatido > 0 ? (
+            <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-emerald-500 text-white flex items-center justify-center">
+                <Check size={18} />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-foreground">
+                  Pago Integralmente com Saldo / Crédito
+                </p>
+                <p className="text-xs text-muted">
+                  Nenhum valor adicional precisa ser cobrado.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-foreground">
+                  Forma de Pagamento {valorCreditoAbatido > 0 && `(Restante: ${formatCurrency(valorRestanteAPagar)})`}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {FORMAS_PAGAMENTO.map((fp) => {
+                  const isSelected = formaPagamento === fp.id;
+                  return (
+                    <button
+                      key={fp.id}
+                      onClick={() => setFormaPagamento(fp.id)}
+                      className={`flex items-center gap-2.5 px-3 py-3 rounded-xl border transition-all duration-200 cursor-pointer ${
+                        isSelected
+                          ? 'bg-accent/10 border-accent/30'
+                          : 'bg-card border-border hover:bg-card-hover'
                       }`}
                     >
-                      {fp.label}
-                    </span>
-                  </button>
-                );
-              })}
+                      <div
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center text-white bg-gradient-to-br ${fp.color}`}
+                      >
+                        {fp.icon}
+                      </div>
+                      <span
+                        className={`text-xs font-semibold ${
+                          isSelected ? 'text-accent-light' : 'text-foreground'
+                        }`}
+                      >
+                        {fp.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Se pagando em Dinheiro: Cálculo de Troco & Deixar como Crédito */}
+              {formaPagamento === 'dinheiro' && (
+                <div className="p-3.5 rounded-2xl bg-card border border-border space-y-3 animate-fade-in-up">
+                  <div>
+                    <label className="block text-xs font-semibold text-muted mb-1">
+                      Valor em Dinheiro Entregue (R$)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder={`Ex: ${(valorRestanteAPagar / 100).toFixed(2)}`}
+                      value={valorDinheiroEntregueInput}
+                      onChange={(e) => setValorDinheiroEntregueInput(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-sm text-foreground focus:outline-none focus:border-accent"
+                    />
+                  </div>
+
+                  {trocoCentavos > 0 && (
+                    <div className="p-3 rounded-xl bg-accent/10 border border-accent/25 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-foreground">Troco Calculado:</span>
+                        <span className="text-sm font-bold text-accent">
+                          {formatCurrency(trocoCentavos)}
+                        </span>
+                      </div>
+
+                      <label className="flex items-center gap-2.5 pt-1 border-t border-accent/20 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={deixarTrocoComoCredito}
+                          onChange={(e) => setDeixarTrocoComoCredito(e.target.checked)}
+                          className="w-4 h-4 rounded accent-accent cursor-pointer"
+                        />
+                        <div className="text-xs">
+                          <p className="font-bold text-foreground flex items-center gap-1">
+                            <Sparkles size={12} className="text-accent" />
+                            Deixar troco como Crédito da cliente
+                          </p>
+                          <p className="text-[11px] text-muted">
+                            Adiciona {formatCurrency(trocoCentavos)} ao saldo para o próximo serviço
+                          </p>
+                        </div>
+                      </label>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-          </div>
+          )}
 
           {/* Financial Summary */}
           <div className="rounded-2xl bg-gradient-to-br from-accent/5 to-indigo-500/5 border border-accent/15 p-4 space-y-2">
@@ -386,13 +539,25 @@ export default function CheckoutModal({
                 </span>
               </div>
             )}
+            {valorCreditoAbatido > 0 && (
+              <div className="flex items-center justify-between text-sm text-emerald-400 font-medium">
+                <span>Crédito Abatido</span>
+                <span>- {formatCurrency(valorCreditoAbatido)}</span>
+              </div>
+            )}
             <div className="h-px bg-border/50" />
             <div className="flex items-center justify-between">
-              <span className="text-sm font-bold text-foreground">Total</span>
+              <span className="text-sm font-bold text-foreground">Total {valorCreditoAbatido > 0 ? 'a Pagar' : ''}</span>
               <span className="text-lg font-bold text-foreground">
-                {formatCurrency(valorTotal)}
+                {formatCurrency(valorRestanteAPagar)}
               </span>
             </div>
+            {creditoGerado > 0 && (
+              <div className="flex items-center justify-between text-xs text-accent font-semibold pt-0.5">
+                <span>Novo Crédito Gerado (Troco)</span>
+                <span>+ {formatCurrency(creditoGerado)}</span>
+              </div>
+            )}
             <div className="h-px bg-border/50" />
             <div className="flex items-center justify-between text-xs">
               <div className="flex items-center gap-1.5">

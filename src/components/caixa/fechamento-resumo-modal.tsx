@@ -11,6 +11,7 @@ import {
   Banknote,
   Users,
   Printer,
+  Sparkles,
 } from 'lucide-react';
 import type { LancamentoFinanceiro, FormaPagamento } from '@/types';
 import { formatCurrency } from '@/data/mock';
@@ -27,6 +28,7 @@ const PAYMENT_LABELS: Record<FormaPagamento, string> = {
   credito: 'Cartão de Crédito',
   debito: 'Cartão de Débito',
   dinheiro: 'Dinheiro Espécie',
+  saldo: 'Crédito / Saldo Cliente',
 };
 
 const PAYMENT_ICONS: Record<FormaPagamento, React.ReactNode> = {
@@ -34,6 +36,7 @@ const PAYMENT_ICONS: Record<FormaPagamento, React.ReactNode> = {
   credito: <CreditCard size={16} className="text-indigo-400" />,
   debito: <CreditCard size={16} className="text-purple-400" />,
   dinheiro: <Banknote size={16} className="text-emerald-400" />,
+  saldo: <Sparkles size={16} className="text-amber-400" />,
 };
 
 export default function FechamentoResumoModal({
@@ -64,6 +67,7 @@ export default function FechamentoResumoModal({
       credito: { valor: 0, qtd: 0 },
       debito: { valor: 0, qtd: 0 },
       dinheiro: { valor: 0, qtd: 0 },
+      saldo: { valor: 0, qtd: 0 },
     };
 
     lancamentos.forEach((l) => {

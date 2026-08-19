@@ -257,8 +257,43 @@ export const supabaseService = {
     valorProdutos: number,
     clienteNome: string,
     profissionalId: string,
-    servicosNomes: string[]
+    servicosNomes: string[],
+    opcoesCredito?: {
+      clienteId?: string;
+      creditoUtilizado?: number;
+      creditoGerado?: number;
+    }
   ) {
+    // 1. Processar crédito utilizado da cliente se houver
+    if (opcoesCredito?.creditoUtilizado && opcoesCredito.creditoUtilizado > 0 && opcoesCredito.clienteId) {
+      try {
+        await this.usarCreditoCliente(
+          salaoId,
+          opcoesCredito.clienteId,
+          opcoesCredito.creditoUtilizado,
+          `Uso de crédito no atendimento (${servicosNomes.join(', ') || 'Serviço'})`,
+          agendamentoId
+        );
+      } catch (err: any) {
+        console.warn('Erro ao abater crédito da cliente:', err?.message);
+      }
+    }
+
+    // 2. Processar crédito gerado (ex: troco em dinheiro) se houver
+    if (opcoesCredito?.creditoGerado && opcoesCredito.creditoGerado > 0 && opcoesCredito.clienteId) {
+      try {
+        await this.adicionarCreditoCliente(
+          salaoId,
+          opcoesCredito.clienteId,
+          opcoesCredito.creditoGerado,
+          `Troco/Crédito gerado no atendimento (${servicosNomes.join(', ') || 'Serviço'})`,
+          agendamentoId
+        );
+      } catch (err: any) {
+        console.warn('Erro ao adicionar crédito da cliente:', err?.message);
+      }
+    }
+
     // Try RPC first
     const { data, error } = await supabase.rpc('concluir_atendimento', {
       p_agendamento_id: agendamentoId,
@@ -476,10 +511,11 @@ export const supabaseService = {
     return (data || []).map((c: any) => ({
       ...c,
       whatsapp: c.telefone_whatsapp || c.whatsapp || '',
+      saldo_credito: Number(c.saldo_credito || 0),
     }));
   },
 
-  async criarCliente(salaoId: string, payload: { nome: string; telefone_whatsapp: string; observacoes?: string; data_nascimento?: string }) {
+  async criarCliente(salaoId: string, payload: { nome: string; telefone_whatsapp: string; observacoes?: string; data_nascimento?: string; saldo_credito?: number }) {
     const { data, error } = await supabase
       .from('clientes')
       .insert({
@@ -488,6 +524,7 @@ export const supabaseService = {
         telefone_whatsapp: payload.telefone_whatsapp.trim(),
         observacoes: payload.observacoes?.trim() || null,
         data_nascimento: payload.data_nascimento || null,
+        ...(payload.saldo_credito !== undefined ? { saldo_credito: payload.saldo_credito } : {}),
       })
       .select()
       .single();
@@ -496,10 +533,11 @@ export const supabaseService = {
     return {
       ...data,
       whatsapp: data.telefone_whatsapp || '',
+      saldo_credito: Number(data.saldo_credito || 0),
     };
   },
 
-  async atualizarCliente(id: string, payload: { nome?: string; telefone_whatsapp?: string; observacoes?: string; data_nascimento?: string }) {
+  async atualizarCliente(id: string, payload: { nome?: string; telefone_whatsapp?: string; observacoes?: string; data_nascimento?: string; saldo_credito?: number }) {
     const { data, error } = await supabase
       .from('clientes')
       .update({
@@ -507,6 +545,7 @@ export const supabaseService = {
         ...(payload.telefone_whatsapp ? { telefone_whatsapp: payload.telefone_whatsapp.trim() } : {}),
         ...(payload.observacoes !== undefined ? { observacoes: payload.observacoes?.trim() || null } : {}),
         ...(payload.data_nascimento !== undefined ? { data_nascimento: payload.data_nascimento || null } : {}),
+        ...(payload.saldo_credito !== undefined ? { saldo_credito: payload.saldo_credito } : {}),
       })
       .eq('id', id)
       .select()
@@ -516,7 +555,115 @@ export const supabaseService = {
     return {
       ...data,
       whatsapp: data.telefone_whatsapp || '',
+      saldo_credito: Number(data.saldo_credito || 0),
     };
+  },
+
+  async adicionarCreditoCliente(salaoId: string, clienteId: string, valorCentavos: number, motivo: string, agendamentoId?: string) {
+    if (!clienteId || valorCentavos <= 0) return 0;
+
+    // 1. Obter saldo atual do cliente
+    const { data: cliente, error: getErr } = await supabase
+      .from('clientes')
+      .select('saldo_credito')
+      .eq('id', clienteId)
+      .maybeSingle();
+
+    if (getErr) {
+      console.warn('Erro ao buscar saldo_credito do cliente:', getErr.message);
+    }
+
+    const currentSaldo = Number(cliente?.saldo_credito || 0);
+    const novoSaldo = currentSaldo + valorCentavos;
+
+    // 2. Atualizar saldo_credito em clientes
+    const { error: updErr } = await supabase
+      .from('clientes')
+      .update({ saldo_credito: novoSaldo })
+      .eq('id', clienteId);
+
+    if (updErr) {
+      console.warn('Aviso ao atualizar saldo_credito no Supabase:', updErr.message);
+    }
+
+    // 3. Registrar histórico em movimentacoes_credito
+    try {
+      await supabase.from('movimentacoes_credito').insert({
+        salao_id: salaoId,
+        cliente_id: clienteId,
+        agendamento_id: agendamentoId || null,
+        tipo: 'entrada',
+        valor: valorCentavos,
+        motivo: motivo || 'Crédito inserido',
+      });
+    } catch (e: any) {
+      console.warn('Aviso: movimentacoes_credito log:', e?.message);
+    }
+
+    return novoSaldo;
+  },
+
+  async usarCreditoCliente(salaoId: string, clienteId: string, valorCentavos: number, motivo: string, agendamentoId?: string) {
+    if (!clienteId || valorCentavos <= 0) return 0;
+
+    // 1. Obter saldo atual do cliente
+    const { data: cliente, error: getErr } = await supabase
+      .from('clientes')
+      .select('saldo_credito')
+      .eq('id', clienteId)
+      .maybeSingle();
+
+    if (getErr) {
+      console.warn('Erro ao buscar saldo_credito do cliente:', getErr.message);
+    }
+
+    const currentSaldo = Number(cliente?.saldo_credito || 0);
+    const novoSaldo = Math.max(0, currentSaldo - valorCentavos);
+
+    // 2. Atualizar saldo_credito em clientes
+    const { error: updErr } = await supabase
+      .from('clientes')
+      .update({ saldo_credito: novoSaldo })
+      .eq('id', clienteId);
+
+    if (updErr) {
+      console.warn('Aviso ao atualizar saldo_credito no Supabase:', updErr.message);
+    }
+
+    // 3. Registrar histórico em movimentacoes_credito
+    try {
+      await supabase.from('movimentacoes_credito').insert({
+        salao_id: salaoId,
+        cliente_id: clienteId,
+        agendamento_id: agendamentoId || null,
+        tipo: 'saida',
+        valor: valorCentavos,
+        motivo: motivo || 'Crédito utilizado em atendimento',
+      });
+    } catch (e: any) {
+      console.warn('Aviso: movimentacoes_credito log:', e?.message);
+    }
+
+    return novoSaldo;
+  },
+
+  async fetchMovimentacoesCredito(salaoId: string, clienteId?: string) {
+    let query = supabase
+      .from('movimentacoes_credito')
+      .select('*')
+      .eq('salao_id', salaoId)
+      .order('criado_em', { ascending: false });
+
+    if (clienteId) {
+      query = query.eq('cliente_id', clienteId);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      console.warn('Aviso ao buscar movimentacoes_credito:', error.message);
+      return [];
+    }
+    return data || [];
   },
 
   async deletarCliente(id: string) {

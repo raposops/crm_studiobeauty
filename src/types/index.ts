@@ -79,6 +79,18 @@ export interface Cliente {
   data_nascimento?: string;
   observacoes?: string;
   avatar_url?: string;
+  saldo_credito?: number; // em centavos (ex: 2000 = R$ 20,00)
+}
+
+export interface MovimentacaoCredito {
+  id: string;
+  salao_id: string;
+  cliente_id: string;
+  agendamento_id?: string;
+  tipo: 'entrada' | 'saida';
+  valor: number; // em centavos
+  motivo: string;
+  criado_em: string;
 }
 
 export interface Agendamento {
@@ -206,7 +218,7 @@ export interface NovoAgendamentoForm {
 // Financial Types
 // ========================
 
-export type FormaPagamento = 'pix' | 'credito' | 'debito' | 'dinheiro';
+export type FormaPagamento = 'pix' | 'credito' | 'debito' | 'dinheiro' | 'saldo';
 
 export const FORMA_PAGAMENTO_CONFIG: Record<
   FormaPagamento,
@@ -216,6 +228,7 @@ export const FORMA_PAGAMENTO_CONFIG: Record<
   credito: { label: 'Cartão de Crédito', icon: 'CreditCard' },
   debito: { label: 'Cartão de Débito', icon: 'CreditCard' },
   dinheiro: { label: 'Dinheiro', icon: 'Banknote' },
+  saldo: { label: 'Crédito / Saldo', icon: 'Sparkles' },
 };
 
 export interface ProdutoExtra {
@@ -241,6 +254,8 @@ export interface LancamentoFinanceiro {
   data: string;
   hora: string;
   status_pago_profissional: boolean;
+  credito_utilizado?: number; // centavos
+  credito_gerado?: number; // centavos
 }
 
 export interface ComissaoProfissional {

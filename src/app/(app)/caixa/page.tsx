@@ -44,6 +44,7 @@ const PAYMENT_ICONS: Record<FormaPagamento, React.ReactNode> = {
   credito: <CreditCard size={14} className="text-indigo-400" />,
   debito: <CreditCard size={14} className="text-purple-400" />,
   dinheiro: <Banknote size={14} className="text-emerald-400" />,
+  saldo: <Sparkles size={14} className="text-amber-400" />,
 };
 
 const PAYMENT_LABELS: Record<FormaPagamento, string> = {
@@ -51,6 +52,7 @@ const PAYMENT_LABELS: Record<FormaPagamento, string> = {
   credito: 'Crédito',
   debito: 'Débito',
   dinheiro: 'Dinheiro',
+  saldo: 'Saldo / Crédito',
 };
 
 export default function CaixaPage() {
@@ -129,6 +131,7 @@ export default function CaixaPage() {
       credito: { valor: 0, qtd: 0 },
       debito: { valor: 0, qtd: 0 },
       dinheiro: { valor: 0, qtd: 0 },
+      saldo: { valor: 0, qtd: 0 },
     };
 
     lancamentos.forEach((l) => {

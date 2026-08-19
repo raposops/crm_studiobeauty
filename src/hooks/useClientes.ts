@@ -61,6 +61,22 @@ export function useClientes(salaoId: string) {
     },
   });
 
+  const adicionarCredito = useMutation({
+    mutationFn: ({ clienteId, valorCentavos, motivo, agendamentoId }: { clienteId: string; valorCentavos: number; motivo: string; agendamentoId?: string }) =>
+      supabaseService.adicionarCreditoCliente(salaoId, clienteId, valorCentavos, motivo, agendamentoId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey });
+    },
+  });
+
+  const usarCredito = useMutation({
+    mutationFn: ({ clienteId, valorCentavos, motivo, agendamentoId }: { clienteId: string; valorCentavos: number; motivo: string; agendamentoId?: string }) =>
+      supabaseService.usarCreditoCliente(salaoId, clienteId, valorCentavos, motivo, agendamentoId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey });
+    },
+  });
+
   return {
     clientes: query.data || [],
     isLoading: query.isLoading,
@@ -68,5 +84,7 @@ export function useClientes(salaoId: string) {
     criarCliente,
     atualizarCliente,
     deletarCliente,
+    adicionarCredito,
+    usarCredito,
   };
 }
