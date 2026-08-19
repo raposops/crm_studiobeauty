@@ -439,6 +439,23 @@ export const supabaseService = {
     return data;
   },
 
+  async atualizarServico(id: string, payload: { nome?: string; preco?: number; duracao_minutos?: number; categoria?: string }) {
+    const { data, error } = await supabase
+      .from('servicos')
+      .update({
+        ...(payload.nome ? { nome: payload.nome.trim() } : {}),
+        ...(payload.preco !== undefined ? { preco: payload.preco } : {}),
+        ...(payload.duracao_minutos !== undefined ? { duracao_minutos: payload.duracao_minutos } : {}),
+        ...(payload.categoria ? { categoria: payload.categoria.trim() } : {}),
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
   async deletarServico(id: string) {
     const { error } = await supabase
       .from('servicos')

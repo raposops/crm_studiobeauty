@@ -46,6 +46,14 @@ export function useServicos(salaoId: string) {
     },
   });
 
+  const atualizarServico = useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: { nome?: string; preco?: number; duracao_minutos?: number; categoria?: string } }) =>
+      supabaseService.atualizarServico(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey });
+    },
+  });
+
   const deletarServico = useMutation({
     mutationFn: (id: string) => supabaseService.deletarServico(id),
     onSuccess: () => {
@@ -58,6 +66,7 @@ export function useServicos(salaoId: string) {
     isLoading: query.isLoading,
     isError: query.isError,
     criarServico,
+    atualizarServico,
     deletarServico,
   };
 }

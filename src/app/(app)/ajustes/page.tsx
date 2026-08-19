@@ -30,7 +30,7 @@ import { useServicos } from '@/hooks/useServicos';
 import { formatCurrency } from '@/data/mock';
 import { useAuth } from '@/contexts/AuthContext';
 import AssinaturaModal from '@/components/ajustes/assinatura-modal';
-import type { Profissional } from '@/types';
+import type { Profissional, Servico } from '@/types';
 
 type ViewMode = 'menu' | 'profissionais' | 'servicos';
 
@@ -63,6 +63,7 @@ export default function AjustesPage() {
     servicos,
     isLoading: loadingServs,
     criarServico,
+    atualizarServico,
     deletarServico,
   } = useServicos(salaoId);
 
@@ -76,6 +77,7 @@ export default function AjustesPage() {
   const [isAssinaturaModalOpen, setIsAssinaturaModalOpen] = useState(false);
 
   const [isServModalOpen, setIsServModalOpen] = useState(false);
+  const [editingServ, setEditingServ] = useState<Servico | null>(null);
   const [servNome, setServNome] = useState('');
   const [servPreco, setServPreco] = useState('');
   const [servDuracao, setServDuracao] = useState('30');
@@ -149,7 +151,26 @@ export default function AjustesPage() {
     }
   }
 
-  function handleAddServico(e: React.FormEvent) {
+  // Handlers for Serviço Modal
+  function handleOpenNewServModal() {
+    setEditingServ(null);
+    setServNome('');
+    setServPreco('');
+    setServDuracao('30');
+    setServCategoria('Cabelo');
+    setIsServModalOpen(true);
+  }
+
+  function handleEditServico(serv: Servico) {
+    setEditingServ(serv);
+    setServNome(serv.nome);
+    setServPreco((serv.preco / 100).toFixed(2));
+    setServDuracao(String(serv.duracao_minutos));
+    setServCategoria(serv.categoria || 'Cabelo');
+    setIsServModalOpen(true);
+  }
+
+  function handleSubmitServico(e: React.FormEvent) {
     e.preventDefault();
     if (!servNome.trim() || !servPreco) return;
 
@@ -160,26 +181,53 @@ export default function AjustesPage() {
     }
     const precoCentavos = Math.round(priceFloat * 100);
 
-    criarServico.mutate(
-      {
-        nome: servNome,
-        preco: precoCentavos,
-        duracao_minutos: parseInt(servDuracao) || 30,
-        categoria: servCategoria,
-      },
-      {
-        onSuccess: () => {
-          setServNome('');
-          setServPreco('');
-          setServDuracao('30');
-          setIsServModalOpen(false);
+    if (editingServ) {
+      atualizarServico.mutate(
+        {
+          id: editingServ.id,
+          payload: {
+            nome: servNome.trim(),
+            preco: precoCentavos,
+            duracao_minutos: parseInt(servDuracao) || 30,
+            categoria: servCategoria,
+          },
         },
-        onError: (err: any) => {
-          console.error('Erro ao criar serviço:', err);
-          alert(`Erro ao salvar serviço: ${err?.message || 'Verifique sua conexão com o banco.'}`);
+        {
+          onSuccess: () => {
+            setEditingServ(null);
+            setServNome('');
+            setServPreco('');
+            setServDuracao('30');
+            setIsServModalOpen(false);
+          },
+          onError: (err: any) => {
+            console.error('Erro ao atualizar serviço:', err);
+            alert(`Erro ao atualizar serviço: ${err?.message || 'Verifique sua conexão com o banco.'}`);
+          },
+        }
+      );
+    } else {
+      criarServico.mutate(
+        {
+          nome: servNome.trim(),
+          preco: precoCentavos,
+          duracao_minutos: parseInt(servDuracao) || 30,
+          categoria: servCategoria,
         },
-      }
-    );
+        {
+          onSuccess: () => {
+            setServNome('');
+            setServPreco('');
+            setServDuracao('30');
+            setIsServModalOpen(false);
+          },
+          onError: (err: any) => {
+            console.error('Erro ao criar serviço:', err);
+            alert(`Erro ao salvar serviço: ${err?.message || 'Verifique sua conexão com o banco.'}`);
+          },
+        }
+      );
+    }
   }
 
   return (
@@ -532,8 +580,8 @@ export default function AjustesPage() {
       {view === 'servicos' && (
         <div className="space-y-4">
           <button
-            onClick={() => setIsServModalOpen(true)}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-accent text-white text-sm font-bold shadow-lg shadow-accent/20 hover:bg-accent/90 transition-all active:scale-95"
+            onClick={handleOpenNewServModal}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-accent text-white text-sm font-bold shadow-lg shadow-accent/20 hover:bg-accent/90 transition-all active:scale-95 cursor-pointer"
           >
             <Plus size={18} />
             Novo Serviço
@@ -577,12 +625,23 @@ export default function AjustesPage() {
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => deletarServico.mutate(serv.id)}
-                    className="w-8 h-8 rounded-xl bg-danger/10 text-danger flex items-center justify-center hover:bg-danger/20 active:scale-90 transition-all"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleEditServico(serv)}
+                      className="w-8 h-8 rounded-xl bg-card border border-border text-foreground hover:bg-card-hover flex items-center justify-center active:scale-90 transition-all cursor-pointer"
+                      title="Editar serviço"
+                    >
+                      <Pencil size={14} />
+                    </button>
+
+                    <button
+                      onClick={() => deletarServico.mutate(serv.id)}
+                      className="w-8 h-8 rounded-xl bg-danger/10 text-danger flex items-center justify-center hover:bg-danger/20 active:scale-90 transition-all cursor-pointer"
+                      title="Excluir serviço"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -600,7 +659,7 @@ export default function AjustesPage() {
               </h3>
               <button
                 onClick={() => setIsProfModalOpen(false)}
-                className="w-7 h-7 rounded-lg bg-card border border-border flex items-center justify-center"
+                className="w-7 h-7 rounded-lg bg-card border border-border flex items-center justify-center cursor-pointer"
               >
                 <X size={16} className="text-muted" />
               </button>
@@ -673,14 +732,14 @@ export default function AjustesPage() {
                 <button
                   type="button"
                   onClick={() => setIsProfModalOpen(false)}
-                  className="flex-1 py-2.5 rounded-xl border border-border text-xs font-semibold text-muted hover:bg-card"
+                  className="flex-1 py-2.5 rounded-xl border border-border text-xs font-semibold text-muted hover:bg-card cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={criarProfissional.isPending || atualizarProfissional.isPending}
-                  className="flex-1 py-2.5 rounded-xl bg-accent text-xs font-bold text-white hover:bg-accent/90 disabled:opacity-50"
+                  className="flex-1 py-2.5 rounded-xl bg-accent text-xs font-bold text-white hover:bg-accent/90 disabled:opacity-50 cursor-pointer"
                 >
                   {editingProf
                     ? (atualizarProfissional.isPending ? 'Atualizando...' : 'Atualizar')
@@ -692,23 +751,26 @@ export default function AjustesPage() {
         </div>
       )}
 
-      {/* MODAL: NOVO SERVIÇO */}
+      {/* MODAL: SERVIÇO (CRIAR / EDITAR) */}
       {isServModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="w-full max-w-sm bg-background border border-border rounded-3xl p-5 space-y-4 animate-fade-in-up">
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold text-foreground">
-                Cadastrar Serviço
+                {editingServ ? 'Editar Serviço' : 'Cadastrar Serviço'}
               </h3>
               <button
-                onClick={() => setIsServModalOpen(false)}
-                className="w-7 h-7 rounded-lg bg-card border border-border flex items-center justify-center"
+                onClick={() => {
+                  setIsServModalOpen(false);
+                  setEditingServ(null);
+                }}
+                className="w-7 h-7 rounded-lg bg-card border border-border flex items-center justify-center cursor-pointer"
               >
                 <X size={16} className="text-muted" />
               </button>
             </div>
 
-            <form onSubmit={handleAddServico} className="space-y-3">
+            <form onSubmit={handleSubmitServico} className="space-y-3">
               <div>
                 <label className="block text-xs font-semibold text-muted mb-1">
                   Nome do Serviço
@@ -768,6 +830,8 @@ export default function AjustesPage() {
                   <option value="Barba">Barba</option>
                   <option value="Combo">Combo</option>
                   <option value="Tratamento">Tratamento</option>
+                  <option value="Unhas">Unhas</option>
+                  <option value="Estética">Estética</option>
                   <option value="Outros">Outros</option>
                 </select>
               </div>
@@ -775,17 +839,22 @@ export default function AjustesPage() {
               <div className="pt-2 flex gap-2">
                 <button
                   type="button"
-                  onClick={() => setIsServModalOpen(false)}
-                  className="flex-1 py-2.5 rounded-xl border border-border text-xs font-semibold text-muted hover:bg-card"
+                  onClick={() => {
+                    setIsServModalOpen(false);
+                    setEditingServ(null);
+                  }}
+                  className="flex-1 py-2.5 rounded-xl border border-border text-xs font-semibold text-muted hover:bg-card cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  disabled={criarServico.isPending}
-                  className="flex-1 py-2.5 rounded-xl bg-accent text-xs font-bold text-white hover:bg-accent/90 disabled:opacity-50"
+                  disabled={criarServico.isPending || atualizarServico.isPending}
+                  className="flex-1 py-2.5 rounded-xl bg-accent text-xs font-bold text-white hover:bg-accent/90 disabled:opacity-50 cursor-pointer"
                 >
-                  {criarServico.isPending ? 'Salvando...' : 'Salvar'}
+                  {editingServ
+                    ? (atualizarServico.isPending ? 'Atualizando...' : 'Atualizar')
+                    : (criarServico.isPending ? 'Salvando...' : 'Salvar')}
                 </button>
               </div>
             </form>
