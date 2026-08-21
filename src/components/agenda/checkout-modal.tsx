@@ -86,6 +86,9 @@ export default function CheckoutModal({
   const [valorDinheiroEntregueInput, setValorDinheiroEntregueInput] = useState('');
   const [deixarTrocoComoCredito, setDeixarTrocoComoCredito] = useState(true);
 
+  // Estado de Desconto
+  const [valorDescontoInput, setValorDescontoInput] = useState('');
+
   useEffect(() => {
     if (agendamento?.profissional) {
       setComissaoPct(
@@ -114,7 +117,13 @@ export default function CheckoutModal({
     return total;
   }, [selectedExtras]);
 
-  const valorTotalBruto = valorServicos + valorProdutos;
+  const valorDescontoCentavos = useMemo(() => {
+    const parsed = parseFloat(valorDescontoInput.replace(',', '.'));
+    if (isNaN(parsed) || parsed < 0) return 0;
+    return Math.round(parsed * 100);
+  }, [valorDescontoInput]);
+
+  const valorTotalBruto = Math.max(0, valorServicos + valorProdutos - valorDescontoCentavos);
   
   // Saldo da cliente disponível
   const saldoCliente = agendamento?.cliente?.saldo_credito || 0;
@@ -183,6 +192,7 @@ export default function CheckoutModal({
     setUsarCredito(false);
     setValorDinheiroEntregueInput('');
     setDeixarTrocoComoCredito(true);
+    setValorDescontoInput('');
     setIsSubmitting(false);
   }
 
@@ -545,6 +555,22 @@ export default function CheckoutModal({
                 <span>- {formatCurrency(valorCreditoAbatido)}</span>
               </div>
             )}
+            
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted">Desconto (R$)</span>
+              <div className="flex items-center bg-background border border-border px-2 py-0.5 rounded-md focus-within:border-accent w-24">
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={valorDescontoInput}
+                  onChange={(e) => setValorDescontoInput(e.target.value)}
+                  className="w-full text-right text-sm font-medium bg-transparent text-foreground focus:outline-none placeholder:text-muted/50"
+                  placeholder="0,00"
+                />
+              </div>
+            </div>
+
             <div className="h-px bg-border/50" />
             <div className="flex items-center justify-between">
               <span className="text-sm font-bold text-foreground">Total {valorCreditoAbatido > 0 ? 'a Pagar' : ''}</span>
