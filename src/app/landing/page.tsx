@@ -171,10 +171,11 @@ export default function LandingPage() {
             <a href="#beneficios" style={{ color: '#cbd5e1', textDecoration: 'none' }}>Benefícios</a>
             <a href="#como-funciona" style={{ color: '#cbd5e1', textDecoration: 'none' }}>Como Funciona</a>
             <a href="#depoimentos" style={{ color: '#cbd5e1', textDecoration: 'none' }}>Depoimentos</a>
+            <a href="#planos" style={{ color: '#f472b6', fontWeight: 600, textDecoration: 'none' }}>Planos & Preços</a>
           </nav>
 
-          <a href={CTA_URL} className="lp-btn" style={{ padding: '10px 24px', borderRadius: 30, fontSize: '0.85rem' }}>
-            Começar Agora 🚀
+          <a href="#planos" className="lp-btn" style={{ padding: '10px 24px', borderRadius: 30, fontSize: '0.85rem' }}>
+            Ver Planos 🚀
           </a>
         </div>
       </header>
@@ -536,62 +537,243 @@ export default function LandingPage() {
       </section>
 
       {/* PRICING CTA */}
-      <section style={{ padding: '100px 24px', background: 'linear-gradient(135deg, rgba(168,85,247,0.12), rgba(236,72,153,0.08))', borderTop: '1px solid rgba(168,85,247,0.2)' }}>
-        <div style={{ maxWidth: 700, margin: '0 auto', textAlign: 'center' }}>
-          <div style={{ display: 'inline-block', padding: '10px 28px', borderRadius: 30, background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.3)', marginBottom: 32 }}>
-            <span className="lp-gradient-gold" style={{ fontWeight: 700, fontSize: '0.9rem' }}>
-              OFERTA ESPECIAL DE LANCAMENTO
-            </span>
-          </div>
+      <section id="planos" style={{ padding: '100px 24px', background: 'linear-gradient(180deg, #0a0510 0%, #0f0724 50%, #0a0510 100%)', borderTop: '1px solid rgba(168,85,247,0.2)' }}>
+        <div style={{ maxWidth: 1160, margin: '0 auto' }}>
+          {/* Header */}
+          <div style={{ textAlign: 'center', marginBottom: 56 }}>
+            <div style={{ display: 'inline-block', padding: '8px 24px', borderRadius: 30, background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.3)', marginBottom: 20 }}>
+              <span className="lp-gradient-gold" style={{ fontWeight: 700, fontSize: '0.85rem', letterSpacing: '0.08em' }}>
+                💎 PLANOS & PREÇOS TRANSPARENTES
+              </span>
+            </div>
 
-          <h2 style={{ fontSize: '2.8rem', fontWeight: 900, lineHeight: 1.1, marginBottom: 16, color: 'white' }}>
-            Tudo isso por apenas
-          </h2>
-          <div style={{ marginBottom: 32 }}>
-            <span style={{ fontSize: '4rem', fontWeight: 900, background: 'linear-gradient(135deg, #f472b6, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-              R$ 69,90
-            </span>
-            <span style={{ color: '#94a3b8', fontSize: '1.1rem' }}>/mes</span>
-            <p style={{ color: '#64748b', fontSize: '0.85rem', marginTop: 8 }}>
-              Plano PRO Completo — sem taxa de implantacao, sem surpresas
+            <h2 style={{ fontSize: '2.8rem', fontWeight: 900, lineHeight: 1.15, marginBottom: 16, color: 'white' }}>
+              Escolha o plano ideal para o <span className="lp-gradient-text">seu salão</span>
+            </h2>
+            <p style={{ color: '#94a3b8', fontSize: '1.05rem', maxWidth: 620, margin: '0 auto' }}>
+              Comece hoje com liberação imediata. Sem taxa de implantação, sem letras miúdas e sem fidelidade.
             </p>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center', marginBottom: 40 }}>
-            {[
-              'Agenda Online Ilimitada',
-              'WhatsApp Automatico',
-              'Relatorios Financeiros Completos',
-              'Gestao de Profissionais e Comissoes',
-              'Fluxo de Caixa Avancado',
-              'Suporte por WhatsApp incluso',
-              'Atualizacoes gratuitas para sempre',
-            ].map((item, i) => (
-              <p key={i} style={{ color: '#cbd5e1', fontSize: '1rem' }}>✅ {item}</p>
-            ))}
+          {/* Cards Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 32, alignItems: 'stretch', marginBottom: 56 }}>
+            
+            {/* PLANO BÁSICO */}
+            <div className="lp-plan-card" style={{
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(244,114,182,0.2)',
+              borderRadius: 28,
+              padding: '40px 32px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              position: 'relative',
+              backdropFilter: 'blur(12px)',
+            }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.1em', color: '#cbd5e1', background: 'rgba(255,255,255,0.08)', padding: '4px 12px', borderRadius: 20 }}>
+                    ESSENCIAL
+                  </span>
+                </div>
+
+                <h3 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'white', marginBottom: 8 }}>
+                  Plano Básico
+                </h3>
+                <p style={{ color: '#94a3b8', fontSize: '0.9rem', lineHeight: 1.5, marginBottom: 24 }}>
+                  Ideal para autônomos e pequenos salões que desejam automatizar agendamentos e atendimento no WhatsApp.
+                </p>
+
+                <div style={{ marginBottom: 28, paddingBottom: 24, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                    <span style={{ fontSize: '1.2rem', color: '#94a3b8', fontWeight: 600 }}>R$</span>
+                    <span style={{ fontSize: '3.2rem', fontWeight: 900, color: 'white', lineHeight: 1 }}>49,99</span>
+                    <span style={{ color: '#94a3b8', fontSize: '1rem', fontWeight: 500 }}>/mês</span>
+                  </div>
+                  <p style={{ color: '#64748b', fontSize: '0.8rem', marginTop: 8 }}>
+                    Sem fidelidade • Cancele quando quiser
+                  </p>
+                </div>
+
+                {/* Features List */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 32 }}>
+                  <p style={{ fontSize: '0.85rem', fontWeight: 700, color: '#f472b6', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    O que você recebe:
+                  </p>
+                  {[
+                    { title: 'Agenda Online Inteligente 24h', desc: 'Link personalizado para clientes agendarem sozinhos' },
+                    { title: 'WhatsApp Automático', desc: 'Confirmações e lembretes para zerar faltas' },
+                    { title: 'Gestão de Profissionais', desc: 'Comissões customizadas calculadas automaticamente' },
+                    { title: 'Cadastro de Clientes', desc: 'Histórico de atendimentos e preferências' },
+                    { title: 'Relatórios de Faturamento', desc: 'Acompanhe vendas e receitas do salão' },
+                    { title: 'Multiplataforma', desc: 'Acesse pelo celular, tablet ou computador' },
+                    { title: 'Suporte por WhatsApp', desc: 'Atendimento humanizado para tirar dúvidas' },
+                  ].map((feat, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                      <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'rgba(168,85,247,0.25)', color: '#c084fc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 'bold', flexShrink: 0, marginTop: 2 }}>
+                        ✓
+                      </div>
+                      <div>
+                        <p style={{ fontSize: '0.95rem', fontWeight: 600, color: '#f1f5f9' }}>{feat.title}</p>
+                        <p style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{feat.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <a
+                  href="/cadastrar?plano=basico"
+                  className="lp-btn-outline"
+                  style={{ width: '100%', padding: '16px 24px', borderRadius: 50, fontSize: '1rem', justifyContent: 'center', textAlign: 'center' }}
+                >
+                  Começar no Plano Básico
+                </a>
+              </div>
+            </div>
+
+            {/* PLANO PRO COMPLETO */}
+            <div className="lp-plan-card" style={{
+              background: 'linear-gradient(180deg, rgba(168,85,247,0.14) 0%, rgba(236,72,153,0.1) 100%), rgba(20,10,35,0.85)',
+              border: '2px solid rgba(236,72,153,0.6)',
+              borderRadius: 28,
+              padding: '40px 32px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              position: 'relative',
+              boxShadow: '0 25px 60px rgba(168,85,247,0.3)',
+              backdropFilter: 'blur(16px)',
+            }}>
+              {/* Badge Top */}
+              <div style={{
+                position: 'absolute',
+                top: -14,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                background: 'linear-gradient(135deg, #ec4899, #8b5cf6)',
+                color: 'white',
+                fontSize: '0.75rem',
+                fontWeight: 800,
+                letterSpacing: '0.08em',
+                padding: '6px 20px',
+                borderRadius: 20,
+                boxShadow: '0 8px 20px rgba(236,72,153,0.5)',
+                whiteSpace: 'nowrap',
+              }}>
+                🔥 MAIS ESCOLHIDO • COMPLETO
+              </div>
+
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, marginTop: 4 }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.1em', color: '#f472b6', background: 'rgba(236,72,153,0.15)', padding: '4px 12px', borderRadius: 20 }}>
+                    GESTÃO TOTAL
+                  </span>
+                </div>
+
+                <h3 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'white', marginBottom: 8 }}>
+                  Plano PRO <span className="lp-gradient-text">Completo</span>
+                </h3>
+                <p style={{ color: '#cbd5e1', fontSize: '0.9rem', lineHeight: 1.5, marginBottom: 24 }}>
+                  Tudo o que seu salão precisa: automação, fluxo de caixa financeiro completo e gráficos executivos.
+                </p>
+
+                <div style={{ marginBottom: 28, paddingBottom: 24, borderBottom: '1px solid rgba(255,255,255,0.12)' }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                    <span style={{ fontSize: '1.2rem', color: '#f472b6', fontWeight: 600 }}>R$</span>
+                    <span style={{ fontSize: '3.4rem', fontWeight: 900, background: 'linear-gradient(135deg, #f472b6, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', lineHeight: 1 }}>
+                      69,90
+                    </span>
+                    <span style={{ color: '#cbd5e1', fontSize: '1rem', fontWeight: 500 }}>/mês</span>
+                  </div>
+                  <p style={{ color: '#a855f7', fontSize: '0.8rem', marginTop: 8, fontWeight: 600 }}>
+                    ✨ Melhor custo-benefício • Acesso total e imediato
+                  </p>
+                </div>
+
+                {/* Features List */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 32 }}>
+                  <p style={{ fontSize: '0.85rem', fontWeight: 700, color: '#f472b6', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Tudo do Básico + Recursos Exclusivos:
+                  </p>
+                  {[
+                    { title: 'Tudo do Plano Básico incluso', desc: 'Agenda, WhatsApp, Profissionais e Clientes', highlight: true },
+                    { title: 'Fluxo de Caixa Completo', desc: 'Controle de despesas fixas (aluguel, contas, insumos)', highlight: true },
+                    { title: 'Lançamentos Avulsos Diários', desc: 'Registro manual de entradas e saídas extras no caixa', highlight: true },
+                    { title: 'Relatórios Financeiros Avançados', desc: 'Métricas de lucratividade, ticket médio e gráficos', highlight: true },
+                    { title: 'Controle de Formas de Pagamento', desc: 'PIX, Cartão, Dinheiro e Saldo/Crédito de clientes', highlight: false },
+                    { title: 'Suporte Prioritário VIP', desc: 'Atendimento prioritário via WhatsApp', highlight: true },
+                    { title: 'Atualizações Gratuitas Contínuas', desc: 'Novas funcionalidades liberadas em primeira mão', highlight: false },
+                  ].map((feat, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                      <div style={{
+                        width: 20,
+                        height: 20,
+                        borderRadius: '50%',
+                        background: feat.highlight ? 'linear-gradient(135deg, #ec4899, #a855f7)' : 'rgba(168,85,247,0.3)',
+                        color: 'white',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '0.75rem',
+                        fontWeight: 'bold',
+                        flexShrink: 0,
+                        marginTop: 2,
+                        boxShadow: feat.highlight ? '0 0 10px rgba(236,72,153,0.5)' : 'none',
+                      }}>
+                        ✓
+                      </div>
+                      <div>
+                        <p style={{ fontSize: '0.95rem', fontWeight: feat.highlight ? 700 : 600, color: feat.highlight ? '#ffffff' : '#f1f5f9' }}>
+                          {feat.title}
+                        </p>
+                        <p style={{ fontSize: '0.8rem', color: feat.highlight ? '#cbd5e1' : '#94a3b8' }}>{feat.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <a
+                  href="/cadastrar?plano=pro"
+                  className="lp-btn lp-cta-big"
+                  style={{
+                    width: '100%',
+                    padding: '18px 24px',
+                    borderRadius: 50,
+                    fontSize: '1.05rem',
+                    boxShadow: '0 15px 35px rgba(236,72,153,0.5)',
+                    display: 'block',
+                    textAlign: 'center',
+                  }}
+                >
+                  🚀 Quero o Plano PRO Completo
+                </a>
+              </div>
+            </div>
+
           </div>
 
-          <a href={CTA_URL} className="lp-btn lp-cta-big" style={{ padding: '24px 72px', borderRadius: 50, fontSize: '1.25rem', boxShadow: '0 25px 60px rgba(236,72,153,0.5)', letterSpacing: '0.02em' }}>
-            QUERO MEU ACESSO AGORA!
-          </a>
-
-          <p style={{ color: '#475569', fontSize: '0.85rem', marginTop: 20 }}>
-            Clique, pague e já comece a usar hoje mesmo.<br />
-            Sem burocracia. Sem esperar técnico. Só você e o sucesso do seu salão.
-          </p>
-
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 32, marginTop: 40, flexWrap: 'wrap' }}>
-            {[
-              { icon: '🔒', text: 'Pagamento Seguro' },
-              { icon: '⚡', text: 'Acesso Imediato' },
-              { icon: '🎧', text: 'Suporte Incluso' },
-              { icon: '❌', text: 'Sem Fidelidade' },
-            ].map((g, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: '1.2rem' }}>{g.icon}</span>
-                <span style={{ color: '#64748b', fontSize: '0.85rem' }}>{g.text}</span>
-              </div>
-            ))}
+          {/* Trust badges footer */}
+          <div style={{ textAlign: 'center', borderTop: '1px solid rgba(168,85,247,0.15)', paddingTop: 40 }}>
+            <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: 24 }}>
+              🔒 Pagamento 100% seguro processado pelo Asaas • Ativação automática e imediata
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 32, flexWrap: 'wrap' }}>
+              {[
+                { icon: '🔒', text: 'Pagamento Seguro via PIX / Cartão' },
+                { icon: '⚡', text: 'Acesso Imediato sem Espera' },
+                { icon: '🎧', text: 'Suporte Humanizado por WhatsApp' },
+                { icon: '❌', text: 'Sem Fidelidade — Cancele Quando Quiser' },
+              ].map((g, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.03)', padding: '8px 16px', borderRadius: 20, border: '1px solid rgba(255,255,255,0.06)' }}>
+                  <span style={{ fontSize: '1.1rem' }}>{g.icon}</span>
+                  <span style={{ color: '#cbd5e1', fontSize: '0.85rem', fontWeight: 500 }}>{g.text}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>

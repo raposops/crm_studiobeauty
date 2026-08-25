@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Scissors, Building2, User, Mail, Lock, Phone, Globe, ArrowRight, AlertCircle, Loader2, CheckCircle2, CreditCard, Check } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
@@ -27,8 +27,10 @@ function formatPhoneInput(value: string) {
   return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
 }
 
-export default function CadastrarSalaoPage() {
+function CadastrarSalaoContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryPlano = searchParams.get('plano');
 
   // Form States
   const [salaoNome, setSalaoNome] = useState('');
@@ -40,7 +42,15 @@ export default function CadastrarSalaoPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [planoEscolhido, setPlanoEscolhido] = useState<'basico' | 'pro'>('pro');
+  const [planoEscolhido, setPlanoEscolhido] = useState<'basico' | 'pro'>(
+    queryPlano === 'basico' ? 'basico' : 'pro'
+  );
+
+  useEffect(() => {
+    if (queryPlano === 'basico' || queryPlano === 'pro') {
+      setPlanoEscolhido(queryPlano);
+    }
+  }, [queryPlano]);
 
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -453,5 +463,19 @@ export default function CadastrarSalaoPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function CadastrarSalaoPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-dvh flex items-center justify-center bg-slate-950 text-white">
+          <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
+        </div>
+      }
+    >
+      <CadastrarSalaoContent />
+    </Suspense>
   );
 }
