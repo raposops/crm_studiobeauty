@@ -24,15 +24,17 @@ import {
   Sparkles,
   Headphones,
   Globe,
+  ShoppingBag,
 } from 'lucide-react';
 import { useProfissionais } from '@/hooks/useProfissionais';
 import { useServicos } from '@/hooks/useServicos';
+import { useProdutos } from '@/hooks/useProdutos';
 import { formatCurrency } from '@/data/mock';
 import { useAuth } from '@/contexts/AuthContext';
 import AssinaturaModal from '@/components/ajustes/assinatura-modal';
-import type { Profissional, Servico } from '@/types';
+import type { Profissional, Servico, ProdutoExtra } from '@/types';
 
-type ViewMode = 'menu' | 'profissionais' | 'servicos';
+type ViewMode = 'menu' | 'profissionais' | 'servicos' | 'produtos';
 
 const COLOR_OPTIONS = [
   { label: 'Roxo / Indigo', class: 'from-purple-500 to-indigo-500' },
@@ -67,6 +69,14 @@ export default function AjustesPage() {
     deletarServico,
   } = useServicos(salaoId);
 
+  const {
+    produtos,
+    isLoading: loadingProds,
+    criarProduto,
+    atualizarProduto,
+    deletarProduto,
+  } = useProdutos(salaoId);
+
   // Modals state
   const [isProfModalOpen, setIsProfModalOpen] = useState(false);
   const [editingProf, setEditingProf] = useState<Profissional | null>(null);
@@ -82,6 +92,13 @@ export default function AjustesPage() {
   const [servPreco, setServPreco] = useState('');
   const [servDuracao, setServDuracao] = useState('30');
   const [servCategoria, setServCategoria] = useState('Cabelo');
+
+  // Modal Produto Extra state
+  const [isProdModalOpen, setIsProdModalOpen] = useState(false);
+  const [editingProd, setEditingProd] = useState<ProdutoExtra | null>(null);
+  const [prodNome, setProdNome] = useState('');
+  const [prodPreco, setProdPreco] = useState('');
+  const [prodCategoria, setProdCategoria] = useState('Cabelo');
 
   // Handlers for Profissional Modal
   function handleOpenNewProfModal() {
@@ -230,6 +247,81 @@ export default function AjustesPage() {
     }
   }
 
+  // Handlers for Produto Extra Modal
+  function handleOpenNewProdModal() {
+    setEditingProd(null);
+    setProdNome('');
+    setProdPreco('');
+    setProdCategoria('Cabelo');
+    setIsProdModalOpen(true);
+  }
+
+  function handleEditProduto(prod: ProdutoExtra) {
+    setEditingProd(prod);
+    setProdNome(prod.nome);
+    setProdPreco((prod.preco / 100).toFixed(2));
+    setProdCategoria(prod.categoria || 'Geral');
+    setIsProdModalOpen(true);
+  }
+
+  function handleSubmitProduto(e: React.FormEvent) {
+    e.preventDefault();
+    if (!prodNome.trim() || !prodPreco) return;
+
+    const priceFloat = parseFloat(prodPreco.replace(',', '.'));
+    if (isNaN(priceFloat) || priceFloat < 0) {
+      alert('Informe um valor de preço válido.');
+      return;
+    }
+    const precoCentavos = Math.round(priceFloat * 100);
+
+    if (editingProd) {
+      atualizarProduto.mutate(
+        {
+          id: editingProd.id,
+          payload: {
+            nome: prodNome.trim(),
+            preco: precoCentavos,
+            categoria: prodCategoria,
+          },
+        },
+        {
+          onSuccess: () => {
+            setEditingProd(null);
+            setProdNome('');
+            setProdPreco('');
+            setProdCategoria('Cabelo');
+            setIsProdModalOpen(false);
+          },
+          onError: (err: any) => {
+            console.error('Erro ao atualizar produto:', err);
+            alert(`Erro ao atualizar produto: ${err?.message || 'Verifique sua conexão.'}`);
+          },
+        }
+      );
+    } else {
+      criarProduto.mutate(
+        {
+          nome: prodNome.trim(),
+          preco: precoCentavos,
+          categoria: prodCategoria,
+        },
+        {
+          onSuccess: () => {
+            setProdNome('');
+            setProdPreco('');
+            setProdCategoria('Cabelo');
+            setIsProdModalOpen(false);
+          },
+          onError: (err: any) => {
+            console.error('Erro ao criar produto:', err);
+            alert(`Erro ao salvar produto: ${err?.message || 'Verifique sua conexão.'}`);
+          },
+        }
+      );
+    }
+  }
+
   return (
     <div className="animate-fade-in-up space-y-5">
       {/* Header with Back Button if inside a sub-view */}
@@ -247,11 +339,13 @@ export default function AjustesPage() {
             {view === 'menu' && 'Ajustes'}
             {view === 'profissionais' && 'Equipe de Profissionais'}
             {view === 'servicos' && 'Catálogo de Serviços'}
+            {view === 'produtos' && 'Produtos Extras (Comanda)'}
           </h2>
           <p className="text-xs text-muted">
             {view === 'menu' && 'Gerencie as configurações do salão'}
             {view === 'profissionais' && 'Cadastre e gerencie a equipe'}
             {view === 'servicos' && 'Defina os preços e horários dos serviços'}
+            {view === 'produtos' && 'Itens e cosméticos para venda no fechamento da comanda'}
           </p>
         </div>
       </div>
@@ -308,6 +402,32 @@ export default function AjustesPage() {
                   </div>
                   <p className="text-[11px] text-muted">
                     Tabela de preços e durações
+                  </p>
+                </div>
+                <ChevronRight
+                  size={16}
+                  className="text-muted/40 group-hover:text-muted transition-colors shrink-0"
+                />
+              </button>
+
+              <button
+                onClick={() => setView('produtos')}
+                className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-card-hover transition-colors text-left group cursor-pointer"
+              >
+                <div className="w-9 h-9 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
+                  <ShoppingBag size={18} className="text-accent-light" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-foreground">
+                      Produtos Extras
+                    </p>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent/10 text-accent font-bold">
+                      {produtos.length}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted">
+                    Itens e cosméticos para venda na comanda
                   </p>
                 </div>
                 <ChevronRight
@@ -649,6 +769,78 @@ export default function AjustesPage() {
         </div>
       )}
 
+      {/* VIEW: PRODUTOS EXTRAS */}
+      {view === 'produtos' && (
+        <div className="space-y-4">
+          <button
+            onClick={handleOpenNewProdModal}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-accent text-white text-sm font-bold shadow-lg shadow-accent/20 hover:bg-accent/90 transition-all active:scale-95 cursor-pointer"
+          >
+            <Plus size={18} />
+            Novo Produto Extra
+          </button>
+
+          {loadingProds ? (
+            <div className="text-center py-10 text-sm text-muted animate-pulse">
+              Carregando produtos...
+            </div>
+          ) : produtos.length === 0 ? (
+            <div className="text-center py-12 bg-card border border-border rounded-2xl p-6 space-y-2">
+              <ShoppingBag size={32} className="text-muted mx-auto" />
+              <p className="text-sm font-medium text-foreground">Nenhum produto cadastrado</p>
+              <p className="text-xs text-muted">Adicione cosméticos e produtos adicionais para venda rápida na comanda.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {produtos.map((prod) => (
+                <div
+                  key={prod.id}
+                  className="flex items-center justify-between p-3.5 rounded-2xl bg-card border border-border"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-accent/10 text-accent">
+                        {prod.categoria || 'Geral'}
+                      </span>
+                      <p className="text-sm font-bold text-foreground">
+                        {prod.nome}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-muted">
+                      <span className="flex items-center gap-1 font-semibold text-foreground">
+                        {formatCurrency(prod.preco)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleEditProduto(prod)}
+                      className="w-8 h-8 rounded-xl bg-card border border-border text-foreground hover:bg-card-hover flex items-center justify-center active:scale-90 transition-all cursor-pointer"
+                      title="Editar produto"
+                    >
+                      <Pencil size={14} />
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        if (confirm(`Deseja realmente excluir o produto "${prod.nome}"?`)) {
+                          deletarProduto.mutate(prod.id);
+                        }
+                      }}
+                      className="w-8 h-8 rounded-xl bg-danger/10 text-danger flex items-center justify-center hover:bg-danger/20 active:scale-90 transition-all cursor-pointer"
+                      title="Excluir produto"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* MODAL: PROFISSIONAL (CRIAR / EDITAR) */}
       {isProfModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -855,6 +1047,101 @@ export default function AjustesPage() {
                   {editingServ
                     ? (atualizarServico.isPending ? 'Atualizando...' : 'Atualizar')
                     : (criarServico.isPending ? 'Salvando...' : 'Salvar')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: PRODUTO EXTRA (CRIAR / EDITAR) */}
+      {isProdModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-sm bg-background border border-border rounded-3xl p-5 space-y-4 animate-fade-in-up">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold text-foreground">
+                {editingProd ? 'Editar Produto Extra' : 'Cadastrar Produto Extra'}
+              </h3>
+              <button
+                onClick={() => {
+                  setIsProdModalOpen(false);
+                  setEditingProd(null);
+                }}
+                className="w-7 h-7 rounded-lg bg-card border border-border flex items-center justify-center cursor-pointer"
+              >
+                <X size={16} className="text-muted" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitProduto} className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-muted mb-1">
+                  Nome do Produto
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: Shampoo Nutritivo 300ml"
+                  value={prodNome}
+                  onChange={(e) => setProdNome(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-card border border-border text-sm text-foreground focus:outline-none focus:border-accent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-muted mb-1">
+                  Preço de Venda (R$)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  required
+                  placeholder="45.00"
+                  value={prodPreco}
+                  onChange={(e) => setProdPreco(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-card border border-border text-sm text-foreground focus:outline-none focus:border-accent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-muted mb-1">
+                  Categoria
+                </label>
+                <select
+                  value={prodCategoria}
+                  onChange={(e) => setProdCategoria(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-card border border-border text-sm text-foreground focus:outline-none focus:border-accent"
+                >
+                  <option value="Cabelo">Cabelo</option>
+                  <option value="Barba">Barba</option>
+                  <option value="Tratamento">Tratamento</option>
+                  <option value="Unhas">Unhas</option>
+                  <option value="Estética">Estética</option>
+                  <option value="Bebidas">Bebidas</option>
+                  <option value="Outros">Outros / Geral</option>
+                </select>
+              </div>
+
+              <div className="pt-2 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsProdModalOpen(false);
+                    setEditingProd(null);
+                  }}
+                  className="flex-1 py-2.5 rounded-xl border border-border text-xs font-semibold text-muted hover:bg-card cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={criarProduto.isPending || atualizarProduto.isPending}
+                  className="flex-1 py-2.5 rounded-xl bg-accent text-xs font-bold text-white hover:bg-accent/90 disabled:opacity-50 cursor-pointer"
+                >
+                  {editingProd
+                    ? (atualizarProduto.isPending ? 'Atualizando...' : 'Atualizar')
+                    : (criarProduto.isPending ? 'Salvando...' : 'Salvar')}
                 </button>
               </div>
             </form>

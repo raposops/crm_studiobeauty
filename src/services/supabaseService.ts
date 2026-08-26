@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import { generateUUID } from '@/lib/uuid';
-import type { Agendamento, LancamentoFinanceiro, NovoAgendamentoForm, FormaPagamento, ModulosSalao, MovimentacaoFluxoCaixa } from '@/types';
+import type { Agendamento, LancamentoFinanceiro, NovoAgendamentoForm, FormaPagamento, ModulosSalao, MovimentacaoFluxoCaixa, ProdutoExtra } from '@/types';
+import { PRODUTOS_EXTRAS } from '@/data/mock';
 
 export const supabaseService = {
   async fetchAgendamentos(salaoId: string, data: string, profissionalId?: string): Promise<Agendamento[]> {
@@ -498,6 +499,182 @@ export const supabaseService = {
       .eq('id', id);
 
     if (error) throw error;
+  },
+
+  // ==========================
+  // PRODUTOS EXTRAS (UPSELL)
+  // ==========================
+  async fetchProdutos(salaoId: string): Promise<ProdutoExtra[]> {
+    try {
+      const { data, error } = await supabase
+        .from('produtos')
+        .select('*')
+        .eq('salao_id', salaoId)
+        .order('categoria')
+        .order('nome');
+
+      if (!error && data) {
+        if (data.length > 0) {
+          if (typeof window !== 'undefined') {
+            localStorage.setItem(`produtos_cache_${salaoId}`, JSON.stringify(data));
+          }
+          return data;
+        }
+      }
+    } catch (err) {
+      console.warn('Erro ao buscar produtos no Supabase:', err);
+    }
+
+    // Fallback para cache local / mock inicial
+    if (typeof window !== 'undefined') {
+      const cached = localStorage.getItem(`produtos_cache_${salaoId}`);
+      if (cached) {
+        try {
+          return JSON.parse(cached);
+        } catch (e) {}
+      }
+    }
+
+    return PRODUTOS_EXTRAS.map((p) => ({ ...p, salao_id: salaoId }));
+  },
+
+  async criarProduto(
+    salaoId: string,
+    payload: { nome: string; preco: number; categoria: string }
+  ): Promise<ProdutoExtra> {
+    const novoProduto: ProdutoExtra = {
+      id: generateUUID(),
+      salao_id: salaoId,
+      nome: payload.nome.trim(),
+      preco: payload.preco,
+      categoria: payload.categoria.trim() || 'Geral',
+      criado_em: new Date().toISOString(),
+    };
+
+    try {
+      const { data, error } = await supabase
+        .from('produtos')
+        .insert({
+          id: novoProduto.id,
+          salao_id: salaoId,
+          nome: novoProduto.nome,
+          preco: novoProduto.preco,
+          categoria: novoProduto.categoria,
+        })
+        .select()
+        .single();
+
+      if (!error && data) {
+        this.atualizarCacheProdutosLocal(salaoId, (list) => [...list, data]);
+        return data;
+      }
+    } catch (err) {
+      console.warn('Supabase produtos insert fallback:', err);
+    }
+
+    this.atualizarCacheProdutosLocal(salaoId, (list) => [...list, novoProduto]);
+    return novoProduto;
+  },
+
+  async atualizarProduto(
+    id: string,
+    payload: { nome?: string; preco?: number; categoria?: string }
+  ): Promise<ProdutoExtra> {
+    try {
+      const { data, error } = await supabase
+        .from('produtos')
+        .update({
+          ...(payload.nome ? { nome: payload.nome.trim() } : {}),
+          ...(payload.preco !== undefined ? { preco: payload.preco } : {}),
+          ...(payload.categoria ? { categoria: payload.categoria.trim() } : {}),
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (!error && data) {
+        if (data.salao_id) {
+          this.atualizarCacheProdutosLocal(data.salao_id, (list) =>
+            list.map((p) => (p.id === id ? { ...p, ...data } : p))
+          );
+        }
+        return data;
+      }
+    } catch (err) {
+      console.warn('Supabase produtos update fallback:', err);
+    }
+
+    let updated: ProdutoExtra | null = null;
+    if (typeof window !== 'undefined') {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('produtos_cache_')) {
+          try {
+            const list: ProdutoExtra[] = JSON.parse(localStorage.getItem(key) || '[]');
+            const idx = list.findIndex((p) => p.id === id);
+            if (idx >= 0) {
+              list[idx] = {
+                ...list[idx],
+                ...(payload.nome ? { nome: payload.nome.trim() } : {}),
+                ...(payload.preco !== undefined ? { preco: payload.preco } : {}),
+                ...(payload.categoria ? { categoria: payload.categoria.trim() } : {}),
+              };
+              localStorage.setItem(key, JSON.stringify(list));
+              updated = list[idx];
+            }
+          } catch (e) {}
+        }
+      }
+    }
+
+    return (
+      updated || {
+        id,
+        nome: payload.nome || '',
+        preco: payload.preco || 0,
+        categoria: payload.categoria || 'Geral',
+      }
+    );
+  },
+
+  async deletarProduto(id: string, salaoId?: string) {
+    try {
+      const { error } = await supabase.from('produtos').delete().eq('id', id);
+      if (error) {
+        console.warn('Supabase delete produto error:', error.message);
+      }
+    } catch (err) {
+      console.warn('Supabase produtos delete fallback:', err);
+    }
+
+    if (salaoId) {
+      this.atualizarCacheProdutosLocal(salaoId, (list) => list.filter((p) => p.id !== id));
+    } else if (typeof window !== 'undefined') {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('produtos_cache_')) {
+          try {
+            const list: ProdutoExtra[] = JSON.parse(localStorage.getItem(key) || '[]');
+            const filtered = list.filter((p) => p.id !== id);
+            localStorage.setItem(key, JSON.stringify(filtered));
+          } catch (e) {}
+        }
+      }
+    }
+  },
+
+  atualizarCacheProdutosLocal(salaoId: string, updater: (list: ProdutoExtra[]) => ProdutoExtra[]) {
+    if (typeof window === 'undefined') return;
+    const key = `produtos_cache_${salaoId}`;
+    let list: ProdutoExtra[] = [];
+    try {
+      const raw = localStorage.getItem(key);
+      list = raw ? JSON.parse(raw) : PRODUTOS_EXTRAS.map((p) => ({ ...p, salao_id: salaoId }));
+    } catch (e) {
+      list = PRODUTOS_EXTRAS.map((p) => ({ ...p, salao_id: salaoId }));
+    }
+    const nextList = updater(list);
+    localStorage.setItem(key, JSON.stringify(nextList));
   },
 
   async fetchClientes(salaoId: string) {

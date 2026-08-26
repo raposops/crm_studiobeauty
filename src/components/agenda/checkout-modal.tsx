@@ -20,12 +20,12 @@ import {
 } from 'lucide-react';
 import type { Agendamento, FormaPagamento, ProdutoExtra } from '@/types';
 import {
-  PRODUTOS_EXTRAS,
   COMISSAO_PERCENTUAL,
   calcularComissao,
   formatCurrency,
 } from '@/data/mock';
 import { useCaixa } from '@/hooks/useCaixa';
+import { useProdutos } from '@/hooks/useProdutos';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface CheckoutModalProps {
@@ -105,6 +105,7 @@ export default function CheckoutModal({
 
   const { salaoId } = useAuth();
   const { concluirAtendimento } = useCaixa(salaoId, agendamento?.data || '');
+  const { produtos, isLoading: loadingProdutos } = useProdutos(salaoId);
 
   // Computed
   const valorServicos = (agendamento as any)?.valor_servico || agendamento?.valor_total || 0;
@@ -361,74 +362,94 @@ export default function CheckoutModal({
 
           {/* Upsell - Extra Products */}
           <div className="space-y-2">
-            <div className="flex items-center gap-1.5">
-              <ShoppingBag size={14} className="text-accent-light" />
-              <span className="text-sm font-semibold text-foreground">
-                Produtos extras
-              </span>
-              <span className="text-[10px] text-muted">(opcional)</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <ShoppingBag size={14} className="text-accent-light" />
+                <span className="text-sm font-semibold text-foreground">
+                  Produtos extras
+                </span>
+                <span className="text-[10px] text-muted">(opcional)</span>
+              </div>
+              {produtos.length > 0 && (
+                <span className="text-[10px] text-muted font-medium">
+                  {produtos.length} {produtos.length === 1 ? 'disponível' : 'disponíveis'}
+                </span>
+              )}
             </div>
 
-            <div className="grid grid-cols-1 gap-1.5 max-h-[180px] overflow-y-auto">
-              {PRODUTOS_EXTRAS.map((produto) => {
-                const selected = selectedExtras.get(produto.id);
-                const isSelected = !!selected;
+            {loadingProdutos ? (
+              <div className="py-4 text-center text-xs text-muted animate-pulse">
+                Carregando produtos...
+              </div>
+            ) : produtos.length === 0 ? (
+              <div className="p-3 text-center rounded-xl bg-card border border-border/60">
+                <p className="text-xs text-muted">Nenhum produto extra cadastrado.</p>
+                <p className="text-[10px] text-muted/70 mt-0.5">
+                  Cadastre produtos na aba Ajustes para adicioná-los à comanda.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-1.5 max-h-[180px] overflow-y-auto pr-0.5">
+                {produtos.map((produto) => {
+                  const selected = selectedExtras.get(produto.id);
+                  const isSelected = !!selected;
 
-                return (
-                  <div
-                    key={produto.id}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-all duration-200 ${
-                      isSelected
-                        ? 'bg-accent/10 border-accent/30'
-                        : 'bg-card border-border hover:bg-card-hover'
-                    }`}
-                  >
-                    <button
-                      onClick={() => toggleExtra(produto)}
-                      className="flex-1 flex items-center gap-2 text-left min-w-0"
+                  return (
+                    <div
+                      key={produto.id}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-all duration-200 ${
+                        isSelected
+                          ? 'bg-accent/10 border-accent/30'
+                          : 'bg-card border-border hover:bg-card-hover'
+                      }`}
                     >
-                      <div
-                        className={`w-4 h-4 rounded shrink-0 border-2 flex items-center justify-center transition-all ${
-                          isSelected
-                            ? 'bg-accent border-accent'
-                            : 'border-border'
-                        }`}
+                      <button
+                        onClick={() => toggleExtra(produto)}
+                        className="flex-1 flex items-center gap-2 text-left min-w-0"
                       >
-                        {isSelected && (
-                          <Check size={10} className="text-white" />
-                        )}
-                      </div>
-                      <span className="text-sm text-foreground truncate">
-                        {produto.nome}
-                      </span>
-                    </button>
-                    <span className="text-xs font-semibold text-foreground shrink-0">
-                      {formatCurrency(produto.preco)}
-                    </span>
-
-                    {isSelected && (
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          onClick={() => updateQuantidade(produto.id, -1)}
-                          className="w-6 h-6 rounded-lg bg-card border border-border flex items-center justify-center hover:bg-card-hover active:scale-90"
+                        <div
+                          className={`w-4 h-4 rounded shrink-0 border-2 flex items-center justify-center transition-all ${
+                            isSelected
+                              ? 'bg-accent border-accent'
+                              : 'border-border'
+                          }`}
                         >
-                          <Minus size={10} className="text-muted" />
-                        </button>
-                        <span className="text-xs font-bold text-foreground w-5 text-center">
-                          {selected.quantidade}
+                          {isSelected && (
+                            <Check size={10} className="text-white" />
+                          )}
+                        </div>
+                        <span className="text-sm text-foreground truncate">
+                          {produto.nome}
                         </span>
-                        <button
-                          onClick={() => updateQuantidade(produto.id, 1)}
-                          className="w-6 h-6 rounded-lg bg-card border border-border flex items-center justify-center hover:bg-card-hover active:scale-90"
-                        >
-                          <Plus size={10} className="text-muted" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                      </button>
+                      <span className="text-xs font-semibold text-foreground shrink-0">
+                        {formatCurrency(produto.preco)}
+                      </span>
+
+                      {isSelected && (
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            onClick={() => updateQuantidade(produto.id, -1)}
+                            className="w-6 h-6 rounded-lg bg-card border border-border flex items-center justify-center hover:bg-card-hover active:scale-90"
+                          >
+                            <Minus size={10} className="text-muted" />
+                          </button>
+                          <span className="text-xs font-bold text-foreground w-5 text-center">
+                            {selected.quantidade}
+                          </span>
+                          <button
+                            onClick={() => updateQuantidade(produto.id, 1)}
+                            className="w-6 h-6 rounded-lg bg-card border border-border flex items-center justify-center hover:bg-card-hover active:scale-90"
+                          >
+                            <Plus size={10} className="text-muted" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Payment Method */}

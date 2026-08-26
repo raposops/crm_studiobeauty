@@ -233,9 +233,11 @@ export const FORMA_PAGAMENTO_CONFIG: Record<
 
 export interface ProdutoExtra {
   id: string;
+  salao_id?: string;
   nome: string;
   preco: number; // em centavos
   categoria: string;
+  criado_em?: string;
 }
 
 export interface LancamentoFinanceiro {
