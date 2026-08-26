@@ -17,14 +17,17 @@ import {
   Percent,
   Sparkles,
   Wallet,
+  Search,
+  Trash2,
 } from 'lucide-react';
-import type { Agendamento, FormaPagamento, ProdutoExtra } from '@/types';
+import type { Agendamento, FormaPagamento, ProdutoExtra, Servico } from '@/types';
 import {
   COMISSAO_PERCENTUAL,
   calcularComissao,
   formatCurrency,
 } from '@/data/mock';
 import { useCaixa } from '@/hooks/useCaixa';
+import { useServicos } from '@/hooks/useServicos';
 import { useProdutos } from '@/hooks/useProdutos';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -105,10 +108,27 @@ export default function CheckoutModal({
 
   const { salaoId } = useAuth();
   const { concluirAtendimento } = useCaixa(salaoId, agendamento?.data || '');
+  const { servicos: catalogoServicos, isLoading: loadingCatalogoServicos } = useServicos(salaoId);
   const { produtos, isLoading: loadingProdutos } = useProdutos(salaoId);
 
+  // Estados de Serviços Extras / Adicionais
+  const [servicosAdicionais, setServicosAdicionais] = useState<Servico[]>([]);
+  const [showServicoPicker, setShowServicoPicker] = useState(false);
+  const [servicoSearch, setServicoSearch] = useState('');
+
   // Computed
-  const valorServicos = (agendamento as any)?.valor_servico || agendamento?.valor_total || 0;
+  const valorServicosAgendados = useMemo(() => {
+    if (agendamento?.servicos && agendamento.servicos.length > 0) {
+      return agendamento.servicos.reduce((sum, s) => sum + s.preco, 0);
+    }
+    return (agendamento as any)?.valor_servico || agendamento?.valor_total || 0;
+  }, [agendamento]);
+
+  const valorServicosExtras = useMemo(() => {
+    return servicosAdicionais.reduce((sum, s) => sum + s.preco, 0);
+  }, [servicosAdicionais]);
+
+  const valorServicos = valorServicosAgendados + valorServicosExtras;
 
   const valorProdutos = useMemo(() => {
     let total = 0;
@@ -156,9 +176,19 @@ export default function CheckoutModal({
 
   const creditoGerado = formaPagamento === 'dinheiro' && deixarTrocoComoCredito ? trocoCentavos : 0;
 
-  // Comissão: aplicada sobre o valor bruto dos serviços
+  // Comissão: aplicada sobre o valor bruto dos serviços (incluindo serviços extras)
   const { comissao } = calcularComissao(valorServicos, comissaoPct);
   const liquido = valorTotalBruto - comissao;
+
+  function adicionarServicoExtra(servico: Servico) {
+    setServicosAdicionais((prev) => [...prev, servico]);
+    setShowServicoPicker(false);
+    setServicoSearch('');
+  }
+
+  function removerServicoExtra(index: number) {
+    setServicosAdicionais((prev) => prev.filter((_, i) => i !== index));
+  }
 
   function toggleExtra(produto: ProdutoExtra) {
     setSelectedExtras((prev) => {
@@ -189,6 +219,9 @@ export default function CheckoutModal({
 
   function resetForm() {
     setSelectedExtras(new Map());
+    setServicosAdicionais([]);
+    setShowServicoPicker(false);
+    setServicoSearch('');
     setFormaPagamento(null);
     setUsarCredito(false);
     setValorDinheiroEntregueInput('');
@@ -214,6 +247,12 @@ export default function CheckoutModal({
         quantidade > 1 ? `${produto.nome} (x${quantidade})` : produto.nome
     );
 
+    const todosServicosNomes = [
+      ...(agendamento.servicos || []).map((s) => s.nome),
+      ...servicosAdicionais.map((s) => `${s.nome} (Extra)`),
+    ];
+    const servicosAdicionaisIds = servicosAdicionais.map((s) => s.id);
+
     concluirAtendimento.mutate(
       {
         agendamentoId: agendamento.id,
@@ -226,7 +265,8 @@ export default function CheckoutModal({
         valorProdutos,
         clienteNome: agendamento.cliente.nome,
         profissionalId: agendamento.profissional.id,
-        servicosNomes: agendamento.servicos.map((s) => s.nome),
+        servicosNomes: todosServicosNomes,
+        servicosAdicionaisIds: servicosAdicionaisIds,
         opcoesCredito: {
           clienteId: agendamento.cliente.id,
           creditoUtilizado: valorCreditoAbatido,
@@ -307,24 +347,141 @@ export default function CheckoutModal({
             </div>
 
             {/* Services List */}
-            <div className="space-y-1.5 pt-1 border-t border-border/50">
-              <div className="flex items-center gap-1.5 mb-1">
-                <Scissors size={12} className="text-muted" />
-                <span className="text-[10px] uppercase tracking-widest text-muted font-semibold">
-                  Serviços
-                </span>
-              </div>
-              {agendamento.servicos.map((s) => (
-                <div
-                  key={s.id}
-                  className="flex items-center justify-between"
-                >
-                  <span className="text-sm text-foreground">{s.nome}</span>
-                  <span className="text-sm font-semibold text-foreground">
-                    {formatCurrency(s.preco)}
+            <div className="space-y-2 pt-2 border-t border-border/50">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <Scissors size={12} className="text-muted" />
+                  <span className="text-[10px] uppercase tracking-widest text-muted font-semibold">
+                    Serviços
                   </span>
                 </div>
-              ))}
+                <button
+                  type="button"
+                  onClick={() => setShowServicoPicker(!showServicoPicker)}
+                  className="text-[11px] font-semibold text-accent hover:text-accent-light flex items-center gap-1 cursor-pointer transition-colors bg-accent/10 hover:bg-accent/20 px-2.5 py-1 rounded-lg active:scale-95"
+                >
+                  <Plus size={12} />
+                  Incluir Serviço Extra
+                </button>
+              </div>
+
+              {/* Scheduled Services */}
+              <div className="space-y-1.5">
+                {agendamento.servicos.map((s) => (
+                  <div
+                    key={s.id}
+                    className="flex items-center justify-between text-sm py-0.5"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-foreground">{s.nome}</span>
+                      <span className="text-[9px] px-1.5 py-0.2 rounded bg-muted/20 text-muted font-medium">
+                        Agendado
+                      </span>
+                    </div>
+                    <span className="font-semibold text-foreground">
+                      {formatCurrency(s.preco)}
+                    </span>
+                  </div>
+                ))}
+
+                {/* Extra Services Added in Checkout */}
+                {servicosAdicionais.map((s, idx) => (
+                  <div
+                    key={`${s.id}-${idx}`}
+                    className="flex items-center justify-between p-2 rounded-xl bg-accent/10 border border-accent/25 text-sm animate-fade-in"
+                  >
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="font-semibold text-foreground truncate">{s.nome}</span>
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-accent text-white font-bold shrink-0">
+                        + Extra
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="font-bold text-accent-light">
+                        {formatCurrency(s.preco)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removerServicoExtra(idx)}
+                        className="w-5 h-5 rounded-lg bg-danger/10 text-danger hover:bg-danger/20 flex items-center justify-center transition-colors cursor-pointer active:scale-90"
+                        title="Remover serviço extra"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Service Catalog Picker Popover */}
+              {showServicoPicker && (
+                <div className="p-3 rounded-2xl bg-card border border-accent/30 shadow-xl space-y-2.5 animate-fade-in-up mt-2">
+                  <div className="flex items-center justify-between border-b border-border/50 pb-2">
+                    <div className="flex items-center gap-1.5">
+                      <Scissors size={14} className="text-accent" />
+                      <span className="text-xs font-bold text-foreground">
+                        Adicionar Serviço do Catálogo
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowServicoPicker(false);
+                        setServicoSearch('');
+                      }}
+                      className="w-6 h-6 rounded-lg bg-card-hover text-muted hover:text-foreground flex items-center justify-center cursor-pointer"
+                    >
+                      <X size={13} />
+                    </button>
+                  </div>
+
+                  <div className="relative">
+                    <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
+                    <input
+                      type="text"
+                      placeholder="Buscar por nome ou categoria..."
+                      value={servicoSearch}
+                      onChange={(e) => setServicoSearch(e.target.value)}
+                      className="w-full pl-8 pr-2.5 py-1.5 rounded-xl bg-background border border-border text-xs text-foreground focus:outline-none focus:border-accent"
+                      autoFocus
+                    />
+                  </div>
+
+                  <div className="max-h-40 overflow-y-auto space-y-1 pr-1 divide-y divide-border/30">
+                    {catalogoServicos
+                      .filter((s) =>
+                        s.nome.toLowerCase().includes(servicoSearch.toLowerCase()) ||
+                        (s.categoria && s.categoria.toLowerCase().includes(servicoSearch.toLowerCase()))
+                      )
+                      .map((s) => (
+                        <button
+                          key={s.id}
+                          type="button"
+                          onClick={() => adicionarServicoExtra(s)}
+                          className="w-full flex items-center justify-between p-2 rounded-xl hover:bg-accent/10 text-left transition-colors cursor-pointer group"
+                        >
+                          <div>
+                            <p className="text-xs font-bold text-foreground group-hover:text-accent transition-colors">
+                              {s.nome}
+                            </p>
+                            <p className="text-[10px] text-muted">
+                              {s.categoria || 'Geral'} &middot; {s.duracao_minutos} min
+                            </p>
+                          </div>
+                          <span className="text-xs font-bold text-accent shrink-0">
+                            {formatCurrency(s.preco)}
+                          </span>
+                        </button>
+                      ))}
+
+                    {catalogoServicos.length === 0 && (
+                      <p className="text-center py-3 text-xs text-muted">
+                        Nenhum serviço cadastrado no catálogo.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

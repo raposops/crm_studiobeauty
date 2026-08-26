@@ -9,6 +9,8 @@ export interface WhatsAppNotificationPayload {
   servicos: string[];
   profissionalNome: string;
   salaoNome?: string;
+  donoTelefone?: string;
+  salaoTelefone?: string;
   status: string;
   tipoEvento: 'novo_agendamento' | 'confirmacao' | 'lembrete';
 }
@@ -105,6 +107,7 @@ Por favor, responda a esta mensagem com o número da opção desejada:
       const targetUrl = `${evolutionApiUrl.replace(/\/$/, '')}/message/sendText/${instanceName}`;
       console.log(`[WhatsApp Notification] Enviando via Evolution API (${targetUrl}) para ${formattedPhone}...`);
 
+      // 2.1 Envia para o cliente
       const res = await fetch(targetUrl, {
         method: 'POST',
         headers: {
@@ -119,7 +122,41 @@ Por favor, responda a esta mensagem com o número da opção desejada:
       });
 
       const evoData = await res.json();
-      console.log('[WhatsApp Notification] Resposta Evolution API:', evoData);
+      console.log('[WhatsApp Notification] Resposta Evolution API (Cliente):', evoData);
+
+      // 2.2 Se for novo agendamento e houver donoTelefone, envia alerta para o dono
+      const targetOwnerPhone = formatPhone(payload.donoTelefone || payload.salaoTelefone || '');
+      if (targetOwnerPhone && payload.tipoEvento === 'novo_agendamento') {
+        const ownerMessageText = `🔔 *Novo Agendamento Recebido!*
+
+Olá! Um novo agendamento foi realizado online em *${nomeEstabelecimento}*:
+
+👤 *Cliente:* ${payload.clienteNome}
+📱 *WhatsApp:* ${payload.whatsapp}
+📅 *Data:* ${dataFormatada}
+⏰ *Horário:* ${payload.hora}
+💇‍♀️ *Serviços:* ${servicosFormatados}
+✂️ *Profissional:* ${payload.profissionalNome}`;
+
+        console.log(`[WhatsApp Notification] Enviando alerta para o dono do salão (${targetOwnerPhone})...`);
+        try {
+          await fetch(targetUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': evolutionApiKey,
+            },
+            body: JSON.stringify({
+              number: targetOwnerPhone,
+              text: ownerMessageText,
+              options: { delay: 1500, presence: 'composing', linkPreview: false },
+            }),
+          });
+        } catch (ownerErr: any) {
+          console.warn('[WhatsApp Notification] Erro ao enviar para o dono do salão:', ownerErr?.message);
+        }
+      }
+
       return { success: true, message: 'Mensagem enviada via Evolution API' };
     }
 

@@ -269,6 +269,7 @@ export default function AgendarPublicSlugPage({ params }: { params: Promise<{ sl
           servicos: selectedServices.map((s) => s.nome),
           profissionalNome: profObj?.nome || 'Equipe',
           salaoNome: salaoNome || 'Studio Beauty',
+          donoTelefone: salao?.telefone_whatsapp || '',
           status: 'agendado',
           tipoEvento: 'novo_agendamento',
         });

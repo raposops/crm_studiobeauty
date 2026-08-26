@@ -263,7 +263,8 @@ export const supabaseService = {
       clienteId?: string;
       creditoUtilizado?: number;
       creditoGerado?: number;
-    }
+    },
+    servicosAdicionaisIds?: string[]
   ) {
     // 1. Processar crédito utilizado da cliente se houver
     if (opcoesCredito?.creditoUtilizado && opcoesCredito.creditoUtilizado > 0 && opcoesCredito.clienteId) {
@@ -277,6 +278,34 @@ export const supabaseService = {
         );
       } catch (err: any) {
         console.warn('Erro ao abater crédito da cliente:', err?.message);
+      }
+    }
+
+    // 2. Processar crédito gerado (ex: troco em dinheiro) se houver
+    if (opcoesCredito?.creditoGerado && opcoesCredito.creditoGerado > 0 && opcoesCredito.clienteId) {
+      try {
+        await this.adicionarCreditoCliente(
+          salaoId,
+          opcoesCredito.clienteId,
+          opcoesCredito.creditoGerado,
+          `Troco/Crédito gerado no atendimento (${servicosNomes.join(', ') || 'Serviço'})`,
+          agendamentoId
+        );
+      } catch (err: any) {
+        console.warn('Erro ao adicionar crédito da cliente:', err?.message);
+      }
+    }
+
+    // 3. Vincular serviços extras adicionados na comanda na tabela de junção
+    if (servicosAdicionaisIds && servicosAdicionaisIds.length > 0) {
+      try {
+        const relations = servicosAdicionaisIds.map((sId) => ({
+          agendamento_id: agendamentoId,
+          servico_id: sId,
+        }));
+        await supabase.from('agendamento_servicos').insert(relations);
+      } catch (relErr: any) {
+        console.warn('Aviso: erro ao registrar servicos adicionais em agendamento_servicos:', relErr?.message);
       }
     }
 

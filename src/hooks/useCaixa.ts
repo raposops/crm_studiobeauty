@@ -58,6 +58,7 @@ export function useCaixa(salaoId: string, filterStr: string, modo: 'dia' | 'mes'
         creditoUtilizado?: number;
         creditoGerado?: number;
       };
+      servicosAdicionaisIds?: string[];
     }) => supabaseService.concluirAtendimento(
       args.agendamentoId,
       salaoId,
@@ -71,7 +72,8 @@ export function useCaixa(salaoId: string, filterStr: string, modo: 'dia' | 'mes'
       args.clienteNome,
       args.profissionalId,
       args.servicosNomes,
-      args.opcoesCredito
+      args.opcoesCredito,
+      args.servicosAdicionaisIds
     ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lancamentos'] });

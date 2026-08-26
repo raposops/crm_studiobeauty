@@ -46,6 +46,8 @@ serve(async (req) => {
       servicos,
       profissionalNome,
       salaoNome,
+      donoTelefone,
+      salaoTelefone,
       tipoEvento = 'novo_agendamento',
     } = payload;
 
@@ -62,7 +64,7 @@ serve(async (req) => {
     const evolutionApiKey = Deno.env.get('EVOLUTION_API_KEY') || '';
     const instanceName = Deno.env.get('EVOLUTION_INSTANCE_NAME') || 'studiobeauty';
 
-    // Monta a mensagem interativa baseada no tipo de evento
+    // Monta a mensagem interativa baseada no tipo de evento para a cliente
     let messageText = '';
     const servicosFormatados = Array.isArray(servicos) ? servicos.join(', ') : servicos || 'Atendimento';
     const dataFormatada = formatDate(data);
@@ -94,6 +96,7 @@ Por favor, responda a esta mensagem com o número da opção desejada:
     if (evolutionApiUrl && evolutionApiKey) {
       const targetUrl = `${evolutionApiUrl.replace(/\/$/, '')}/message/sendText/${instanceName}`;
 
+      // 1. Envia mensagem para a cliente
       const evolutionRes = await fetch(targetUrl, {
         method: 'POST',
         headers: {
@@ -112,13 +115,56 @@ Por favor, responda a esta mensagem com o número da opção desejada:
       });
 
       const evolutionData = await evolutionRes.json();
-      console.log('[send-whatsapp] Resposta da Evolution API:', evolutionData);
+      console.log('[send-whatsapp] Resposta da Evolution API (Cliente):', evolutionData);
+
+      // 2. Se for novo agendamento e houver telefone do dono/salão, envia o alerta para o dono
+      const targetOwnerPhone = formatPhone(donoTelefone || salaoTelefone || '');
+      let ownerData = null;
+
+      if (targetOwnerPhone && tipoEvento === 'novo_agendamento') {
+        const ownerMessageText = `🔔 *Novo Agendamento Recebido!*
+
+Olá! Um novo agendamento foi realizado online em *${nomeEstabelecimento}*:
+
+👤 *Cliente:* ${clienteNome}
+📱 *WhatsApp:* ${whatsapp}
+📅 *Data:* ${dataFormatada}
+⏰ *Horário:* ${hora}
+💇‍♀️ *Serviços:* ${servicosFormatados}
+✂️ *Profissional:* ${profissionalNome}`;
+
+        console.log(`[send-whatsapp] Enviando alerta para o dono do salão (${targetOwnerPhone})...`);
+
+        try {
+          const ownerRes = await fetch(targetUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': evolutionApiKey,
+            },
+            body: JSON.stringify({
+              number: targetOwnerPhone,
+              text: ownerMessageText,
+              options: {
+                delay: 1500,
+                presence: 'composing',
+                linkPreview: false,
+              },
+            }),
+          });
+          ownerData = await ownerRes.json();
+          console.log('[send-whatsapp] Resposta da Evolution API (Dono do Salão):', ownerData);
+        } catch (ownerErr: any) {
+          console.warn('[send-whatsapp] Erro ao enviar mensagem para o dono do salão:', ownerErr?.message);
+        }
+      }
 
       return new Response(
         JSON.stringify({
           success: true,
-          message: 'Mensagem enviada via Evolution API',
+          message: 'Mensagem(ns) enviada(s) via Evolution API',
           data: evolutionData,
+          ownerData: ownerData,
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
