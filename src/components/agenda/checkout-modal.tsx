@@ -27,6 +27,7 @@ import {
   formatCurrency,
 } from '@/data/mock';
 import { useCaixa } from '@/hooks/useCaixa';
+import { useAgenda } from '@/hooks/useAgenda';
 import { useServicos } from '@/hooks/useServicos';
 import { useProdutos } from '@/hooks/useProdutos';
 import { useAuth } from '@/contexts/AuthContext';
@@ -108,6 +109,7 @@ export default function CheckoutModal({
 
   const { salaoId } = useAuth();
   const { concluirAtendimento } = useCaixa(salaoId, agendamento?.data || '');
+  const { deletarAgendamento } = useAgenda(salaoId, agendamento?.data || '');
   const { servicos: catalogoServicos, isLoading: loadingCatalogoServicos } = useServicos(salaoId);
   const { produtos, isLoading: loadingProdutos } = useProdutos(salaoId);
 
@@ -115,6 +117,9 @@ export default function CheckoutModal({
   const [servicosAdicionais, setServicosAdicionais] = useState<Servico[]>([]);
   const [showServicoPicker, setShowServicoPicker] = useState(false);
   const [servicoSearch, setServicoSearch] = useState('');
+
+  // Estado de Confirmação de Exclusão
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Computed
   const valorServicosAgendados = useMemo(() => {
@@ -217,11 +222,24 @@ export default function CheckoutModal({
     });
   }
 
+  function handleDeleteAppointment() {
+    if (!agendamento) return;
+    deletarAgendamento.mutate(agendamento.id, {
+      onSuccess: () => {
+        handleClose();
+      },
+      onError: (err: any) => {
+        alert(`Erro ao excluir agendamento: ${err?.message || 'Erro inesperado'}`);
+      },
+    });
+  }
+
   function resetForm() {
     setSelectedExtras(new Map());
     setServicosAdicionais([]);
     setShowServicoPicker(false);
     setServicoSearch('');
+    setShowDeleteConfirm(false);
     setFormaPagamento(null);
     setUsarCredito(false);
     setValorDinheiroEntregueInput('');
@@ -299,7 +317,7 @@ export default function CheckoutModal({
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-md bg-background border border-border rounded-t-3xl sm:rounded-3xl max-h-[90dvh] flex flex-col animate-fade-in-up">
+      <div className="relative w-full max-w-md bg-background border border-border rounded-t-3xl sm:rounded-3xl max-h-[90dvh] flex flex-col animate-fade-in-up overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-5 pb-3">
           <div className="flex items-center gap-2">
@@ -308,13 +326,61 @@ export default function CheckoutModal({
               Fechar Comanda
             </h3>
           </div>
-          <button
-            onClick={handleClose}
-            className="w-8 h-8 rounded-xl bg-card border border-border flex items-center justify-center hover:bg-card-hover transition-all active:scale-95"
-          >
-            <X size={16} className="text-muted" />
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setShowDeleteConfirm(true)}
+              className="w-8 h-8 rounded-xl bg-danger/10 text-danger hover:bg-danger/20 flex items-center justify-center transition-all active:scale-95 cursor-pointer"
+              title="Excluir agendamento"
+            >
+              <Trash2 size={15} />
+            </button>
+            <button
+              type="button"
+              onClick={handleClose}
+              className="w-8 h-8 rounded-xl bg-card border border-border flex items-center justify-center hover:bg-card-hover transition-all active:scale-95 cursor-pointer"
+            >
+              <X size={16} className="text-muted" />
+            </button>
+          </div>
         </div>
+
+        {/* Confirmation Overlay: Excluir Agendamento */}
+        {showDeleteConfirm && (
+          <div className="absolute inset-0 z-50 bg-background/95 backdrop-blur-md p-6 flex flex-col justify-center items-center text-center space-y-4 animate-fade-in">
+            <div className="w-14 h-14 rounded-2xl bg-danger/15 text-danger flex items-center justify-center shadow-lg shadow-danger/20">
+              <Trash2 size={26} />
+            </div>
+            <div className="space-y-1">
+              <h4 className="text-base font-bold text-foreground">
+                Excluir este agendamento?
+              </h4>
+              <p className="text-xs text-muted max-w-xs leading-relaxed">
+                Tem certeza que deseja excluir o agendamento de <strong className="text-foreground">{agendamento.cliente.nome}</strong> marcado para às <strong className="text-foreground">{agendamento.hora_inicio}</strong>?
+              </p>
+              <p className="text-[11px] text-danger/90 font-semibold pt-1">
+                Esta ação removerá o agendamento da agenda permanentemente.
+              </p>
+            </div>
+            <div className="flex gap-2 w-full max-w-xs pt-2">
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 py-2.5 rounded-xl border border-border text-xs font-semibold text-foreground hover:bg-card cursor-pointer"
+              >
+                Voltar
+              </button>
+              <button
+                type="button"
+                disabled={deletarAgendamento.isPending}
+                onClick={handleDeleteAppointment}
+                className="flex-1 py-2.5 rounded-xl bg-danger text-xs font-bold text-white hover:bg-danger/90 disabled:opacity-50 cursor-pointer shadow-md shadow-danger/20"
+              >
+                {deletarAgendamento.isPending ? 'Excluindo...' : 'Sim, Excluir'}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-5 pb-5 space-y-5">

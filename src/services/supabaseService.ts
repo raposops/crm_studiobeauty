@@ -246,6 +246,23 @@ export const supabaseService = {
     return agendamento.id;
   },
 
+  async deletarAgendamento(agendamentoId: string) {
+    // 1. Deletar vínculos de serviços
+    await supabase.from('agendamento_servicos').delete().eq('agendamento_id', agendamentoId);
+
+    // 2. Deletar lançamentos financeiros associados (se houver)
+    await supabase.from('lancamentos_financeiros').delete().eq('agendamento_id', agendamentoId);
+
+    // 3. Deletar o agendamento
+    const { error } = await supabase
+      .from('agendamentos')
+      .delete()
+      .eq('id', agendamentoId);
+
+    if (error) throw error;
+    return true;
+  },
+
   async concluirAtendimento(
     agendamentoId: string, 
     salaoId: string,

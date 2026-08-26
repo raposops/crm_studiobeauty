@@ -47,10 +47,20 @@ export function useAgenda(salaoId: string, data: string, profissionalId?: string
     },
   });
 
+  const deletarAgendamento = useMutation({
+    mutationFn: (agendamentoId: string) => supabaseService.deletarAgendamento(agendamentoId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['agendamentos'] });
+      queryClient.invalidateQueries({ queryKey: ['lancamentos'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+  });
+
   return {
     agendamentos: query.data || [],
     isLoading: query.isLoading,
     isError: query.isError,
     criarAgendamento,
+    deletarAgendamento,
   };
 }
