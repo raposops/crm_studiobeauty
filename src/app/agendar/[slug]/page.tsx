@@ -90,6 +90,12 @@ export default function AgendarPublicSlugPage({ params }: { params: Promise<{ sl
   const salaoId = salao?.id || '00000000-0000-0000-0000-000000000000';
   const salaoNome = salao?.nome || 'Studio Beauty';
 
+  useEffect(() => {
+    if (salaoNome && typeof document !== 'undefined') {
+      document.title = `${salaoNome} | Agendamento Online`;
+    }
+  }, [salaoNome]);
+
   const { servicos, isLoading: loadingServicos } = useServicos(salaoId);
   const { profissionais, isLoading: loadingProfs } = useProfissionais(salaoId);
 

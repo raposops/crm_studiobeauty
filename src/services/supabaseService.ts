@@ -1310,5 +1310,36 @@ export const supabaseService = {
       chartPagamentos,
       chartProfissionais
     };
+  },
+
+  async atualizarDadosSalao(
+    salaoId: string,
+    payload: { nome?: string; slug?: string; telefone_whatsapp?: string }
+  ) {
+    const updateData: Record<string, any> = {};
+    if (payload.nome !== undefined) updateData.nome = payload.nome.trim();
+    if (payload.slug !== undefined) {
+      updateData.slug = payload.slug
+        .trim()
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9-]/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+    }
+    if (payload.telefone_whatsapp !== undefined) {
+      updateData.telefone_whatsapp = payload.telefone_whatsapp.replace(/\D/g, '');
+    }
+
+    const { data, error } = await supabase
+      .from('saloes')
+      .update(updateData)
+      .eq('id', salaoId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
   }
 };

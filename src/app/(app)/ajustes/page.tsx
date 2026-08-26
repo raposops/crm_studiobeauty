@@ -25,12 +25,14 @@ import {
   Headphones,
   Globe,
   ShoppingBag,
+  Building2,
 } from 'lucide-react';
 import { useProfissionais } from '@/hooks/useProfissionais';
 import { useServicos } from '@/hooks/useServicos';
 import { useProdutos } from '@/hooks/useProdutos';
 import { formatCurrency } from '@/data/mock';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabaseService } from '@/services/supabaseService';
 import AssinaturaModal from '@/components/ajustes/assinatura-modal';
 import type { Profissional, Servico, ProdutoExtra } from '@/types';
 
@@ -45,12 +47,19 @@ const COLOR_OPTIONS = [
 ];
 
 export default function AjustesPage() {
-  const { salao, salaoId, logout, user } = useAuth();
+  const { salao, salaoId, logout, user, refreshAuth } = useAuth();
   const salaoSlug = salao?.slug || 'studio-beauty';
   const publicBookingUrl = typeof window !== 'undefined' ? `${window.location.origin}/agendar/${salaoSlug}` : `http://localhost:3000/agendar/${salaoSlug}`;
 
   const [view, setView] = useState<ViewMode>('menu');
   const [copiedLink, setCopiedLink] = useState(false);
+
+  // Modal Perfil do Salão state
+  const [isSalaoModalOpen, setIsSalaoModalOpen] = useState(false);
+  const [salaoNomeInput, setSalaoNomeInput] = useState('');
+  const [salaoSlugInput, setSalaoSlugInput] = useState('');
+  const [salaoPhoneInput, setSalaoPhoneInput] = useState('');
+  const [isSavingSalao, setIsSavingSalao] = useState(false);
 
   // Hooks
   const {
@@ -99,6 +108,37 @@ export default function AjustesPage() {
   const [prodNome, setProdNome] = useState('');
   const [prodPreco, setProdPreco] = useState('');
   const [prodCategoria, setProdCategoria] = useState('Cabelo');
+
+  // Handlers for Salão Modal
+  function handleOpenSalaoModal() {
+    setSalaoNomeInput(salao?.nome || '');
+    setSalaoSlugInput(salao?.slug || '');
+    setSalaoPhoneInput(salao?.telefone_whatsapp || '');
+    setIsSalaoModalOpen(true);
+  }
+
+  async function handleSaveSalao(e: React.FormEvent) {
+    e.preventDefault();
+    if (!salaoNomeInput.trim()) {
+      alert('Informe o nome do seu salão.');
+      return;
+    }
+    setIsSavingSalao(true);
+    try {
+      await supabaseService.atualizarDadosSalao(salaoId, {
+        nome: salaoNomeInput.trim(),
+        slug: salaoSlugInput.trim() || undefined,
+        telefone_whatsapp: salaoPhoneInput.trim() || undefined,
+      });
+      await refreshAuth();
+      setIsSalaoModalOpen(false);
+      alert('Dados do salão atualizados com sucesso!');
+    } catch (err: any) {
+      alert(`Erro ao salvar dados do salão: ${err?.message || 'Erro inesperado'}`);
+    } finally {
+      setIsSavingSalao(false);
+    }
+  }
 
   // Handlers for Profissional Modal
   function handleOpenNewProfModal() {
@@ -358,6 +398,32 @@ export default function AjustesPage() {
               Salão
             </h3>
             <div className="rounded-2xl bg-card border border-border overflow-hidden divide-y divide-border/50">
+              <button
+                onClick={handleOpenSalaoModal}
+                className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-card-hover transition-colors text-left group cursor-pointer"
+              >
+                <div className="w-9 h-9 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
+                  <Building2 size={18} className="text-accent-light" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-foreground">
+                      Perfil do Salão
+                    </p>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent/10 text-accent font-bold truncate max-w-[150px]">
+                      {salao?.nome || 'Configurar'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted">
+                    Nome do estabelecimento, link público e WhatsApp
+                  </p>
+                </div>
+                <ChevronRight
+                  size={16}
+                  className="text-muted/40 group-hover:text-muted transition-colors shrink-0"
+                />
+              </button>
+
               <button
                 onClick={() => setView('profissionais')}
                 className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-card-hover transition-colors text-left group"
@@ -1142,6 +1208,126 @@ export default function AjustesPage() {
                   {editingProd
                     ? (atualizarProduto.isPending ? 'Atualizando...' : 'Atualizar')
                     : (criarProduto.isPending ? 'Salvando...' : 'Salvar')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: EDITAR PERFIL DO SALÃO */}
+      {isSalaoModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
+          <div className="w-full max-w-md bg-card border border-border rounded-3xl p-6 space-y-5 shadow-2xl animate-scale-up">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-accent/10 flex items-center justify-center text-accent">
+                  <Building2 size={20} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-foreground">
+                    Perfil do Salão
+                  </h3>
+                  <p className="text-xs text-muted">
+                    Personalize sua marca e links públicos
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsSalaoModalOpen(false)}
+                className="w-8 h-8 rounded-xl bg-card border border-border flex items-center justify-center text-muted hover:text-foreground cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveSalao} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-muted mb-1.5">
+                  Nome do Salão / Estabelecimento <span className="text-accent">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: Studio Bella Donna"
+                  value={salaoNomeInput}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setSalaoNomeInput(val);
+                    // Se o slug ainda for padrão ou vazio, gera sugestão amigável
+                    if (!salaoSlugInput || salaoSlugInput === 'studio-beauty') {
+                      const autoSlug = val
+                        .toLowerCase()
+                        .normalize('NFD')
+                        .replace(/[\u0300-\u036f]/g, '')
+                        .replace(/[^a-z0-9]/g, '-')
+                        .replace(/-+/g, '-');
+                      setSalaoSlugInput(autoSlug);
+                    }
+                  }}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-sm text-foreground focus:outline-none focus:border-accent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-muted mb-1.5">
+                  Link Personalizado de Agendamento (Slug)
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted font-mono select-none">
+                    /agendar/
+                  </span>
+                  <input
+                    type="text"
+                    required
+                    placeholder="nome-do-salao"
+                    value={salaoSlugInput}
+                    onChange={(e) => {
+                      const slugFormatted = e.target.value
+                        .toLowerCase()
+                        .normalize('NFD')
+                        .replace(/[\u0300-\u036f]/g, '')
+                        .replace(/[^a-z0-9-]/g, '');
+                      setSalaoSlugInput(slugFormatted);
+                    }}
+                    className="w-full pl-20 pr-3.5 py-2.5 rounded-xl bg-background border border-border text-sm text-foreground font-mono focus:outline-none focus:border-accent"
+                  />
+                </div>
+                <p className="text-[10px] text-muted mt-1">
+                  Seus clientes acessarão: <strong className="text-accent">{typeof window !== 'undefined' ? window.location.origin : ''}/agendar/{salaoSlugInput || 'seu-link'}</strong>
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-muted mb-1.5">
+                  WhatsApp do Salão (Para Alertas e Contato)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ex: 51981108170 ou (51) 98110-8170"
+                  value={salaoPhoneInput}
+                  onChange={(e) => setSalaoPhoneInput(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-sm text-foreground focus:outline-none focus:border-accent"
+                />
+                <p className="text-[10px] text-muted mt-1">
+                  Neste número você receberá os alertas automáticos de novos agendamentos feitos pelos clientes.
+                </p>
+              </div>
+
+              <div className="pt-3 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsSalaoModalOpen(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-border text-xs font-semibold text-muted hover:bg-card cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingSalao}
+                  className="flex-1 py-2.5 rounded-xl bg-accent text-xs font-bold text-white hover:bg-accent/90 disabled:opacity-50 cursor-pointer shadow-md shadow-accent/20"
+                >
+                  {isSavingSalao ? 'Salvando...' : 'Salvar Alterações'}
                 </button>
               </div>
             </form>
