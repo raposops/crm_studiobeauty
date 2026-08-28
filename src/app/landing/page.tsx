@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
+import Script from 'next/script';
 
 const CTA_URL = 'https://crmstudio.fidustecnologia.com.br/cadastrar';
 
@@ -85,6 +86,19 @@ export default function LandingPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#0a0510', color: 'white', overflowX: 'hidden', fontFamily: "'Poppins', 'Inter', system-ui, sans-serif" }}>
+      {/* Facebook Pixel Code */}
+      <Script id="facebook-pixel" strategy="afterInteractive">
+        {`
+          !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+          fbq('init', '27715847204764005');
+          fbq('track', 'PageView');
+        `}
+      </Script>
+      <noscript>
+        <img height="1" width="1" style={{ display: 'none' }} src="https://www.facebook.com/tr?id=27715847204764005&ev=PageView&noscript=1" alt="" />
+      </noscript>
+      {/* End Facebook Pixel Code */}
+
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
