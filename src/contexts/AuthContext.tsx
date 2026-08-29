@@ -82,52 +82,112 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .from('usuarios')
         .select('*')
         .eq('id', currentUser.id)
-        .single();
+        .maybeSingle();
 
-      let targetSalaoId = currentUser.user_metadata?.salao_id;
+      const targetSalaoId =
+        userProfile?.salao_id ||
+        currentUser.user_metadata?.salao_id ||
+        DEFAULT_SALAO.id;
 
       if (userProfile && !profileErr) {
         setProfile(userProfile);
-        targetSalaoId = userProfile.salao_id;
       } else {
         // Fallback profile from user metadata if table missing or record not found
         setProfile({
           id: currentUser.id,
-          salao_id: targetSalaoId || DEFAULT_SALAO.id,
+          salao_id: targetSalaoId,
           nome: currentUser.user_metadata?.nome || currentUser.email || 'Usuário',
           email: currentUser.email || '',
           cargo: 'dona',
         });
       }
 
-      if (targetSalaoId) {
-        // 2. Fetch associated salao from 'saloes' table
-        const { data: salaoData, error: salaoErr } = await supabase
-          .from('saloes')
-          .select('*')
-          .eq('id', targetSalaoId)
-          .single();
+      // 2. Fetch associated salao from 'saloes' table
+      const { data: salaoData, error: salaoErr } = await supabase
+        .from('saloes')
+        .select('*')
+        .eq('id', targetSalaoId)
+        .maybeSingle();
 
-        if (salaoData && !salaoErr) {
-          setSalao(salaoData);
-        } else {
-          setSalao({
-            id: targetSalaoId,
-            nome: currentUser.user_metadata?.salao_nome || 'Meu Salão',
-            slug: currentUser.user_metadata?.slug || 'meu-salao',
-          });
+      if (salaoData && !salaoErr) {
+        setSalao(salaoData);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('cached_salao_info', JSON.stringify(salaoData));
+          localStorage.setItem('cached_salao_' + targetSalaoId, JSON.stringify(salaoData));
         }
       } else {
-        setSalao(DEFAULT_SALAO);
+        const cached = typeof window !== 'undefined' ? localStorage.getItem('cached_salao_' + targetSalaoId) : null;
+        if (cached) {
+          try {
+            setSalao(JSON.parse(cached));
+            return;
+          } catch {
+            // ignore
+          }
+        }
+        setSalao({
+          id: targetSalaoId,
+          nome: currentUser.user_metadata?.salao_nome || DEFAULT_SALAO.nome,
+          slug: currentUser.user_metadata?.slug || DEFAULT_SALAO.slug,
+          telefone_whatsapp: currentUser.user_metadata?.telefone_whatsapp || '',
+          plano: 'pro',
+          status_assinatura: 'ativo',
+          modulos_ativos: DEFAULT_SALAO.modulos_ativos,
+        });
       }
     } catch (err) {
       console.warn('Erro ao carregar dados do salão do usuário:', err);
       const fallbackId = currentUser.user_metadata?.salao_id || DEFAULT_SALAO.id;
+      const cached = typeof window !== 'undefined' ? localStorage.getItem('cached_salao_' + fallbackId) : null;
+      if (cached) {
+        try {
+          setSalao(JSON.parse(cached));
+          return;
+        } catch {}
+      }
       setSalao({
         id: fallbackId,
         nome: currentUser.user_metadata?.salao_nome || DEFAULT_SALAO.nome,
         slug: currentUser.user_metadata?.slug || DEFAULT_SALAO.slug,
+        telefone_whatsapp: currentUser.user_metadata?.telefone_whatsapp || '',
+        plano: 'pro',
+        status_assinatura: 'ativo',
+        modulos_ativos: DEFAULT_SALAO.modulos_ativos,
       });
+    }
+  };
+
+  const loadGuestSalao = async () => {
+    setProfile(null);
+    try {
+      const { data: defaultSalaoData } = await supabase
+        .from('saloes')
+        .select('*')
+        .eq('id', DEFAULT_SALAO.id)
+        .maybeSingle();
+
+      if (defaultSalaoData) {
+        setSalao(defaultSalaoData);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('cached_salao_info', JSON.stringify(defaultSalaoData));
+          localStorage.setItem('cached_salao_' + DEFAULT_SALAO.id, JSON.stringify(defaultSalaoData));
+        }
+      } else if (typeof window !== 'undefined') {
+        const cached = localStorage.getItem('cached_salao_info');
+        if (cached) {
+          try {
+            setSalao(JSON.parse(cached));
+          } catch {
+            setSalao(DEFAULT_SALAO);
+          }
+        } else {
+          setSalao(DEFAULT_SALAO);
+        }
+      } else {
+        setSalao(DEFAULT_SALAO);
+      }
+    } catch {
+      setSalao(DEFAULT_SALAO);
     }
   };
 
@@ -140,8 +200,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (currentSession?.user) {
       await fetchUserProfileAndSalao(currentSession.user);
     } else {
-      setProfile(null);
-      setSalao(DEFAULT_SALAO);
+      await loadGuestSalao();
     }
     setIsLoading(false);
   };
@@ -156,8 +215,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (currentSession?.user) {
         await fetchUserProfileAndSalao(currentSession.user);
       } else {
-        setProfile(null);
-        setSalao(DEFAULT_SALAO);
+        await loadGuestSalao();
       }
       setIsLoading(false);
     });

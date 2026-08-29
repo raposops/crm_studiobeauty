@@ -2,13 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { CalendarDays, Wallet, TrendingUp, Users, Settings, Home } from 'lucide-react';
+import { CalendarDays, Wallet, TrendingUp, Users, Settings, Home, Package } from 'lucide-react';
 
 const navItems = [
   { href: '/', label: 'Início', icon: Home, exact: true },
   { href: '/agenda', label: 'Agenda', icon: CalendarDays },
   { href: '/caixa', label: 'Caixa', icon: Wallet },
   { href: '/fluxo-de-caixa', label: 'Fluxo', icon: TrendingUp },
+  { href: '/estoque', label: 'Estoque', icon: Package },
   { href: '/clientes', label: 'Clientes', icon: Users },
   { href: '/ajustes', label: 'Ajustes', icon: Settings },
 ];
@@ -19,7 +20,7 @@ export default function BottomNav() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-[var(--nav-bg)] backdrop-blur-xl">
       <div className="mx-auto max-w-md md:max-w-4xl lg:max-w-6xl transition-all">
-        <div className="flex items-center justify-around py-2">
+        <div className="flex items-center justify-around py-1.5 px-1">
           {navItems.map((item) => {
             const isActive = item.exact ? pathname === item.href : pathname.startsWith(item.href);
             const Icon = item.icon;
@@ -28,7 +29,7 @@ export default function BottomNav() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all duration-200 ${
+                className={`flex flex-col items-center gap-0.5 px-1.5 sm:px-3 py-1 rounded-xl transition-all duration-200 ${
                   isActive
                     ? 'text-accent scale-105'
                     : 'text-muted hover:text-foreground'
@@ -36,7 +37,7 @@ export default function BottomNav() {
               >
                 <div className="relative">
                   <Icon
-                    size={22}
+                    size={20}
                     strokeWidth={isActive ? 2.5 : 1.8}
                     className="transition-all duration-200"
                   />
@@ -45,8 +46,8 @@ export default function BottomNav() {
                   )}
                 </div>
                 <span
-                  className={`text-[10px] font-medium tracking-wide transition-all duration-200 ${
-                    isActive ? 'text-accent-light' : ''
+                  className={`text-[9px] sm:text-[10px] font-medium tracking-wide transition-all duration-200 ${
+                    isActive ? 'text-accent-light font-bold' : ''
                   }`}
                 >
                   {item.label}

@@ -59,6 +59,7 @@ export function useCaixa(salaoId: string, filterStr: string, modo: 'dia' | 'mes'
         creditoGerado?: number;
       };
       servicosAdicionaisIds?: string[];
+      produtosExtrasItems?: Array<{ id: string; quantidade: number }>;
     }) => supabaseService.concluirAtendimento(
       args.agendamentoId,
       salaoId,
@@ -73,13 +74,15 @@ export function useCaixa(salaoId: string, filterStr: string, modo: 'dia' | 'mes'
       args.profissionalId,
       args.servicosNomes,
       args.opcoesCredito,
-      args.servicosAdicionaisIds
+      args.servicosAdicionaisIds,
+      args.produtosExtrasItems
     ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lancamentos'] });
       queryClient.invalidateQueries({ queryKey: ['agendamentos'] });
       queryClient.invalidateQueries({ queryKey: ['clientes'] });
       queryClient.invalidateQueries({ queryKey: ['movimentacoes_credito'] });
+      queryClient.invalidateQueries({ queryKey: ['produtos'] });
     },
   });
 

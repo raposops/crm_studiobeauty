@@ -40,8 +40,15 @@ export function useProdutos(salaoId: string) {
   }, [salaoId, queryClient, queryKey]);
 
   const criarProduto = useMutation({
-    mutationFn: (payload: { nome: string; preco: number; categoria: string }) =>
-      supabaseService.criarProduto(salaoId, payload),
+    mutationFn: (payload: {
+      nome: string;
+      preco: number;
+      categoria: string;
+      quantidade?: number;
+      estoque_minimo?: number;
+      custo?: number;
+      controlar_estoque?: boolean;
+    }) => supabaseService.criarProduto(salaoId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
     },
@@ -53,8 +60,24 @@ export function useProdutos(salaoId: string) {
       payload,
     }: {
       id: string;
-      payload: { nome?: string; preco?: number; categoria?: string };
+      payload: {
+        nome?: string;
+        preco?: number;
+        categoria?: string;
+        quantidade?: number;
+        estoque_minimo?: number;
+        custo?: number;
+        controlar_estoque?: boolean;
+      };
     }) => supabaseService.atualizarProduto(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey });
+    },
+  });
+
+  const ajustarEstoque = useMutation({
+    mutationFn: ({ id, quantidade }: { id: string; quantidade: number }) =>
+      supabaseService.atualizarProduto(id, { quantidade }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
     },
@@ -73,6 +96,8 @@ export function useProdutos(salaoId: string) {
     isError: query.isError,
     criarProduto,
     atualizarProduto,
+    ajustarEstoque,
     deletarProduto,
+    refetch: query.refetch,
   };
 }

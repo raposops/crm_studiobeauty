@@ -26,7 +26,9 @@ import {
   Globe,
   ShoppingBag,
   Building2,
+  Package,
 } from 'lucide-react';
+import Link from 'next/link';
 import { useProfissionais } from '@/hooks/useProfissionais';
 import { useServicos } from '@/hooks/useServicos';
 import { useProdutos } from '@/hooks/useProdutos';
@@ -47,7 +49,8 @@ const COLOR_OPTIONS = [
 ];
 
 export default function AjustesPage() {
-  const { salao, salaoId, logout, user, refreshAuth } = useAuth();
+  const { salao, salaoId, logout, user, refreshAuth, hasModule } = useAuth();
+  const temModuloEstoque = hasModule('estoque');
   const salaoSlug = salao?.slug || 'studio-beauty';
   const publicBookingUrl = typeof window !== 'undefined' ? `${window.location.origin}/agendar/${salaoSlug}` : `http://localhost:3000/agendar/${salaoSlug}`;
 
@@ -108,6 +111,9 @@ export default function AjustesPage() {
   const [prodNome, setProdNome] = useState('');
   const [prodPreco, setProdPreco] = useState('');
   const [prodCategoria, setProdCategoria] = useState('Cabelo');
+  const [prodQuantidade, setProdQuantidade] = useState('10');
+  const [prodEstoqueMinimo, setProdEstoqueMinimo] = useState('2');
+  const [prodCusto, setProdCusto] = useState('');
 
   // Handlers for Salão Modal
   function handleOpenSalaoModal() {
@@ -128,7 +134,7 @@ export default function AjustesPage() {
       await supabaseService.atualizarDadosSalao(salaoId, {
         nome: salaoNomeInput.trim(),
         slug: salaoSlugInput.trim() || undefined,
-        telefone_whatsapp: salaoPhoneInput.trim() || undefined,
+        telefone_whatsapp: salaoPhoneInput.trim() || '',
       });
       await refreshAuth();
       setIsSalaoModalOpen(false);
@@ -293,6 +299,9 @@ export default function AjustesPage() {
     setProdNome('');
     setProdPreco('');
     setProdCategoria('Cabelo');
+    setProdQuantidade('10');
+    setProdEstoqueMinimo('2');
+    setProdCusto('');
     setIsProdModalOpen(true);
   }
 
@@ -301,6 +310,9 @@ export default function AjustesPage() {
     setProdNome(prod.nome);
     setProdPreco((prod.preco / 100).toFixed(2));
     setProdCategoria(prod.categoria || 'Geral');
+    setProdQuantidade(prod.quantidade?.toString() || '0');
+    setProdEstoqueMinimo(prod.estoque_minimo?.toString() || '0');
+    setProdCusto(prod.custo ? (prod.custo / 100).toFixed(2) : '');
     setIsProdModalOpen(true);
   }
 
@@ -314,6 +326,9 @@ export default function AjustesPage() {
       return;
     }
     const precoCentavos = Math.round(priceFloat * 100);
+    const custoCentavos = prodCusto ? Math.round(parseFloat(prodCusto.replace(',', '.')) * 100) : 0;
+    const qtdNum = parseInt(prodQuantidade) || 0;
+    const minNum = parseInt(prodEstoqueMinimo) || 0;
 
     if (editingProd) {
       atualizarProduto.mutate(
@@ -323,6 +338,9 @@ export default function AjustesPage() {
             nome: prodNome.trim(),
             preco: precoCentavos,
             categoria: prodCategoria,
+            quantidade: qtdNum,
+            estoque_minimo: minNum,
+            custo: custoCentavos,
           },
         },
         {
@@ -331,6 +349,9 @@ export default function AjustesPage() {
             setProdNome('');
             setProdPreco('');
             setProdCategoria('Cabelo');
+            setProdQuantidade('10');
+            setProdEstoqueMinimo('2');
+            setProdCusto('');
             setIsProdModalOpen(false);
           },
           onError: (err: any) => {
@@ -345,12 +366,19 @@ export default function AjustesPage() {
           nome: prodNome.trim(),
           preco: precoCentavos,
           categoria: prodCategoria,
+          quantidade: qtdNum,
+          estoque_minimo: minNum,
+          custo: custoCentavos,
+          controlar_estoque: true,
         },
         {
           onSuccess: () => {
             setProdNome('');
             setProdPreco('');
             setProdCategoria('Cabelo');
+            setProdQuantidade('10');
+            setProdEstoqueMinimo('2');
+            setProdCusto('');
             setIsProdModalOpen(false);
           },
           onError: (err: any) => {
@@ -491,9 +519,16 @@ export default function AjustesPage() {
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent/10 text-accent font-bold">
                       {produtos.length}
                     </span>
+                    {temModuloEstoque && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-500/15 text-purple-400 border border-purple-500/30 font-bold hidden sm:inline">
+                        Estoque PRO
+                      </span>
+                    )}
                   </div>
                   <p className="text-[11px] text-muted">
-                    Itens e cosméticos para venda na comanda
+                    {temModuloEstoque 
+                      ? 'Itens integrados com o módulo Controle de Estoque'
+                      : 'Itens e cosméticos para venda rápida na comanda'}
                   </p>
                 </div>
                 <ChevronRight
@@ -838,6 +873,26 @@ export default function AjustesPage() {
       {/* VIEW: PRODUTOS EXTRAS */}
       {view === 'produtos' && (
         <div className="space-y-4">
+          {temModuloEstoque && (
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-500/15 via-accent/10 to-indigo-500/10 border border-purple-500/30 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center shrink-0">
+                  <Package size={18} />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-foreground">Módulo de Estoque Ativo</p>
+                  <p className="text-[11px] text-muted">Você pode gerenciar quantidades, entradas e relatórios detalhados no módulo Estoque.</p>
+                </div>
+              </div>
+              <Link
+                href="/estoque"
+                className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shrink-0 transition-all shadow-md shadow-purple-600/20 flex items-center gap-1"
+              >
+                Abrir Estoque &rarr;
+              </Link>
+            </div>
+          )}
+
           <button
             onClick={handleOpenNewProdModal}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-accent text-white text-sm font-bold shadow-lg shadow-accent/20 hover:bg-accent/90 transition-all active:scale-95 cursor-pointer"
@@ -864,18 +919,35 @@ export default function AjustesPage() {
                   className="flex items-center justify-between p-3.5 rounded-2xl bg-card border border-border"
                 >
                   <div className="space-y-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-accent/10 text-accent">
                         {prod.categoria || 'Geral'}
                       </span>
                       <p className="text-sm font-bold text-foreground">
                         {prod.nome}
                       </p>
+                      {temModuloEstoque && prod.quantidade !== undefined && (
+                        <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold ${
+                          prod.quantidade <= 0
+                            ? 'bg-rose-500/15 text-rose-400 border border-rose-500/20'
+                            : prod.quantidade <= (prod.estoque_minimo || 2)
+                            ? 'bg-amber-500/15 text-amber-400 border border-amber-500/20'
+                            : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
+                        }`}>
+                          Estoque: {prod.quantidade} un
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-3 text-xs text-muted">
                       <span className="flex items-center gap-1 font-semibold text-foreground">
-                        {formatCurrency(prod.preco)}
+                        Venda: {formatCurrency(prod.preco)}
                       </span>
+                      {temModuloEstoque && prod.custo ? (
+                        <>
+                          <span>&middot;</span>
+                          <span>Custo: {formatCurrency(prod.custo)}</span>
+                        </>
+                      ) : null}
                     </div>
                   </div>
 
@@ -1188,6 +1260,60 @@ export default function AjustesPage() {
                   <option value="Outros">Outros / Geral</option>
                 </select>
               </div>
+
+              {temModuloEstoque && (
+                <div className="p-3 rounded-2xl bg-card/60 border border-border space-y-3">
+                  <div className="flex items-center gap-1.5 text-accent font-bold text-xs">
+                    <Package size={14} />
+                    <span>Controle de Estoque (Plano PRO)</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-muted mb-1">
+                        Qtd em Estoque
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        placeholder="10"
+                        value={prodQuantidade}
+                        onChange={(e) => setProdQuantidade(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-background border border-border text-xs text-foreground focus:outline-none focus:border-accent"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-muted mb-1">
+                        Estoque Mínimo
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        placeholder="2"
+                        value={prodEstoqueMinimo}
+                        onChange={(e) => setProdEstoqueMinimo(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-background border border-border text-xs text-foreground focus:outline-none focus:border-accent"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-muted mb-1">
+                      Preço de Custo (R$) - Opcional
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="20.00"
+                      value={prodCusto}
+                      onChange={(e) => setProdCusto(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-background border border-border text-xs text-foreground focus:outline-none focus:border-accent"
+                    />
+                  </div>
+                </div>
+              )}
 
               <div className="pt-2 flex gap-2">
                 <button

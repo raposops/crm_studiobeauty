@@ -55,14 +55,14 @@ export const SERVICOS: Servico[] = [
 // ========================
 
 export const PRODUTOS_EXTRAS: ProdutoExtra[] = [
-  { id: 'prod-1', nome: 'Shampoo Profissional', preco: 4500, categoria: 'Cabelo' },
-  { id: 'prod-2', nome: 'Condicionador Premium', preco: 3800, categoria: 'Cabelo' },
-  { id: 'prod-3', nome: 'Óleo Capilar', preco: 2500, categoria: 'Cabelo' },
-  { id: 'prod-4', nome: 'Máscara de Tratamento', preco: 5500, categoria: 'Tratamento' },
-  { id: 'prod-5', nome: 'Pomada Modeladora', preco: 3000, categoria: 'Barba' },
-  { id: 'prod-6', nome: 'Esmalte Importado', preco: 2000, categoria: 'Unhas' },
-  { id: 'prod-7', nome: 'Base Fortalecedora', preco: 1800, categoria: 'Unhas' },
-  { id: 'prod-8', nome: 'Cera Depilatória', preco: 3500, categoria: 'Depilação' },
+  { id: 'prod-1', nome: 'Shampoo Profissional', preco: 4500, custo: 2000, quantidade: 18, estoque_minimo: 5, categoria: 'Cabelo', controlar_estoque: true },
+  { id: 'prod-2', nome: 'Condicionador Premium', preco: 3800, custo: 1800, quantidade: 12, estoque_minimo: 4, categoria: 'Cabelo', controlar_estoque: true },
+  { id: 'prod-3', nome: 'Óleo Capilar', preco: 2500, custo: 1100, quantidade: 8, estoque_minimo: 3, categoria: 'Cabelo', controlar_estoque: true },
+  { id: 'prod-4', nome: 'Máscara de Tratamento', preco: 5500, custo: 2500, quantidade: 5, estoque_minimo: 2, categoria: 'Tratamento', controlar_estoque: true },
+  { id: 'prod-5', nome: 'Pomada Modeladora', preco: 3000, custo: 1400, quantidade: 14, estoque_minimo: 4, categoria: 'Barba', controlar_estoque: true },
+  { id: 'prod-6', nome: 'Esmalte Importado', preco: 2000, custo: 800, quantidade: 2, estoque_minimo: 5, categoria: 'Unhas', controlar_estoque: true },
+  { id: 'prod-7', nome: 'Base Fortalecedora', preco: 1800, custo: 700, quantidade: 0, estoque_minimo: 3, categoria: 'Unhas', controlar_estoque: true },
+  { id: 'prod-8', nome: 'Cera Depilatória', preco: 3500, custo: 1500, quantidade: 9, estoque_minimo: 3, categoria: 'Depilação', controlar_estoque: true },
 ];
 
 // ========================

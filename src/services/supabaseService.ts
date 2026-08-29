@@ -281,7 +281,8 @@ export const supabaseService = {
       creditoUtilizado?: number;
       creditoGerado?: number;
     },
-    servicosAdicionaisIds?: string[]
+    servicosAdicionaisIds?: string[],
+    produtosExtrasItems?: Array<{ id: string; quantidade: number }>
   ) {
     // 1. Processar crédito utilizado da cliente se houver
     if (opcoesCredito?.creditoUtilizado && opcoesCredito.creditoUtilizado > 0 && opcoesCredito.clienteId) {
@@ -326,18 +327,14 @@ export const supabaseService = {
       }
     }
 
-    // 2. Processar crédito gerado (ex: troco em dinheiro) se houver
-    if (opcoesCredito?.creditoGerado && opcoesCredito.creditoGerado > 0 && opcoesCredito.clienteId) {
-      try {
-        await this.adicionarCreditoCliente(
-          salaoId,
-          opcoesCredito.clienteId,
-          opcoesCredito.creditoGerado,
-          `Troco/Crédito gerado no atendimento (${servicosNomes.join(', ') || 'Serviço'})`,
-          agendamentoId
-        );
-      } catch (err: any) {
-        console.warn('Erro ao adicionar crédito da cliente:', err?.message);
+    // 4. Baixa automática de estoque de produtos extras vendidos
+    if (produtosExtrasItems && produtosExtrasItems.length > 0) {
+      for (const item of produtosExtrasItems) {
+        try {
+          await this.abaterEstoqueProduto(salaoId, item.id, item.quantidade);
+        } catch (stkErr: any) {
+          console.warn('Aviso: erro ao abater estoque do produto:', stkErr?.message);
+        }
       }
     }
 
@@ -586,7 +583,15 @@ export const supabaseService = {
 
   async criarProduto(
     salaoId: string,
-    payload: { nome: string; preco: number; categoria: string }
+    payload: {
+      nome: string;
+      preco: number;
+      categoria: string;
+      quantidade?: number;
+      estoque_minimo?: number;
+      custo?: number;
+      controlar_estoque?: boolean;
+    }
   ): Promise<ProdutoExtra> {
     const novoProduto: ProdutoExtra = {
       id: generateUUID(),
@@ -594,6 +599,10 @@ export const supabaseService = {
       nome: payload.nome.trim(),
       preco: payload.preco,
       categoria: payload.categoria.trim() || 'Geral',
+      quantidade: payload.quantidade ?? 0,
+      estoque_minimo: payload.estoque_minimo ?? 0,
+      custo: payload.custo ?? 0,
+      controlar_estoque: payload.controlar_estoque ?? true,
       criado_em: new Date().toISOString(),
     };
 
@@ -606,6 +615,10 @@ export const supabaseService = {
           nome: novoProduto.nome,
           preco: novoProduto.preco,
           categoria: novoProduto.categoria,
+          quantidade: novoProduto.quantidade,
+          estoque_minimo: novoProduto.estoque_minimo,
+          custo: novoProduto.custo,
+          controlar_estoque: novoProduto.controlar_estoque,
         })
         .select()
         .single();
@@ -624,16 +637,29 @@ export const supabaseService = {
 
   async atualizarProduto(
     id: string,
-    payload: { nome?: string; preco?: number; categoria?: string }
+    payload: {
+      nome?: string;
+      preco?: number;
+      categoria?: string;
+      quantidade?: number;
+      estoque_minimo?: number;
+      custo?: number;
+      controlar_estoque?: boolean;
+    }
   ): Promise<ProdutoExtra> {
+    const updateData: Record<string, any> = {};
+    if (payload.nome !== undefined) updateData.nome = payload.nome.trim();
+    if (payload.preco !== undefined) updateData.preco = payload.preco;
+    if (payload.categoria !== undefined) updateData.categoria = payload.categoria.trim();
+    if (payload.quantidade !== undefined) updateData.quantidade = payload.quantidade;
+    if (payload.estoque_minimo !== undefined) updateData.estoque_minimo = payload.estoque_minimo;
+    if (payload.custo !== undefined) updateData.custo = payload.custo;
+    if (payload.controlar_estoque !== undefined) updateData.controlar_estoque = payload.controlar_estoque;
+
     try {
       const { data, error } = await supabase
         .from('produtos')
-        .update({
-          ...(payload.nome ? { nome: payload.nome.trim() } : {}),
-          ...(payload.preco !== undefined ? { preco: payload.preco } : {}),
-          ...(payload.categoria ? { categoria: payload.categoria.trim() } : {}),
-        })
+        .update(updateData)
         .eq('id', id)
         .select()
         .single();
@@ -661,9 +687,7 @@ export const supabaseService = {
             if (idx >= 0) {
               list[idx] = {
                 ...list[idx],
-                ...(payload.nome ? { nome: payload.nome.trim() } : {}),
-                ...(payload.preco !== undefined ? { preco: payload.preco } : {}),
-                ...(payload.categoria ? { categoria: payload.categoria.trim() } : {}),
+                ...updateData,
               };
               localStorage.setItem(key, JSON.stringify(list));
               updated = list[idx];
@@ -679,7 +703,42 @@ export const supabaseService = {
         nome: payload.nome || '',
         preco: payload.preco || 0,
         categoria: payload.categoria || 'Geral',
+        quantidade: payload.quantidade ?? 0,
       }
+    );
+  },
+
+  async abaterEstoqueProduto(salaoId: string, produtoId: string, quantidadeAbatida: number) {
+    if (quantidadeAbatida <= 0) return;
+
+    try {
+      // 1. Tentar buscar produto atual para subtrair
+      const { data: prod } = await supabase
+        .from('produtos')
+        .select('id, quantidade, controlar_estoque')
+        .eq('id', produtoId)
+        .maybeSingle();
+
+      if (prod && prod.controlar_estoque !== false) {
+        const novaQtd = Math.max(0, (prod.quantidade || 0) - quantidadeAbatida);
+        await supabase
+          .from('produtos')
+          .update({ quantidade: novaQtd })
+          .eq('id', produtoId);
+      }
+    } catch (err: any) {
+      console.warn('Erro ao dar baixa no estoque no Supabase:', err?.message);
+    }
+
+    // 2. Atualizar cache local
+    this.atualizarCacheProdutosLocal(salaoId, (list) =>
+      list.map((p) => {
+        if (p.id === produtoId) {
+          const current = p.quantidade ?? 10;
+          return { ...p, quantidade: Math.max(0, current - quantidadeAbatida) };
+        }
+        return p;
+      })
     );
   },
 
@@ -917,7 +976,7 @@ export const supabaseService = {
       .update({ modulos_ativos: modulos })
       .eq('id', salaoId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
     return data;
@@ -929,7 +988,7 @@ export const supabaseService = {
       .update(payload)
       .eq('id', salaoId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
       if (error.message?.includes('modulos_ativos')) {
@@ -938,7 +997,7 @@ export const supabaseService = {
           await supabase.from('saloes').update(fallbackPayload).eq('id', salaoId);
         }
         throw new Error(
-          "A coluna 'modulos_ativos' ainda não existe na tabela 'saloes' do Supabase. Execute o comando SQL no Supabase para ativar a gravação de módulos."
+           "A coluna 'modulos_ativos' ainda não existe na tabela 'saloes' do Supabase. Execute o comando SQL no Supabase para ativar a gravação de módulos."
         );
       }
       throw error;
@@ -952,7 +1011,7 @@ export const supabaseService = {
       .update({ status_assinatura: status })
       .eq('id', salaoId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
     return data;
@@ -1346,17 +1405,74 @@ export const supabaseService = {
         .replace(/^-|-$/g, '');
     }
     if (payload.telefone_whatsapp !== undefined) {
-      updateData.telefone_whatsapp = payload.telefone_whatsapp.replace(/\D/g, '');
+      updateData.telefone_whatsapp = payload.telefone_whatsapp ? payload.telefone_whatsapp.replace(/\D/g, '') : '';
     }
 
-    const { data, error } = await supabase
+    // 1. Tentar update com maybeSingle para não quebrar se 0 linhas forem retornadas
+    let { data, error } = await supabase
       .from('saloes')
       .update(updateData)
       .eq('id', salaoId)
       .select()
-      .single();
+      .maybeSingle();
 
-    if (error) throw error;
+    if (error) {
+      console.warn('Erro ao atualizar salão no Supabase:', error.message);
+      throw error;
+    }
+
+    // 2. Se a linha não existia no banco (ex: salaoId criado por fallback local), fazer upsert garantindo campos obrigatórios
+    if (!data) {
+      const { data: upsertData, error: upsertError } = await supabase
+        .from('saloes')
+        .upsert({
+          id: salaoId,
+          nome: updateData.nome || 'Meu Salão',
+          slug: updateData.slug || 'meu-salao',
+          telefone_whatsapp: updateData.telefone_whatsapp ?? '',
+          plano: 'pro',
+          status_assinatura: 'ativo',
+          ...updateData,
+        })
+        .select()
+        .maybeSingle();
+
+      if (upsertError) {
+        console.warn('Erro no upsert de salão no Supabase:', upsertError.message);
+        throw upsertError;
+      }
+      data = upsertData;
+    }
+
+    // 3. Atualizar metadata do usuário no Auth para manter os dados sincronizados
+    try {
+      await supabase.auth.updateUser({
+        data: {
+          salao_id: salaoId,
+          salao_nome: updateData.nome,
+          slug: updateData.slug,
+          telefone_whatsapp: updateData.telefone_whatsapp ?? '',
+        },
+      });
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        await supabase
+          .from('usuarios')
+          .update({ salao_id: salaoId })
+          .eq('id', session.user.id);
+      }
+    } catch (authErr: any) {
+      console.warn('Aviso ao sincronizar auth metadata:', authErr?.message);
+    }
+
+    if (data && typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('cached_salao_info', JSON.stringify(data));
+        localStorage.setItem('cached_salao_' + salaoId, JSON.stringify(data));
+      } catch {}
+    }
+
     return data;
   }
 };

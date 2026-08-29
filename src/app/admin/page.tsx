@@ -574,6 +574,7 @@ export default function AdminPage() {
                         relatorios_avancados: true,
                         fluxo_de_caixa: false,
                         fluxo_caixa_avancado: false,
+                        estoque: false,
                       });
                     } else if (newPlan === 'pro') {
                       setEditModulos({
@@ -582,6 +583,7 @@ export default function AdminPage() {
                         relatorios_avancados: true,
                         fluxo_de_caixa: true,
                         fluxo_caixa_avancado: true,
+                        estoque: true,
                       });
                     }
                   }}

@@ -126,6 +126,11 @@ export const MODULOS_DISPONIVEIS: Array<{ key: string; nome: string; descricao: 
     descricao: 'Permite registrar entradas/saídas avulsas manuais e controlar o saldo do dia',
   },
   {
+    key: 'estoque',
+    nome: 'Controle de Estoque & Baixa Automática',
+    descricao: 'Gestão completa de estoque, quantidades em tempo real e baixa automática ao vender produtos na comanda',
+  },
+  {
     key: 'comissao_customizada',
     nome: 'Comissão Customizada por Profissional',
     descricao: 'Permite alterar a % de repasse individual de cada profissional no cadastro',
@@ -166,6 +171,7 @@ export const PLANOS_SAAS: Record<'basico' | 'pro', PlanoSaaS> = {
       'Relatórios financeiros do salão',
       'Agenda multi-profissional inteligente',
       'Link público para agendamento online',
+      'Cadastro simples de produtos extras em Ajustes',
     ],
     modulosPadrao: {
       comissao_customizada: true,
@@ -173,6 +179,7 @@ export const PLANOS_SAAS: Record<'basico' | 'pro', PlanoSaaS> = {
       relatorios_avancados: true,
       fluxo_de_caixa: false,
       fluxo_caixa_avancado: false,
+      estoque: false,
     },
   },
   pro: {
@@ -180,10 +187,11 @@ export const PLANOS_SAAS: Record<'basico' | 'pro', PlanoSaaS> = {
     nome: 'Plano PRO Completo',
     preco: 69.90,
     precoFormatado: 'R$ 69,90',
-    descricao: 'Tudo do plano básico + Fluxo de Caixa completo, despesas fixas e lançamentos avulsos.',
+    descricao: 'Tudo do plano básico + Fluxo de Caixa completo, despesas fixas, lançamentos avulsos e Controle de Estoque.',
     destaque: true,
     recursos: [
       'Todos os benefícios do Plano Básico',
+      'Controle de Estoque com baixa automática na comanda',
       'Fluxo de Caixa com controle de receitas e despesas fixas',
       'Lançamento Avulso de entradas e saídas',
       'Relatórios financeiros avançados e gráficos executivos',
@@ -195,6 +203,7 @@ export const PLANOS_SAAS: Record<'basico' | 'pro', PlanoSaaS> = {
       relatorios_avancados: true,
       fluxo_de_caixa: true,
       fluxo_caixa_avancado: true,
+      estoque: true,
     },
   },
 };
@@ -237,6 +246,10 @@ export interface ProdutoExtra {
   nome: string;
   preco: number; // em centavos
   categoria: string;
+  quantidade?: number; // quantidade em estoque
+  estoque_minimo?: number; // estoque mínimo para alerta
+  custo?: number; // custo unitário em centavos
+  controlar_estoque?: boolean;
   criado_em?: string;
 }
 

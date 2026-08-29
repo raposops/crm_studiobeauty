@@ -107,7 +107,7 @@ export default function CheckoutModal({
     }
   }, [agendamento]);
 
-  const { salaoId } = useAuth();
+  const { salaoId, hasModule } = useAuth();
   const { concluirAtendimento } = useCaixa(salaoId, agendamento?.data || '');
   const { deletarAgendamento } = useAgenda(salaoId, agendamento?.data || '');
   const { servicos: catalogoServicos, isLoading: loadingCatalogoServicos } = useServicos(salaoId);
@@ -196,6 +196,12 @@ export default function CheckoutModal({
   }
 
   function toggleExtra(produto: ProdutoExtra) {
+    const isEsgotado = hasModule('estoque') && produto.controlar_estoque !== false && (produto.quantidade ?? 0) <= 0;
+    if (isEsgotado && !selectedExtras.has(produto.id)) {
+      alert(`O produto "${produto.nome}" está esgotado no estoque e não pode ser adicionado à comanda.`);
+      return;
+    }
+
     setSelectedExtras((prev) => {
       const next = new Map(prev);
       if (next.has(produto.id)) {
@@ -216,6 +222,11 @@ export default function CheckoutModal({
       if (newQty <= 0) {
         next.delete(produtoId);
       } else {
+        const estoqueDisponivel = item.produto.quantidade ?? Infinity;
+        if (hasModule('estoque') && item.produto.controlar_estoque !== false && newQty > estoqueDisponivel) {
+          alert(`Limite de estoque atingido! Há apenas ${estoqueDisponivel} un. disponíveis de "${item.produto.nome}".`);
+          return next;
+        }
         next.set(produtoId, { ...item, quantidade: newQty });
       }
       return next;
@@ -270,6 +281,20 @@ export default function CheckoutModal({
       ...servicosAdicionais.map((s) => `${s.nome} (Extra)`),
     ];
     const servicosAdicionaisIds = servicosAdicionais.map((s) => s.id);
+    const produtosExtrasItems = Array.from(selectedExtras.values()).map(
+      ({ produto, quantidade }) => ({ id: produto.id, quantidade })
+    );
+
+    // Validação extra de estoque antes de fechar a comanda
+    if (hasModule('estoque')) {
+      for (const { produto, quantidade } of selectedExtras.values()) {
+        if (produto.controlar_estoque !== false && (produto.quantidade ?? 0) < quantidade) {
+          alert(`O produto "${produto.nome}" está com estoque insuficiente (${produto.quantidade ?? 0} disponível). Ajuste a comanda para prosseguir.`);
+          setIsSubmitting(false);
+          return;
+        }
+      }
+    }
 
     concluirAtendimento.mutate(
       {
@@ -290,6 +315,7 @@ export default function CheckoutModal({
           creditoUtilizado: valorCreditoAbatido,
           creditoGerado: creditoGerado,
         },
+        produtosExtrasItems,
       },
       {
         onSuccess: () => {
@@ -616,6 +642,10 @@ export default function CheckoutModal({
                 {produtos.map((produto) => {
                   const selected = selectedExtras.get(produto.id);
                   const isSelected = !!selected;
+                  const isEsgotado =
+                    hasModule('estoque') &&
+                    produto.controlar_estoque !== false &&
+                    (produto.quantidade ?? 0) <= 0;
 
                   return (
                     <div
@@ -623,17 +653,26 @@ export default function CheckoutModal({
                       className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-all duration-200 ${
                         isSelected
                           ? 'bg-accent/10 border-accent/30'
+                          : isEsgotado
+                          ? 'bg-card/40 border-border/50 opacity-60'
                           : 'bg-card border-border hover:bg-card-hover'
                       }`}
                     >
                       <button
+                        type="button"
                         onClick={() => toggleExtra(produto)}
-                        className="flex-1 flex items-center gap-2 text-left min-w-0"
+                        disabled={isEsgotado && !isSelected}
+                        className={`flex-1 flex items-center gap-2 text-left min-w-0 ${
+                          isEsgotado && !isSelected ? 'cursor-not-allowed' : 'cursor-pointer'
+                        }`}
+                        title={isEsgotado && !isSelected ? 'Produto esgotado no estoque' : ''}
                       >
                         <div
                           className={`w-4 h-4 rounded shrink-0 border-2 flex items-center justify-center transition-all ${
                             isSelected
                               ? 'bg-accent border-accent'
+                              : isEsgotado
+                              ? 'border-border bg-muted/20'
                               : 'border-border'
                           }`}
                         >
@@ -641,19 +680,33 @@ export default function CheckoutModal({
                             <Check size={10} className="text-white" />
                           )}
                         </div>
-                        <span className="text-sm text-foreground truncate">
-                          {produto.nome}
-                        </span>
+                        <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
+                          <span className={`text-sm truncate ${isEsgotado && !isSelected ? 'text-muted line-through' : 'text-foreground'}`}>
+                            {produto.nome}
+                          </span>
+                          {hasModule('estoque') && produto.quantidade !== undefined && (
+                            <span className={`text-[9px] px-1.5 py-0.2 rounded font-bold shrink-0 ${
+                              produto.quantidade <= 0
+                                ? 'bg-rose-500/15 text-rose-400 border border-rose-500/20'
+                                : produto.quantidade <= (produto.estoque_minimo || 2)
+                                ? 'bg-amber-500/15 text-amber-400 border border-amber-500/20'
+                                : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
+                            }`}>
+                              {produto.quantidade <= 0 ? 'Esgotado' : `${produto.quantidade} un`}
+                            </span>
+                          )}
+                        </div>
                       </button>
-                      <span className="text-xs font-semibold text-foreground shrink-0">
+                      <span className={`text-xs font-semibold shrink-0 ${isEsgotado && !isSelected ? 'text-muted' : 'text-foreground'}`}>
                         {formatCurrency(produto.preco)}
                       </span>
 
                       {isSelected && (
                         <div className="flex items-center gap-1 shrink-0">
                           <button
+                            type="button"
                             onClick={() => updateQuantidade(produto.id, -1)}
-                            className="w-6 h-6 rounded-lg bg-card border border-border flex items-center justify-center hover:bg-card-hover active:scale-90"
+                            className="w-6 h-6 rounded-lg bg-card border border-border flex items-center justify-center hover:bg-card-hover active:scale-90 cursor-pointer"
                           >
                             <Minus size={10} className="text-muted" />
                           </button>
@@ -661,8 +714,11 @@ export default function CheckoutModal({
                             {selected.quantidade}
                           </span>
                           <button
+                            type="button"
                             onClick={() => updateQuantidade(produto.id, 1)}
-                            className="w-6 h-6 rounded-lg bg-card border border-border flex items-center justify-center hover:bg-card-hover active:scale-90"
+                            disabled={hasModule('estoque') && produto.controlar_estoque !== false && selected.quantidade >= (produto.quantidade ?? 0)}
+                            className="w-6 h-6 rounded-lg bg-card border border-border flex items-center justify-center hover:bg-card-hover active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                            title={hasModule('estoque') && produto.controlar_estoque !== false && selected.quantidade >= (produto.quantidade ?? 0) ? 'Limite de estoque atingido' : 'Adicionar mais 1'}
                           >
                             <Plus size={10} className="text-muted" />
                           </button>
