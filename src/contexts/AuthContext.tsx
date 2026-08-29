@@ -77,6 +77,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchUserProfileAndSalao = async (currentUser: User) => {
     try {
+      const isSuperAdminUser = Boolean(
+        currentUser.email?.toLowerCase().includes('admin') ||
+        currentUser.email?.toLowerCase() === 'contato@studiobeauty.com'
+      );
+
       // 1. Fetch user profile from 'usuarios' table
       const { data: userProfile, error: profileErr } = await supabase
         .from('usuarios')
@@ -98,7 +103,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           salao_id: targetSalaoId,
           nome: currentUser.user_metadata?.nome || currentUser.email || 'Usuário',
           email: currentUser.email || '',
-          cargo: 'dona',
+          cargo: isSuperAdminUser ? 'superadmin' : 'dona',
         });
       }
 
@@ -110,30 +115,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .maybeSingle();
 
       if (salaoData && !salaoErr) {
+        // Se o salão está inativo e não é superadmin, desconectar
+        if (salaoData.status_assinatura === 'inativo' && !isSuperAdminUser) {
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('cached_salao_info');
+            localStorage.removeItem('cached_salao_' + targetSalaoId);
+          }
+          await supabase.auth.signOut();
+          setUser(null);
+          setSession(null);
+          setProfile(null);
+          setSalao(null);
+          if (typeof window !== 'undefined') {
+            window.location.href = '/login?error=salao_inativo';
+          }
+          return;
+        }
+
         setSalao(salaoData);
         if (typeof window !== 'undefined') {
           localStorage.setItem('cached_salao_info', JSON.stringify(salaoData));
           localStorage.setItem('cached_salao_' + targetSalaoId, JSON.stringify(salaoData));
         }
       } else {
-        const cached = typeof window !== 'undefined' ? localStorage.getItem('cached_salao_' + targetSalaoId) : null;
-        if (cached) {
-          try {
-            setSalao(JSON.parse(cached));
-            return;
-          } catch {
-            // ignore
+        // SALÃO NÃO ENCONTRADO NO BANCO (Foi excluído pelo SuperAdmin)
+        if (!isSuperAdminUser) {
+          console.warn('Salão excluído do banco de dados. Desconectando usuário...');
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('cached_salao_info');
+            localStorage.removeItem('cached_salao_' + targetSalaoId);
           }
+          await supabase.auth.signOut();
+          setUser(null);
+          setSession(null);
+          setProfile(null);
+          setSalao(null);
+          if (typeof window !== 'undefined') {
+            window.location.href = '/login?error=salao_excluido';
+          }
+          return;
         }
-        setSalao({
-          id: targetSalaoId,
-          nome: currentUser.user_metadata?.salao_nome || DEFAULT_SALAO.nome,
-          slug: currentUser.user_metadata?.slug || DEFAULT_SALAO.slug,
-          telefone_whatsapp: currentUser.user_metadata?.telefone_whatsapp || '',
-          plano: 'pro',
-          status_assinatura: 'ativo',
-          modulos_ativos: DEFAULT_SALAO.modulos_ativos,
-        });
+
+        // Se for SuperAdmin, manter salão padrão de suporte
+        setSalao(DEFAULT_SALAO);
       }
     } catch (err) {
       console.warn('Erro ao carregar dados do salão do usuário:', err);

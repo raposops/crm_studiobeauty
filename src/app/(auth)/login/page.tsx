@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Scissors, Mail, Lock, ArrowRight, AlertCircle, Loader2, Sparkles } from 'lucide-react';
@@ -12,6 +12,19 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  // Capturar erro de redirecionamento por salão excluído ou inativo
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const err = params.get('error');
+      if (err === 'salao_excluido') {
+        setErrorMessage('Este salão foi excluído do sistema pelo administrador.');
+      } else if (err === 'salao_inativo') {
+        setErrorMessage('O acesso deste salão está temporariamente inativo ou bloqueado.');
+      }
+    }
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,6 +53,53 @@ export default function LoginPage() {
       }
 
       if (data.user) {
+        // Verificar se é superadmin (não tem restrição de salão)
+        const isSuperAdminEmail = Boolean(
+          data.user.email?.toLowerCase().includes('admin') ||
+          data.user.email?.toLowerCase() === 'contato@studiobeauty.com'
+        );
+
+        if (!isSuperAdminEmail) {
+          // Buscar perfil em usuarios
+          const { data: userProfile } = await supabase
+            .from('usuarios')
+            .select('*')
+            .eq('id', data.user.id)
+            .maybeSingle();
+
+          const targetSalaoId =
+            userProfile?.salao_id ||
+            data.user.user_metadata?.salao_id;
+
+          if (targetSalaoId) {
+            const { data: salaoData } = await supabase
+              .from('saloes')
+              .select('id, nome, status_assinatura')
+              .eq('id', targetSalaoId)
+              .maybeSingle();
+
+            // Salão foi excluído do banco pelo Admin!
+            if (!salaoData) {
+              await supabase.auth.signOut();
+              if (typeof window !== 'undefined') {
+                localStorage.removeItem('cached_salao_info');
+                localStorage.removeItem(`cached_salao_${targetSalaoId}`);
+              }
+              setErrorMessage('Este salão foi excluído do sistema pelo administrador.');
+              setIsLoading(false);
+              return;
+            }
+
+            // Salão está inativo / suspenso
+            if (salaoData.status_assinatura === 'inativo') {
+              await supabase.auth.signOut();
+              setErrorMessage('O acesso deste salão está inativo. Entre em contato com o suporte.');
+              setIsLoading(false);
+              return;
+            }
+          }
+        }
+
         router.push('/');
       }
     } catch (err: any) {

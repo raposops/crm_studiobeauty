@@ -1018,12 +1018,55 @@ export const supabaseService = {
   },
 
   async deletarSalao(salaoId: string) {
+    // 1. Remover registros filhos associados ao salão para evitar bloqueio por foreign keys
+    try {
+      await supabase.from('agendamento_servicos').delete().eq('salao_id', salaoId);
+    } catch {}
+    try {
+      await supabase.from('agendamentos').delete().eq('salao_id', salaoId);
+    } catch {}
+    try {
+      await supabase.from('lancamentos_financeiros').delete().eq('salao_id', salaoId);
+    } catch {}
+    try {
+      await supabase.from('fluxo_caixa').delete().eq('salao_id', salaoId);
+    } catch {}
+    try {
+      await supabase.from('movimentacoes_credito').delete().eq('salao_id', salaoId);
+    } catch {}
+    try {
+      await supabase.from('produtos').delete().eq('salao_id', salaoId);
+    } catch {}
+    try {
+      await supabase.from('servicos').delete().eq('salao_id', salaoId);
+    } catch {}
+    try {
+      await supabase.from('profissionais').delete().eq('salao_id', salaoId);
+    } catch {}
+    try {
+      await supabase.from('clientes').delete().eq('salao_id', salaoId);
+    } catch {}
+    try {
+      await supabase.from('usuarios').delete().eq('salao_id', salaoId);
+    } catch {}
+
+    // 2. Deletar da tabela saloes
     const { error } = await supabase
       .from('saloes')
       .delete()
       .eq('id', salaoId);
 
     if (error) throw error;
+
+    // 3. Limpar caches locais se houver
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem(`cached_salao_${salaoId}`);
+        localStorage.removeItem(`cached_salao_info`);
+        localStorage.removeItem(`fluxo_caixa_${salaoId}`);
+        localStorage.removeItem(`produtos_cache_${salaoId}`);
+      } catch {}
+    }
   },
 
   // ==========================
