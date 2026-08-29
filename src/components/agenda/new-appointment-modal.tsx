@@ -16,7 +16,6 @@ import {
 } from 'lucide-react';
 import type { Cliente, Servico, Profissional, NovoAgendamentoForm } from '@/types';
 import {
-  CLIENTES,
   HORARIOS,
   formatCurrency,
   addMinutesToTime,
@@ -265,7 +264,7 @@ export default function NewAppointmentModal({
           const clientPhone = selectedClient.whatsapp || (selectedClient as any).telefone_whatsapp || '';
 
           await triggerWhatsAppNotification({
-            agendamentoId: agendamentoId || 'mock-id',
+            agendamentoId: agendamentoId || '',
             clienteNome: selectedClient.nome,
             whatsapp: clientPhone,
             data: selectedDate,

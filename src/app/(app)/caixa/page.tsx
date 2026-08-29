@@ -28,7 +28,6 @@ import {
   formatCurrency,
   getComissoesPorProfissional,
   COMISSAO_PERCENTUAL,
-  PROFISSIONAIS as MOCK_PROFISSIONAIS,
 } from '@/data/mock';
 import { useCaixa } from '@/hooks/useCaixa';
 import { useAuth } from '@/contexts/AuthContext';
@@ -81,8 +80,7 @@ export default function CaixaPage() {
   });
 
   const profissionaisList: Profissional[] = useMemo(() => {
-    if (profissionaisDb && profissionaisDb.length > 0) return profissionaisDb;
-    return MOCK_PROFISSIONAIS;
+    return profissionaisDb || [];
   }, [profissionaisDb]);
 
   // Fetch Lancamentos based on filter mode

@@ -1,7 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { generateUUID } from '@/lib/uuid';
 import type { Agendamento, LancamentoFinanceiro, NovoAgendamentoForm, FormaPagamento, ModulosSalao, MovimentacaoFluxoCaixa, ProdutoExtra } from '@/types';
-import { PRODUTOS_EXTRAS } from '@/data/mock';
 
 export const supabaseService = {
   async fetchAgendamentos(salaoId: string, data: string, profissionalId?: string): Promise<Agendamento[]> {
@@ -568,7 +567,7 @@ export const supabaseService = {
       console.warn('Erro ao buscar produtos no Supabase:', err);
     }
 
-    // Fallback para cache local / mock inicial
+    // Fallback para cache local se houver
     if (typeof window !== 'undefined') {
       const cached = localStorage.getItem(`produtos_cache_${salaoId}`);
       if (cached) {
@@ -578,7 +577,7 @@ export const supabaseService = {
       }
     }
 
-    return PRODUTOS_EXTRAS.map((p) => ({ ...p, salao_id: salaoId }));
+    return [];
   },
 
   async criarProduto(
@@ -774,9 +773,9 @@ export const supabaseService = {
     let list: ProdutoExtra[] = [];
     try {
       const raw = localStorage.getItem(key);
-      list = raw ? JSON.parse(raw) : PRODUTOS_EXTRAS.map((p) => ({ ...p, salao_id: salaoId }));
+      list = raw ? JSON.parse(raw) : [];
     } catch (e) {
-      list = PRODUTOS_EXTRAS.map((p) => ({ ...p, salao_id: salaoId }));
+      list = [];
     }
     const nextList = updater(list);
     localStorage.setItem(key, JSON.stringify(nextList));
