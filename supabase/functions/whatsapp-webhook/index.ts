@@ -149,7 +149,7 @@ serve(async (req) => {
     // 4. Busca os agendamentos pendentes vinculados a clientes com este número de telefone
     const { data: agendamentos, error: agendamentoErr } = await supabase
       .from('agendamentos')
-      .select('id, status, data, hora_inicio, salao_id, cliente:clientes!inner(id, nome, telefone_whatsapp), salao:saloes(id, nome)')
+      .select('id, status, data, hora_inicio, salao_id, cliente:clientes!inner(id, nome, telefone_whatsapp), salao:saloes(id, nome, telefone_whatsapp)')
       .in('status', ['agendado', 'confirmado'])
       .order('criado_em', { ascending: false });
 
@@ -176,8 +176,9 @@ serve(async (req) => {
     }
 
     const matchingClient = agendamentoAlvo.cliente;
-    const salaoNome = agendamentoAlvo.salao?.nome || 'Studio Beauty';
-    console.log(`[WhatsApp Webhook] Agendamento encontrado para o cliente: ${matchingClient?.nome} (Salão: ${salaoNome}, ID: ${agendamentoAlvo.id})`);
+    const salaoNome = agendamentoAlvo.salao?.nome || 'Salão Fidus';
+    const salaoTelefone = cleanPhoneNumber(agendamentoAlvo.salao?.telefone_whatsapp || '');
+    console.log(`[WhatsApp Webhook] Agendamento encontrado para o cliente: ${matchingClient?.nome} (Salão: ${salaoNome}, Telefone Salão: ${salaoTelefone}, ID: ${agendamentoAlvo.id})`);
 
     // 6. Atualiza o status no PostgreSQL
     const novoStatus = isConfirm ? 'confirmado' : 'cancelado';
@@ -199,33 +200,60 @@ serve(async (req) => {
     if (!evolutionApiUrl || evolutionApiUrl.includes('supabase.co')) {
       evolutionApiUrl = 'https://evo.fidustecnologia.com.br';
     }
-    const evolutionApiKey = Deno.env.get('EVOLUTION_API_KEY') || Deno.env.get('NEXT_PUBLIC_EVOLUTION_API_KEY') || '306435C88588-4EE6-AD53-E5882B4EE2AD';
-    const instanceName = Deno.env.get('EVOLUTION_INSTANCE_NAME') || Deno.env.get('NEXT_PUBLIC_EVOLUTION_INSTANCE_NAME') || 'meu_acessor';
+    const evolutionApiKey = Deno.env.get('EVOLUTION_API_KEY') || Deno.env.get('NEXT_PUBLIC_EVOLUTION_API_KEY') || '9858375C8262-4CCB-83D2-E66974D498A1';
+    const instanceName = Deno.env.get('EVOLUTION_INSTANCE_NAME') || Deno.env.get('NEXT_PUBLIC_EVOLUTION_INSTANCE_NAME') || 'fidus';
 
     const dataFormatted = formatDate(agendamentoAlvo.data);
     const horaFormatted = agendamentoAlvo.hora_inicio || '';
     const clienteNome = matchingClient?.nome || 'Cliente';
 
     let replyMessageText = '';
+    let ownerNotificationText = '';
+
     if (isConfirm) {
       replyMessageText = `Olá *${clienteNome}*! ✅
 
 Seu agendamento em *${salaoNome}* para dia *${dataFormatted}* às *${horaFormatted}* foi *CONFIRMADO* com sucesso!
 
 Te esperamos! Caso precise de alguma informação, estamos à disposição. 😊`;
+
+      ownerNotificationText = `✅ *Presença Confirmada pelo Cliente!*
+
+A cliente confirmou presença no agendamento:
+
+👤 *Cliente:* ${clienteNome}
+📱 *WhatsApp:* ${clientPhone}
+📅 *Data:* ${dataFormatted}
+⏰ *Horário:* ${horaFormatted}
+🏢 *Salão:* ${salaoNome}
+
+O status do agendamento foi atualizado para *Confirmado* no sistema! 🚀`;
     } else {
       replyMessageText = `Olá *${clienteNome}*! ❌
 
 Seu agendamento em *${salaoNome}* para dia *${dataFormatted}* às *${horaFormatted}* foi *CANCELADO* conforme solicitado.
 
 Caso deseje remarcar um novo horário, acesse nosso link de agendamento online ou fale conosco! 💅✨`;
+
+      ownerNotificationText = `⚠️ *Agendamento Cancelado pelo Cliente!*
+
+A cliente informou que não comparecerá:
+
+👤 *Cliente:* ${clienteNome}
+📱 *WhatsApp:* ${clientPhone}
+📅 *Data:* ${dataFormatted}
+⏰ *Horário:* ${horaFormatted}
+🏢 *Salão:* ${salaoNome}
+
+O horário foi liberado na agenda do sistema.`;
     }
 
     if (evolutionApiUrl && evolutionApiKey) {
-      try {
-        const targetUrl = `${evolutionApiUrl.replace(/\/$/, '')}/message/sendText/${instanceName}`;
-        console.log(`[WhatsApp Webhook] Enviando resposta de conclusão para ${clientPhone}...`);
+      const targetUrl = `${evolutionApiUrl.replace(/\/$/, '')}/message/sendText/${instanceName}`;
 
+      // 7.1 Envia mensagem de confirmação para a cliente
+      try {
+        console.log(`[WhatsApp Webhook] Enviando resposta de conclusão para o cliente (${clientPhone})...`);
         await fetch(targetUrl, {
           method: 'POST',
           headers: {
@@ -239,7 +267,28 @@ Caso deseje remarcar um novo horário, acesse nosso link de agendamento online o
           }),
         });
       } catch (sendErr) {
-        console.error('[WhatsApp Webhook] Erro ao enviar resposta via Evolution API:', sendErr);
+        console.error('[WhatsApp Webhook] Erro ao enviar resposta via Evolution API para cliente:', sendErr);
+      }
+
+      // 7.2 Envia notificação de confirmação para o WhatsApp do Salão
+      if (salaoTelefone) {
+        try {
+          console.log(`[WhatsApp Webhook] Notificando salão (${salaoTelefone}) sobre a confirmação...`);
+          await fetch(targetUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': evolutionApiKey,
+            },
+            body: JSON.stringify({
+              number: salaoTelefone,
+              text: ownerNotificationText,
+              options: { delay: 1200, presence: 'composing', linkPreview: false },
+            }),
+          });
+        } catch (ownerErr) {
+          console.error('[WhatsApp Webhook] Erro ao enviar notificação para o salão:', ownerErr);
+        }
       }
     }
 

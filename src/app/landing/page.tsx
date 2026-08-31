@@ -353,7 +353,7 @@ export default function LandingPage() {
                     </div>
                   </div>
                   <p style={{ marginTop: 24, fontWeight: 700, fontSize: '1.1rem', color: '#e2e8f0' }}>
-                    Clique para assistir a apresentacao
+                    Clique para assistir a apresentação
                   </p>
                   <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginTop: 6 }}>Aprox. 5 minutos</p>
                 </div>
@@ -387,7 +387,7 @@ export default function LandingPage() {
             </p>
             <h2 style={{ fontSize: '2.6rem', fontWeight: 800, lineHeight: 1.2, marginBottom: 20, color: 'white' }}>
               Tudo que seu salão precisa{' '}
-              <span className="lp-gradient-text">em um so sistema</span>
+              <span className="lp-gradient-text">em um só sistema</span>
             </h2>
             <p style={{ color: '#94a3b8', fontSize: '1.05rem', maxWidth: 560, margin: '0 auto' }}>
               Esqueça as planilhas, os cadernos e o WhatsApp sobrecarregado. O CRM Studio Beauty faz tudo por você.
@@ -465,7 +465,7 @@ export default function LandingPage() {
               <span className="lp-gradient-text">3 passos</span>
             </h2>
             <p style={{ color: '#94a3b8', fontSize: '1rem' }}>
-              Sem tecnico. Sem instalacao. Sem treinamento longo. So voce e o sistema.
+              Sem técnico. Sem instalação. Sem treinamento longo. Só voce e o sistema.
             </p>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 32 }}>
@@ -571,7 +571,7 @@ export default function LandingPage() {
 
           {/* Cards Grid */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 32, alignItems: 'stretch', marginBottom: 56 }}>
-            
+
             {/* PLANO BÁSICO */}
             <div className="lp-plan-card" style={{
               background: 'rgba(255,255,255,0.03)',

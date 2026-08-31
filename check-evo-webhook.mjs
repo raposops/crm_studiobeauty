@@ -1,19 +1,13 @@
-const apiKey = '306435C88588-4EE6-AD53-E5882B4EE2AD';
-const baseUrl = 'https://evo.fidustecnologia.com.br';
-const instance = 'meu_acessor';
-
 async function checkWebhook() {
-  console.log('--- CHECKING EVOLUTION API WEBHOOK CONFIG ---');
-  try {
-    const res = await fetch(`${baseUrl}/webhook/find/${instance}`, {
-      headers: { 'apikey': apiKey }
-    });
-    console.log('Status:', res.status);
-    const data = await res.json();
-    console.dir(data, { depth: null });
-  } catch (err) {
-    console.error('Error fetching webhook:', err);
-  }
+  const evoUrl = 'https://evo.fidustecnologia.com.br';
+  const evoKey = '9858375C8262-4CCB-83D2-E66974D498A1';
+  const instanceName = 'fidus';
+
+  const res = await fetch(`${evoUrl}/webhook/find/${instanceName}`, {
+    headers: { 'apikey': evoKey }
+  });
+  const data = await res.json();
+  console.log('Webhook config for fidus:', JSON.stringify(data, null, 2));
 }
 
 checkWebhook();

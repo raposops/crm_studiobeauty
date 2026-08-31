@@ -74,9 +74,18 @@ export async function triggerWhatsAppNotification(
     }
 
     // 2. Fallback direto para Evolution API
-    const evolutionApiUrl = process.env.NEXT_PUBLIC_EVOLUTION_API_URL || '';
-    const evolutionApiKey = process.env.NEXT_PUBLIC_EVOLUTION_API_KEY || '';
-    const instanceName = process.env.NEXT_PUBLIC_EVOLUTION_INSTANCE_NAME || 'studiobeauty';
+    const evolutionApiUrl =
+      process.env.NEXT_PUBLIC_EVOLUTION_API_URL ||
+      process.env.EVOLUTION_API_URL ||
+      'https://evo.fidustecnologia.com.br';
+    const evolutionApiKey =
+      process.env.NEXT_PUBLIC_EVOLUTION_API_KEY ||
+      process.env.EVOLUTION_API_KEY ||
+      '9858375C8262-4CCB-83D2-E66974D498A1';
+    const instanceName =
+      process.env.NEXT_PUBLIC_EVOLUTION_INSTANCE_NAME ||
+      process.env.EVOLUTION_INSTANCE_NAME ||
+      'fidus';
 
     if (evolutionApiUrl && evolutionApiKey) {
       const dataFormatada = formatDate(payload.data);

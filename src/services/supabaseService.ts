@@ -211,24 +211,40 @@ export const supabaseService = {
     const endMin = (totalMins % 60).toString().padStart(2, '0');
     const horaFim = `${endHour}:${endMin}`;
 
-    const { data: agendamento, error: agendamentoError } = await supabase
+    const insertPayload: any = {
+      salao_id: salaoId,
+      cliente_id: clienteId,
+      profissional_id: payload.profissional_id,
+      data: payload.data,
+      hora_inicio: payload.hora_inicio,
+      hora_fim: horaFim,
+      status: 'agendado',
+      valor_total: valorTotal,
+      duracao_total: duracaoTotal,
+      origem: payload.origem || 'presencial',
+    };
+
+    let { data: agendamento, error: agendamentoError } = await supabase
       .from('agendamentos')
-      .insert({
-        salao_id: salaoId,
-        cliente_id: clienteId,
-        profissional_id: payload.profissional_id,
-        data: payload.data,
-        hora_inicio: payload.hora_inicio,
-        hora_fim: horaFim,
-        status: 'agendado',
-        valor_total: valorTotal,
-        duracao_total: duracaoTotal,
-        origem: payload.origem || 'presencial',
-      })
+      .insert(insertPayload)
       .select('id')
       .single();
 
-    if (agendamentoError) throw agendamentoError;
+    // Fallback caso a coluna 'origem' ainda não exista no banco
+    if (agendamentoError && agendamentoError.message && agendamentoError.message.includes('origem')) {
+      delete insertPayload.origem;
+      const retry = await supabase
+        .from('agendamentos')
+        .insert(insertPayload)
+        .select('id')
+        .single();
+      agendamento = retry.data;
+      agendamentoError = retry.error;
+    }
+
+    if (agendamentoError || !agendamento) {
+      throw agendamentoError || new Error('Erro ao criar agendamento');
+    }
 
     // Insert relations in agendamento_servicos
     const servicosRelations = payload.servico_ids.map(sId => ({

@@ -272,6 +272,7 @@ export default function NewAppointmentModal({
             servicos: selectedServices.map((s) => s.nome),
             profissionalNome: profObj?.nome || 'Profissional',
             salaoNome: salao?.nome || 'Studio Beauty',
+            donoTelefone: salao?.telefone_whatsapp || '',
             status: 'agendado',
             tipoEvento: 'novo_agendamento',
           });

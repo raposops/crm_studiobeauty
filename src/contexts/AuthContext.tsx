@@ -43,8 +43,9 @@ interface AuthContextType {
 
 const DEFAULT_SALAO: SalaoInfo = {
   id: '00000000-0000-0000-0000-000000000000',
-  nome: 'Studio Beauty',
-  slug: 'studio-beauty',
+  nome: 'Salão Fidus',
+  slug: 'salaofidus',
+  telefone_whatsapp: '51981108170',
   plano: 'pro',
   status_assinatura: 'ativo',
   modulos_ativos: {

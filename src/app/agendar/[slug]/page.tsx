@@ -244,9 +244,18 @@ export default function AgendarPublicSlugPage({ params }: { params: Promise<{ sl
         observacoes: observacoes.trim() || 'Agendamento feito via Link Público Online',
       };
 
-      const { error: agErr } = await supabase
+      let { error: agErr } = await supabase
         .from('agendamentos')
         .insert(agendamentoPayload);
+
+      // Fallback: se a coluna 'origem' ainda não existir no banco, tenta inserir sem ela
+      if (agErr && agErr.message && agErr.message.includes('origem')) {
+        const { origem, ...payloadSemOrigem } = agendamentoPayload;
+        const retry = await supabase
+          .from('agendamentos')
+          .insert(payloadSemOrigem);
+        agErr = retry.error;
+      }
 
       if (agErr) {
         alert(`Erro ao realizar agendamento: ${agErr.message}`);
