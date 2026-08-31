@@ -22,6 +22,7 @@ import {
   KeyRound,
   LogOut,
   ArrowRight,
+  Mail,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabaseService } from '@/services/supabaseService';
@@ -31,6 +32,7 @@ import Link from 'next/link';
 interface SalaoRow {
   id: string;
   nome: string;
+  email?: string;
   telefone_whatsapp?: string;
   cidade?: string;
   estado?: string;
@@ -60,6 +62,7 @@ export default function AdminPage() {
   const [editModulos, setEditModulos] = useState<ModulosSalao>({});
   const [editPlano, setEditPlano] = useState<string>('pro');
   const [editStatus, setEditStatus] = useState<string>('ativo');
+  const [editEmail, setEditEmail] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
 
   // Deletion state
@@ -139,6 +142,7 @@ export default function AdminPage() {
     setSelectedSalao(salao);
     setEditPlano(salao.plano || 'pro');
     setEditStatus(salao.status_assinatura || 'ativo');
+    setEditEmail(salao.email || '');
     
     // Default all modules to true if not specified
     const currentMods = salao.modulos_ativos || {};
@@ -164,6 +168,7 @@ export default function AdminPage() {
         plano: editPlano,
         status_assinatura: editStatus,
         modulos_ativos: editModulos,
+        email: editEmail.trim(),
       });
 
       // Update local state
@@ -175,6 +180,7 @@ export default function AdminPage() {
                 plano: editPlano,
                 status_assinatura: editStatus,
                 modulos_ativos: editModulos,
+                email: editEmail.trim(),
               }
             : s
         )
@@ -229,6 +235,7 @@ export default function AdminPage() {
     (s) =>
       s.nome.toLowerCase().includes(searchQuery.toLowerCase()) ||
       s.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (s.email && s.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (s.telefone_whatsapp && s.telefone_whatsapp.includes(searchQuery))
   );
 
@@ -468,14 +475,29 @@ export default function AdminPage() {
                           </div>
                           <div>
                             <p className="font-bold text-white text-sm">{salao.nome}</p>
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-wrap items-center gap-2 mt-0.5">
                               <p className="text-[10px] font-mono text-slate-500">ID: {salao.id.slice(0, 8)}...</p>
+                              {salao.telefone_whatsapp && (
+                                <span className="text-[10px] text-slate-400">
+                                  • {salao.telefone_whatsapp}
+                                </span>
+                              )}
                               {salao.asaas_customer_id && (
                                 <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                                   Asaas: {salao.asaas_customer_id}
                                 </span>
                               )}
                             </div>
+                            {salao.email ? (
+                              <p className="text-[11px] text-purple-300 font-mono flex items-center gap-1.5 mt-0.5">
+                                <Mail size={11} className="text-purple-400 shrink-0" />
+                                <span>{salao.email}</span>
+                              </p>
+                            ) : (
+                              <p className="text-[10px] text-slate-600 italic mt-0.5">
+                                Sem e-mail cadastrado
+                              </p>
+                            )}
                           </div>
                         </div>
                       </td>
@@ -606,6 +628,23 @@ export default function AdminPage() {
                   <option value="ativo">Ativo (Acesso Liberado)</option>
                   <option value="inativo">Inativo / Suspenso</option>
                 </select>
+              </div>
+            </div>
+
+            {/* Email do Salão */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 mb-1">
+                E-mail de Login do Salão
+              </label>
+              <div className="relative">
+                <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                <input
+                  type="email"
+                  value={editEmail}
+                  onChange={(e) => setEditEmail(e.target.value)}
+                  placeholder="exemplo@email.com"
+                  className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-purple-500 transition-all font-medium"
+                />
               </div>
             </div>
 

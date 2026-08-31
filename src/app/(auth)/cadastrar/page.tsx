@@ -129,14 +129,22 @@ function CadastrarSalaoContent() {
       const newUserId = authData.user.id;
 
       // 3. Create Salon Row in 'saloes' table with pending subscription
-      const { error: salaoErr } = await supabase.from('saloes').insert({
+      const salaoPayload: any = {
         id: newSalaoId,
         nome: salaoNome.trim(),
         slug: cleanSlug,
         telefone_whatsapp: formattedPhone,
+        email: email.trim(),
         plano: planoEscolhido,
         status_assinatura: 'pendente',
-      });
+      };
+
+      let { error: salaoErr } = await supabase.from('saloes').insert(salaoPayload);
+      if (salaoErr && salaoErr.message && salaoErr.message.includes('email')) {
+        delete salaoPayload.email;
+        const retry = await supabase.from('saloes').insert(salaoPayload);
+        salaoErr = retry.error;
+      }
 
       if (salaoErr) {
         console.warn('Aviso ao criar salao (tabela saloes):', salaoErr.message);

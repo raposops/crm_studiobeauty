@@ -976,13 +976,41 @@ export const supabaseService = {
   // SUPER ADMIN & MÓDULOS SAAS
   // ==========================
   async fetchTodosSaloes() {
-    const { data, error } = await supabase
+    // 1. Tenta buscar via RPC 'get_saloes_admin' para trazer o e-mail real de login (auth.users)
+    try {
+      const { data: rpcData, error: rpcError } = await supabase.rpc('get_saloes_admin');
+      if (!rpcError && rpcData && Array.isArray(rpcData) && rpcData.length > 0) {
+        return rpcData;
+      }
+    } catch {}
+
+    // 2. Fallback: busca diretamente da tabela 'saloes'
+    const { data: saloes, error } = await supabase
       .from('saloes')
       .select('*')
       .order('criado_em', { ascending: false });
 
     if (error) throw error;
-    return data || [];
+
+    // Tenta enriquecer com emails da tabela 'usuarios' caso algum salao ainda não tenha email direto
+    try {
+      const { data: usuarios } = await supabase.from('usuarios').select('salao_id, email');
+      if (usuarios && usuarios.length > 0) {
+        const userMap = new Map<string, string>();
+        usuarios.forEach((u) => {
+          if (u.salao_id && u.email && !userMap.has(u.salao_id)) {
+            userMap.set(u.salao_id, u.email);
+          }
+        });
+
+        return (saloes || []).map((s: any) => ({
+          ...s,
+          email: s.email || userMap.get(s.id) || '',
+        }));
+      }
+    } catch {}
+
+    return saloes || [];
   },
 
   async atualizarModulosSalao(salaoId: string, modulos: ModulosSalao) {
@@ -997,7 +1025,7 @@ export const supabaseService = {
     return data;
   },
 
-  async atualizarStatusESalao(salaoId: string, payload: { status_assinatura?: string; plano?: string; modulos_ativos?: ModulosSalao }) {
+  async atualizarStatusESalao(salaoId: string, payload: { status_assinatura?: string; plano?: string; modulos_ativos?: ModulosSalao; email?: string }) {
     const { data, error } = await supabase
       .from('saloes')
       .update(payload)
@@ -1006,14 +1034,11 @@ export const supabaseService = {
       .maybeSingle();
 
     if (error) {
-      if (error.message?.includes('modulos_ativos')) {
-        const { modulos_ativos, ...fallbackPayload } = payload;
+      if (error.message?.includes('modulos_ativos') || error.message?.includes('email')) {
+        const { modulos_ativos, email, ...fallbackPayload } = payload;
         if (Object.keys(fallbackPayload).length > 0) {
           await supabase.from('saloes').update(fallbackPayload).eq('id', salaoId);
         }
-        throw new Error(
-           "A coluna 'modulos_ativos' ainda não existe na tabela 'saloes' do Supabase. Execute o comando SQL no Supabase para ativar a gravação de módulos."
-        );
       }
       throw error;
     }
