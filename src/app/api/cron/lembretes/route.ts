@@ -48,10 +48,10 @@ async function processarLembretes(req: NextRequest) {
         status,
         lembrete_24h_enviado,
         salao_id,
-        cliente:clientes (id, nome, telefone_whatsapp),
-        profissional:profissionais (id, nome),
-        servico:servicos (id, nome),
-        salao:saloes (id, nome, telefone_whatsapp)
+        cliente:clientes(*),
+        profissional:profissionais(*),
+        servico:servicos!agendamentos_servico_id_fkey(*),
+        servicos:agendamento_servicos(servico:servicos!agendamento_servicos_servico_id_fkey(*))
       `)
       .eq('data', targetDate)
       .in('status', ['agendado', 'confirmado'])
@@ -79,7 +79,15 @@ async function processarLembretes(req: NextRequest) {
       });
     }
 
-    // 2. Configurações da Evolution API
+    // 2. Busca salões para identificar nomes dos estabelecimentos
+    const salaoIds = Array.from(new Set(agendamentos.map((ag: any) => ag.salao_id).filter(Boolean)));
+    const salaoMap = new Map<string, any>();
+    if (salaoIds.length > 0) {
+      const { data: saloesData } = await supabase.from('saloes').select('*').in('id', salaoIds);
+      (saloesData || []).forEach((s) => salaoMap.set(s.id, s));
+    }
+
+    // 3. Configurações da Evolution API
     const evolutionApiUrl =
       process.env.NEXT_PUBLIC_EVOLUTION_API_URL ||
       process.env.EVOLUTION_API_URL ||
@@ -98,14 +106,15 @@ async function processarLembretes(req: NextRequest) {
     const enviados: any[] = [];
     const falhas: any[] = [];
 
-    // 3. Itera e envia a mensagem para cada cliente
+    // 4. Itera e envia a mensagem para cada cliente
     for (const ag of agendamentos) {
       const cliente = (ag as any).cliente;
-      const salao = (ag as any).salao;
+      const salao = salaoMap.get(ag.salao_id);
       const profissional = (ag as any).profissional;
-      const servico = (ag as any).servico;
+      const directServico = (ag as any).servico;
+      const junctionServicos = (ag as any).servicos;
 
-      const rawPhone = cliente?.telefone_whatsapp || '';
+      const rawPhone = cliente?.telefone_whatsapp || cliente?.whatsapp || '';
       const formattedPhone = formatPhone(rawPhone);
 
       if (!formattedPhone) {
@@ -117,7 +126,12 @@ async function processarLembretes(req: NextRequest) {
       const clienteNome = cliente?.nome || 'Cliente';
       const nomeEstabelecimento = salao?.nome || 'Salão de Beleza';
       const profNome = profissional?.nome || 'Equipe';
-      const servicoNome = servico?.nome || 'Atendimento';
+      
+      let servicoNome = directServico?.nome || '';
+      if (!servicoNome && Array.isArray(junctionServicos) && junctionServicos.length > 0) {
+        servicoNome = junctionServicos.map((s: any) => s.servico?.nome).filter(Boolean).join(', ');
+      }
+      if (!servicoNome) servicoNome = 'Atendimento';
 
       const messageText = `Olá *${clienteNome}*! 💖
 
