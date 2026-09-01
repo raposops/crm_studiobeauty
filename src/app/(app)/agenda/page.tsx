@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Plus, Store, Mail, CheckCircle2 } from 'lucide-react';
+import { Plus, Store, Mail, CheckCircle2, Bell, Loader2 } from 'lucide-react';
 import DateSelector from '@/components/agenda/date-selector';
 import ProfessionalFilter from '@/components/agenda/professional-filter';
 import TimeGrid from '@/components/agenda/time-grid';
@@ -20,6 +20,7 @@ export default function AgendaPage() {
   // Modals state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [checkoutAgendamento, setCheckoutAgendamento] = useState<Agendamento | null>(null);
+  const [isSendingReminders, setIsSendingReminders] = useState(false);
 
   const dateStr = selectedDate.toISOString().split('T')[0];
 
@@ -46,6 +47,29 @@ export default function AgendaPage() {
     setCheckoutAgendamento(agendamento);
   }
 
+  async function handleSendTomorrowReminders() {
+    if (!salaoId) return;
+    const confirmSend = window.confirm(
+      'Deseja disparar agora os lembretes de WhatsApp para todos os clientes agendados para AMANHÃ?'
+    );
+    if (!confirmSend) return;
+
+    setIsSendingReminders(true);
+    try {
+      const res = await fetch(`/api/cron/lembretes?salaoId=${salaoId}`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        alert(`✅ ${data.message}`);
+      } else {
+        alert(`❌ Erro ao enviar lembretes: ${data.error || 'Tente novamente.'}`);
+      }
+    } catch (err: any) {
+      alert(`❌ Erro de conexão: ${err?.message}`);
+    } finally {
+      setIsSendingReminders(false);
+    }
+  }
+
   return (
     <>
       <div className="animate-fade-in-up space-y-4">
@@ -64,9 +88,24 @@ export default function AgendaPage() {
               </p>
             </div>
           </div>
-          <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold shrink-0">
-            Conta Ativa
-          </span>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={handleSendTomorrowReminders}
+              disabled={isSendingReminders}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/20 text-xs font-bold transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+              title="Dispara mensagem de lembrete 24h no WhatsApp para os agendamentos de amanhã"
+            >
+              {isSendingReminders ? (
+                <Loader2 size={13} className="animate-spin text-purple-400" />
+              ) : (
+                <Bell size={13} className="text-purple-400" />
+              )}
+              <span>{isSendingReminders ? 'Enviando...' : 'Lembretes de Amanhã'}</span>
+            </button>
+            <span className="text-[10px] px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold hidden sm:inline-block">
+              Conta Ativa
+            </span>
+          </div>
         </div>
 
         {/* Date Selector */}
