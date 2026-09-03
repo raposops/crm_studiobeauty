@@ -230,43 +230,82 @@ export default function AgendarPublicSlugPage({ params }: { params: Promise<{ sl
     }
   }, [selectedDate, selectedProfId, profissionais, bloqueios]);
 
-  // Occupied time slots for selected professional and date
+  // Helper: Checa se uma profissional específica está ocupada em um intervalo [slotStart, slotEnd]
+  const isProfOccupiedAt = (profId: string, slotStart: number, slotEnd: number): boolean => {
+    // 1. Bloqueios de agenda
+    const hasBlockConflict = (bloqueios || []).some((b) => {
+      if (b.profissional_id !== profId) return false;
+      if (b.dia_inteiro || (!b.hora_inicio && !b.hora_fim)) return true;
+      const bStart = timeToMinutes(b.hora_inicio!);
+      const bEnd = timeToMinutes(b.hora_fim!);
+      return slotStart < bEnd && slotEnd > bStart;
+    });
+    if (hasBlockConflict) return true;
+
+    // 2. Agendamentos existentes
+    const hasAgConflict = (agendamentos || []).some((ag) => {
+      if (ag.status === 'cancelado') return false;
+      const agProfId = ag.profissional?.id || (ag as any).profissional_id;
+      if (agProfId !== profId) return false;
+
+      const agStart = timeToMinutes(ag.hora_inicio);
+      const agDuration =
+        ag.duracao_total ||
+        (ag.servicos && ag.servicos.length > 0
+          ? ag.servicos.reduce((acc: number, s: any) => acc + (s.duracao_minutos || 0), 0)
+          : 30);
+      const agEnd = ag.hora_fim ? timeToMinutes(ag.hora_fim) : agStart + agDuration;
+
+      // Condição de sobreposição: se o novo atendimento colidir com o atendimento existente
+      return slotStart < agEnd && slotEnd > agStart;
+    });
+
+    return hasAgConflict;
+  };
+
+  // Occupied time slots for selected professional and date based on total service duration
   const occupiedSlots = useMemo(() => {
     const occupied = new Set<string>();
+    const reqDuration = totalDuration > 0 ? totalDuration : 30;
+    const maxSalonMinutes = timeToMinutes('20:00'); // Horário de fechamento do salão
 
-    // 1. Bloqueios com horários específicos (parciais)
-    (bloqueios || []).forEach((b) => {
-      if (!b.dia_inteiro && b.hora_inicio && b.hora_fim) {
-        if (!selectedProfId || b.profissional_id === selectedProfId) {
-          const bStart = timeToMinutes(b.hora_inicio);
-          const bEnd = timeToMinutes(b.hora_fim);
-          TIME_SLOTS.forEach((slot) => {
-            const slotStart = timeToMinutes(slot);
-            const slotEnd = slotStart + (totalDuration || 30);
-            if (slotStart < bEnd && slotEnd > bStart) {
-              occupied.add(slot);
-            }
-          });
+    const candidateProfs = selectedProfId
+      ? availabilityStatus.availableProfs.filter((p) => p.id === selectedProfId)
+      : availabilityStatus.availableProfs;
+
+    if (candidateProfs.length === 0) {
+      TIME_SLOTS.forEach((slot) => occupied.add(slot));
+      return occupied;
+    }
+
+    TIME_SLOTS.forEach((slot) => {
+      const slotStart = timeToMinutes(slot);
+      const slotEnd = slotStart + reqDuration;
+
+      // Se o serviço ultrapassar o horário de encerramento do salão
+      if (slotEnd > maxSalonMinutes) {
+        occupied.add(slot);
+        return;
+      }
+
+      if (selectedProfId) {
+        // Profissional específica: bloqueia se ela estiver ocupada no intervalo
+        if (isProfOccupiedAt(selectedProfId, slotStart, slotEnd)) {
+          occupied.add(slot);
+        }
+      } else {
+        // "Qualquer Profissional": só bloqueia se TODAS as profissionais disponíveis estiverem ocupadas
+        const hasAnyFreeProf = candidateProfs.some(
+          (prof) => !isProfOccupiedAt(prof.id, slotStart, slotEnd)
+        );
+        if (!hasAnyFreeProf) {
+          occupied.add(slot);
         }
       }
     });
 
-    // 2. Agendamentos existentes
-    (agendamentos || []).forEach((ag) => {
-      if (ag.status === 'cancelado') return;
-      const agStart = timeToMinutes(ag.hora_inicio);
-      const agEnd = timeToMinutes(ag.hora_fim);
-
-      TIME_SLOTS.forEach((slot) => {
-        const slotStart = timeToMinutes(slot);
-        const slotEnd = slotStart + (totalDuration || 30);
-        if (slotStart < agEnd && slotEnd > agStart) {
-          occupied.add(slot);
-        }
-      });
-    });
     return occupied;
-  }, [agendamentos, bloqueios, selectedProfId, totalDuration]);
+  }, [agendamentos, bloqueios, selectedProfId, totalDuration, availabilityStatus.availableProfs]);
 
   function toggleService(id: string) {
     setSelectedServiceIds((prev) =>
@@ -336,12 +375,21 @@ export default function AgendarPublicSlugPage({ params }: { params: Promise<{ sl
         }
       }
 
-      // 2. Determine Professional ID among available ones
+      // 2. Determine Professional ID among available ones who are free at this slot
       let finalProfId = selectedProfId;
       if (!finalProfId) {
-        const candidatas = availabilityStatus.availableProfs;
-        if (candidatas.length > 0) {
-          finalProfId = candidatas[0].id;
+        const reqDuration = totalDuration > 0 ? totalDuration : 30;
+        const slotStart = timeToMinutes(selectedTime);
+        const slotEnd = slotStart + reqDuration;
+
+        const freeProf = availabilityStatus.availableProfs.find(
+          (prof) => !isProfOccupiedAt(prof.id, slotStart, slotEnd)
+        );
+
+        if (freeProf) {
+          finalProfId = freeProf.id;
+        } else if (availabilityStatus.availableProfs.length > 0) {
+          finalProfId = availabilityStatus.availableProfs[0].id;
         } else if (profissionais.length > 0) {
           finalProfId = profissionais[0].id;
         }

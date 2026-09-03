@@ -26,6 +26,7 @@ import { useProfissionais } from '@/hooks/useProfissionais';
 import { useServicos } from '@/hooks/useServicos';
 import { useClientes } from '@/hooks/useClientes';
 import { useAgenda } from '@/hooks/useAgenda';
+import { useBloqueiosAgenda } from '@/hooks/useBloqueiosAgenda';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface NewAppointmentModalProps {
@@ -87,8 +88,13 @@ export default function NewAppointmentModal({
   const [selectedTime, setSelectedTime] = useState('');
   const [sendWhatsApp, setSendWhatsApp] = useState(true);
 
-  // Fetch existing appointments for selected date and professional to check availability
+  // Fetch existing appointments and blocks for selected date and professional to check availability
   const { agendamentos: existingAgendamentos } = useAgenda(
+    salaoId,
+    selectedDate,
+    selectedProfId || undefined
+  );
+  const { bloqueios } = useBloqueiosAgenda(
     salaoId,
     selectedDate,
     selectedProfId || undefined
@@ -129,28 +135,43 @@ export default function NewAppointmentModal({
     return addMinutesToTime(selectedTime, totalDuration);
   }, [selectedTime, totalDuration]);
 
-  // Compute occupied time slots for the selected professional & date
+  // Compute occupied time slots for the selected professional & date based on duration
   const occupiedSlots = useMemo(() => {
-    if (!existingAgendamentos || existingAgendamentos.length === 0) return new Set<string>();
-
-    const reqDuration = totalDuration > 0 ? totalDuration : 30;
-    const activeAgendamentos = existingAgendamentos.filter((ag) => ag.status !== 'cancelado');
     const occupied = new Set<string>();
+    const reqDuration = totalDuration > 0 ? totalDuration : 30;
+    const activeAgendamentos = (existingAgendamentos || []).filter((ag) => ag.status !== 'cancelado');
 
     AVAILABLE_HOURS.forEach((slotTime) => {
       const slotStart = timeToMinutes(slotTime);
       const slotEnd = slotStart + reqDuration;
 
+      // 1. Checa conflito com bloqueios de agenda da profissional
+      const hasBlockConflict = (bloqueios || []).some((b) => {
+        if (selectedProfId && b.profissional_id !== selectedProfId) return false;
+        if (b.dia_inteiro || (!b.hora_inicio && !b.hora_fim)) return true;
+        const bStart = timeToMinutes(b.hora_inicio!);
+        const bEnd = timeToMinutes(b.hora_fim!);
+        return slotStart < bEnd && slotEnd > bStart;
+      });
+
+      if (hasBlockConflict) {
+        occupied.add(slotTime);
+        return;
+      }
+
+      // 2. Checa conflito com agendamentos existentes
       const hasConflict = activeAgendamentos.some((ag) => {
-        // If a specific professional is selected, filter by professional
         if (selectedProfId && ag.profissional?.id !== selectedProfId) return false;
 
         const agStart = timeToMinutes(ag.hora_inicio);
-        const agEnd = ag.hora_fim
-          ? timeToMinutes(ag.hora_fim)
-          : agStart + (ag.duracao_total || 30);
+        const agDuration =
+          ag.duracao_total ||
+          (ag.servicos && ag.servicos.length > 0
+            ? ag.servicos.reduce((acc: number, s: any) => acc + (s.duracao_minutos || 0), 0)
+            : 30);
+        const agEnd = ag.hora_fim ? timeToMinutes(ag.hora_fim) : agStart + agDuration;
 
-        // Overlap condition: slotStart < agEnd && slotEnd > agStart
+        // Condição de sobreposição: slotStart < agEnd && slotEnd > agStart
         return slotStart < agEnd && slotEnd > agStart;
       });
 
@@ -160,7 +181,7 @@ export default function NewAppointmentModal({
     });
 
     return occupied;
-  }, [existingAgendamentos, selectedProfId, totalDuration]);
+  }, [existingAgendamentos, bloqueios, selectedProfId, totalDuration]);
 
   // Validation
   const canGoToStep2 = selectedClient !== null;
