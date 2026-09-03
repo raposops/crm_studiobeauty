@@ -1,15 +1,17 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Plus, Store, Mail, CheckCircle2, Bell, Loader2 } from 'lucide-react';
+import { Plus, Store, Mail, CheckCircle2, Bell, Loader2, CalendarX, Lock, Unlock, AlertTriangle } from 'lucide-react';
 import DateSelector from '@/components/agenda/date-selector';
 import ProfessionalFilter from '@/components/agenda/professional-filter';
 import TimeGrid from '@/components/agenda/time-grid';
 import NewAppointmentModal from '@/components/agenda/new-appointment-modal';
 import CheckoutModal from '@/components/agenda/checkout-modal';
-import type { Agendamento } from '@/types';
+import BloqueioModal from '@/components/agenda/bloqueio-modal';
+import type { Agendamento, BloqueioAgenda } from '@/types';
 import { useAgenda } from '@/hooks/useAgenda';
 import { useProfissionais } from '@/hooks/useProfissionais';
+import { useBloqueiosAgenda } from '@/hooks/useBloqueiosAgenda';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function AgendaPage() {
@@ -19,6 +21,7 @@ export default function AgendaPage() {
   
   // Modals state
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isBloqueioModalOpen, setIsBloqueioModalOpen] = useState(false);
   const [checkoutAgendamento, setCheckoutAgendamento] = useState<Agendamento | null>(null);
   const [isSendingReminders, setIsSendingReminders] = useState(false);
 
@@ -26,6 +29,7 @@ export default function AgendaPage() {
 
   const { agendamentos: fetchedAgendamentos, isLoading } = useAgenda(salaoId, dateStr, selectedProfId ?? undefined);
   const { profissionais } = useProfissionais(salaoId);
+  const { bloqueios, criarBloqueio, deletarBloqueio } = useBloqueiosAgenda(salaoId, dateStr, selectedProfId ?? undefined);
 
   // Filter appointments by date and professional (fallback if hook didn't filter fully)
   const filteredAgendamentos = useMemo(() => {
@@ -90,6 +94,15 @@ export default function AgendaPage() {
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <button
+              onClick={() => setIsBloqueioModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/20 text-xs font-bold transition-all active:scale-95 cursor-pointer"
+              title="Fechar a agenda do dia ou cadastrar folga para uma profissional"
+            >
+              <CalendarX size={13} className="text-amber-500" />
+              <span>Fechar Agenda / Folga</span>
+            </button>
+
+            <button
               onClick={handleSendTomorrowReminders}
               disabled={isSendingReminders}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/20 text-xs font-bold transition-all active:scale-95 cursor-pointer disabled:opacity-50"
@@ -100,11 +113,9 @@ export default function AgendaPage() {
               ) : (
                 <Bell size={13} className="text-purple-400" />
               )}
-              <span>{isSendingReminders ? 'Enviando...' : 'Lembretes de Amanhã'}</span>
+              <span className="hidden sm:inline">{isSendingReminders ? 'Enviando...' : 'Lembretes de Amanhã'}</span>
+              <span className="sm:hidden">Lembretes</span>
             </button>
-            <span className="text-[10px] px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold hidden sm:inline-block">
-              Conta Ativa
-            </span>
           </div>
         </div>
 
@@ -113,6 +124,55 @@ export default function AgendaPage() {
           selectedDate={selectedDate}
           onDateChange={setSelectedDate}
         />
+
+        {/* Active Blocks / Closed Agenda Alert Banners for this date */}
+        {bloqueios.length > 0 && (
+          <div className="space-y-2">
+            {bloqueios.map((bloqueio) => {
+              const profNome =
+                bloqueio.profissional?.nome ||
+                profissionais.find((p) => p.id === bloqueio.profissional_id)?.nome ||
+                'Profissional';
+
+              return (
+                <div
+                  key={bloqueio.id}
+                  className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between gap-3 shadow-xs animate-fade-in"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                      <Lock size={15} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-amber-700 dark:text-amber-300 truncate">
+                        Agenda Fechada: <span className="underline">{profNome}</span>
+                      </p>
+                      <p className="text-[11px] text-amber-600/80 dark:text-amber-400/80 truncate">
+                        Motivo: <strong>{bloqueio.motivo || 'Folga'}</strong>{' '}
+                        {bloqueio.dia_inteiro
+                          ? '(Dia Inteiro - Link Online Bloqueado)'
+                          : `(${bloqueio.hora_inicio} às ${bloqueio.hora_fim})`}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      if (window.confirm(`Deseja reabrir a agenda de ${profNome} nesta data?`)) {
+                        deletarBloqueio.mutate(bloqueio.id);
+                      }
+                    }}
+                    className="px-2.5 py-1.5 rounded-xl bg-card border border-amber-500/30 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 text-xs font-semibold flex items-center gap-1.5 transition-all shrink-0 active:scale-95 cursor-pointer shadow-xs"
+                    title="Reabrir a agenda deste dia"
+                  >
+                    <Unlock size={13} />
+                    <span>Reabrir</span>
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* Stats Strip */}
         <div className="flex items-center gap-2 text-xs text-muted">
@@ -167,6 +227,18 @@ export default function AgendaPage() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         preselectedDate={dateStr}
+      />
+
+      {/* Bloqueio de Agenda Modal */}
+      <BloqueioModal
+        isOpen={isBloqueioModalOpen}
+        onClose={() => setIsBloqueioModalOpen(false)}
+        preselectedDate={dateStr}
+        preselectedProfId={selectedProfId}
+        profissionais={profissionais}
+        onSave={async (payload) => {
+          await criarBloqueio.mutateAsync(payload);
+        }}
       />
 
       {/* Checkout Modal */}

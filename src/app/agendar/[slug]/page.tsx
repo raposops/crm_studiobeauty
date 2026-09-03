@@ -13,13 +13,48 @@ import {
   Phone,
   Check,
   Building2,
+  CalendarX,
+  AlertCircle,
+  Lock,
 } from 'lucide-react';
 import { useServicos } from '@/hooks/useServicos';
 import { useProfissionais } from '@/hooks/useProfissionais';
 import { useAgenda } from '@/hooks/useAgenda';
+import { useBloqueiosAgenda } from '@/hooks/useBloqueiosAgenda';
 import { supabase } from '@/lib/supabase';
 import { generateUUID as uuidv4 } from '@/lib/uuid';
 import { triggerWhatsAppNotification } from '@/lib/whatsapp';
+
+const NOMES_DIAS_SEMANA = [
+  'Domingos',
+  'Segundas-feiras',
+  'Terças-feiras',
+  'Quartas-feiras',
+  'Quintas-feiras',
+  'Sextas-feiras',
+  'Sábados',
+];
+
+const DIAS_SEMANA_MAP = [
+  { dia: 1, label: 'Seg' },
+  { dia: 2, label: 'Ter' },
+  { dia: 3, label: 'Qua' },
+  { dia: 4, label: 'Qui' },
+  { dia: 5, label: 'Sex' },
+  { dia: 6, label: 'Sáb' },
+  { dia: 0, label: 'Dom' },
+];
+
+function formatDiasProfissional(dias?: number[]): string {
+  if (!dias || dias.length === 0) return 'Atendimento regular';
+  if (dias.length === 7) return 'Atende todos os dias';
+  if (dias.length === 6 && !dias.includes(0)) return 'Atende de Seg a Sáb';
+  if (dias.length === 5 && !dias.includes(0) && !dias.includes(6)) return 'Atende de Seg a Sex';
+
+  const ordem = [1, 2, 3, 4, 5, 6, 0];
+  const ordenados = ordem.filter((d) => dias.includes(d));
+  return `Atende ${ordenados.map((d) => DIAS_SEMANA_MAP.find((item) => item.dia === d)?.label).join(', ')}`;
+}
 
 const TIME_SLOTS = [
   '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
@@ -113,6 +148,7 @@ export default function AgendarPublicSlugPage({ params }: { params: Promise<{ sl
   const [observacoes, setObservacoes] = useState('');
 
   const { agendamentos } = useAgenda(salaoId, selectedDate, selectedProfId || undefined);
+  const { bloqueios } = useBloqueiosAgenda(salaoId, selectedDate, selectedProfId || undefined);
 
   // Calculate totals
   const selectedServices = useMemo(() => {
@@ -131,9 +167,91 @@ export default function AgendarPublicSlugPage({ params }: { params: Promise<{ sl
     return calculateEndTime(selectedTime, totalDuration);
   }, [selectedTime, totalDuration]);
 
+  // Check availability based on weekly working days (dias_trabalho) and closed agenda (bloqueios_agenda)
+  const availabilityStatus = useMemo(() => {
+    if (!selectedDate) {
+      return { isAvailable: true, reason: '', suggestion: '', availableProfs: profissionais };
+    }
+
+    const [y, m, d] = selectedDate.split('-').map(Number);
+    const dateObj = new Date(y, m - 1, d);
+    const dayOfWeek = dateObj.getDay(); // 0 = Domingo, 1 = Segunda, etc.
+
+    if (selectedProfId) {
+      const prof = profissionais.find((p) => p.id === selectedProfId);
+      const profNome = prof?.nome || 'A profissional';
+
+      // 1. Checa se atende no dia da semana fixo
+      const diasTrabalho = Array.isArray(prof?.dias_trabalho) ? prof.dias_trabalho : [1, 2, 3, 4, 5, 6];
+      if (!diasTrabalho.includes(dayOfWeek)) {
+        return {
+          isAvailable: false,
+          reason: `${profNome} não realiza atendimentos às ${NOMES_DIAS_SEMANA[dayOfWeek]}.`,
+          suggestion: 'Por favor, escolha outro dia da semana ou selecione outra profissional da equipe.',
+          availableProfs: [],
+        };
+      }
+
+      // 2. Checa se a profissional fechou a agenda / folga nesta data específica
+      const bloqueio = (bloqueios || []).find(
+        (b) => b.profissional_id === selectedProfId && (b.dia_inteiro || (!b.hora_inicio && !b.hora_fim))
+      );
+      if (bloqueio) {
+        return {
+          isAvailable: false,
+          reason: `A agenda de ${profNome} está fechada nesta data (${bloqueio.motivo || 'Folga'}).`,
+          suggestion: 'Por favor, escolha outra data ou selecione outra profissional da equipe.',
+          availableProfs: [],
+        };
+      }
+
+      return { isAvailable: true, reason: '', suggestion: '', availableProfs: prof ? [prof] : [] };
+    } else {
+      // Opção "Qualquer Profissional"
+      const availableProfs = (profissionais || []).filter((prof) => {
+        const diasTrabalho = Array.isArray(prof.dias_trabalho) ? prof.dias_trabalho : [1, 2, 3, 4, 5, 6];
+        if (!diasTrabalho.includes(dayOfWeek)) return false;
+        const temBloqueio = (bloqueios || []).some(
+          (b) => b.profissional_id === prof.id && (b.dia_inteiro || (!b.hora_inicio && !b.hora_fim))
+        );
+        return !temBloqueio;
+      });
+
+      if (availableProfs.length === 0) {
+        return {
+          isAvailable: false,
+          reason: `Nenhum membro da equipe está disponível para atendimento no dia ${selectedDate.split('-').reverse().join('/')}.`,
+          suggestion: 'Por favor, selecione outra data para realizar seu agendamento.',
+          availableProfs: [],
+        };
+      }
+
+      return { isAvailable: true, reason: '', suggestion: '', availableProfs };
+    }
+  }, [selectedDate, selectedProfId, profissionais, bloqueios]);
+
   // Occupied time slots for selected professional and date
   const occupiedSlots = useMemo(() => {
     const occupied = new Set<string>();
+
+    // 1. Bloqueios com horários específicos (parciais)
+    (bloqueios || []).forEach((b) => {
+      if (!b.dia_inteiro && b.hora_inicio && b.hora_fim) {
+        if (!selectedProfId || b.profissional_id === selectedProfId) {
+          const bStart = timeToMinutes(b.hora_inicio);
+          const bEnd = timeToMinutes(b.hora_fim);
+          TIME_SLOTS.forEach((slot) => {
+            const slotStart = timeToMinutes(slot);
+            const slotEnd = slotStart + (totalDuration || 30);
+            if (slotStart < bEnd && slotEnd > bStart) {
+              occupied.add(slot);
+            }
+          });
+        }
+      }
+    });
+
+    // 2. Agendamentos existentes
     (agendamentos || []).forEach((ag) => {
       if (ag.status === 'cancelado') return;
       const agStart = timeToMinutes(ag.hora_inicio);
@@ -148,7 +266,7 @@ export default function AgendarPublicSlugPage({ params }: { params: Promise<{ sl
       });
     });
     return occupied;
-  }, [agendamentos, totalDuration]);
+  }, [agendamentos, bloqueios, selectedProfId, totalDuration]);
 
   function toggleService(id: string) {
     setSelectedServiceIds((prev) =>
@@ -158,6 +276,11 @@ export default function AgendarPublicSlugPage({ params }: { params: Promise<{ sl
 
   async function handleSubmit() {
     if (!clientNome.trim() || !clientPhone.trim() || !selectedTime) return;
+
+    if (!availabilityStatus.isAvailable) {
+      alert(availabilityStatus.reason);
+      return;
+    }
 
     if (occupiedSlots.has(selectedTime)) {
       alert('Este horário acabou de ficar indisponível. Por favor, escolha outro horário.');
@@ -213,10 +336,15 @@ export default function AgendarPublicSlugPage({ params }: { params: Promise<{ sl
         }
       }
 
-      // 2. Determine Professional ID
+      // 2. Determine Professional ID among available ones
       let finalProfId = selectedProfId;
-      if (!finalProfId && profissionais.length > 0) {
-        finalProfId = profissionais[0].id;
+      if (!finalProfId) {
+        const candidatas = availabilityStatus.availableProfs;
+        if (candidatas.length > 0) {
+          finalProfId = candidatas[0].id;
+        } else if (profissionais.length > 0) {
+          finalProfId = profissionais[0].id;
+        }
       }
 
       const agendamentoId = uuidv4();
@@ -513,7 +641,9 @@ export default function AgendarPublicSlugPage({ params }: { params: Promise<{ sl
                         <h3 className="font-bold text-sm text-foreground">
                           {prof.nome}
                         </h3>
-                        <p className="text-xs text-muted">Especialista</p>
+                        <p className="text-[11px] text-muted">
+                          {formatDiasProfissional(prof.dias_trabalho)}
+                        </p>
                       </div>
                     </div>
                     <div
@@ -572,39 +702,72 @@ export default function AgendarPublicSlugPage({ params }: { params: Promise<{ sl
               />
             </div>
 
-            {/* Time Grid */}
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted flex items-center gap-1.5">
-                <Clock size={14} className="text-accent" />
-                Horários Disponíveis ({totalDuration} min de atendimento)
-              </label>
-
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-64 overflow-y-auto pr-1">
-                {TIME_SLOTS.map((slot) => {
-                  const isOccupied = occupiedSlots.has(slot);
-                  const isSelected = selectedTime === slot;
-
-                  return (
+            {/* Availability Check: Se a agenda estiver fechada ou profissional não atender no dia */}
+            {!availabilityStatus.isAvailable ? (
+              <div className="p-5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-center space-y-3 shadow-xs animate-fade-in my-3">
+                <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center justify-center mx-auto shadow-xs">
+                  <CalendarX size={24} />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="font-bold text-sm text-amber-700 dark:text-amber-300">
+                    Dia Indisponível para Atendimento
+                  </h3>
+                  <p className="text-xs text-foreground font-medium max-w-xs mx-auto">
+                    {availabilityStatus.reason}
+                  </p>
+                  <p className="text-[11px] text-muted max-w-xs mx-auto pt-0.5">
+                    {availabilityStatus.suggestion}
+                  </p>
+                </div>
+                {selectedProfId && (
+                  <div className="pt-2">
                     <button
-                      key={slot}
-                      disabled={isOccupied}
-                      onClick={() => setSelectedTime(slot)}
-                      className={`py-2.5 px-3 rounded-xl text-xs font-semibold transition-all border ${
-                        isOccupied
-                          ? 'border-border/40 bg-card/30 text-muted/40 line-through cursor-not-allowed'
-                          : isSelected
-                          ? 'border-accent bg-accent text-white shadow-md shadow-accent/20 scale-[1.02]'
-                          : 'border-border bg-card hover:bg-card-hover text-foreground'
-                      }`}
+                      onClick={() => {
+                        setSelectedProfId('');
+                        setSelectedTime('');
+                      }}
+                      className="py-2 px-3.5 rounded-xl bg-card border border-border hover:bg-card-hover text-xs font-semibold text-foreground transition-all active:scale-95 cursor-pointer shadow-xs"
                     >
-                      {slot}
+                      Buscar horário com Qualquer Profissional
                     </button>
-                  );
-                })}
+                  </div>
+                )}
               </div>
-            </div>
+            ) : (
+              /* Time Grid */
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-muted flex items-center gap-1.5">
+                  <Clock size={14} className="text-accent" />
+                  Horários Disponíveis ({totalDuration} min de atendimento)
+                </label>
 
-            {selectedTime && (
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-64 overflow-y-auto pr-1">
+                  {TIME_SLOTS.map((slot) => {
+                    const isOccupied = occupiedSlots.has(slot);
+                    const isSelected = selectedTime === slot;
+
+                    return (
+                      <button
+                        key={slot}
+                        disabled={isOccupied}
+                        onClick={() => setSelectedTime(slot)}
+                        className={`py-2.5 px-3 rounded-xl text-xs font-semibold transition-all border ${
+                          isOccupied
+                            ? 'border-border/40 bg-card/30 text-muted/40 line-through cursor-not-allowed'
+                            : isSelected
+                            ? 'border-accent bg-accent text-white shadow-md shadow-accent/20 scale-[1.02]'
+                            : 'border-border bg-card hover:bg-card-hover text-foreground'
+                        }`}
+                      >
+                        {slot}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {selectedTime && availabilityStatus.isAvailable && (
               <div className="pt-4">
                 <button
                   onClick={() => setStep(4)}

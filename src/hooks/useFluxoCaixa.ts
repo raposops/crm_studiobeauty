@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabaseService } from '@/services/supabaseService';
 import type { MovimentacaoFluxoCaixa, CategoriaMovimentacao } from '@/types';

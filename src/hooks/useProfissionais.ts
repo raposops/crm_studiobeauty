@@ -1,3 +1,5 @@
+'use client';
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabaseService } from '@/services/supabaseService';
 import { supabase } from '@/lib/supabase';
@@ -39,7 +41,7 @@ export function useProfissionais(salaoId: string) {
   }, [salaoId, queryClient, queryKey]);
 
   const criarProfissional = useMutation({
-    mutationFn: (payload: { nome: string; cor: string; avatar_url?: string; comissao_padrao_pct?: number }) =>
+    mutationFn: (payload: { nome: string; cor: string; avatar_url?: string; comissao_padrao_pct?: number; dias_trabalho?: number[] }) =>
       supabaseService.criarProfissional(salaoId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
@@ -47,7 +49,7 @@ export function useProfissionais(salaoId: string) {
   });
 
   const atualizarProfissional = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: { nome?: string; cor?: string; avatar_url?: string; comissao_padrao_pct?: number } }) =>
+    mutationFn: ({ id, payload }: { id: string; payload: { nome?: string; cor?: string; avatar_url?: string; comissao_padrao_pct?: number; dias_trabalho?: number[] } }) =>
       supabaseService.atualizarProfissional(id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });

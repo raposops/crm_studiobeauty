@@ -48,6 +48,27 @@ const COLOR_OPTIONS = [
   { label: 'Laranja / Âmbar', class: 'from-orange-500 to-amber-500' },
 ];
 
+const DIAS_SEMANA_LIST = [
+  { dia: 1, label: 'Seg', full: 'Segunda-feira' },
+  { dia: 2, label: 'Ter', full: 'Terça-feira' },
+  { dia: 3, label: 'Qua', full: 'Quarta-feira' },
+  { dia: 4, label: 'Qui', full: 'Quinta-feira' },
+  { dia: 5, label: 'Sex', full: 'Sexta-feira' },
+  { dia: 6, label: 'Sáb', full: 'Sábado' },
+  { dia: 0, label: 'Dom', full: 'Domingo' },
+];
+
+function formatDiasTrabalho(dias?: number[]): string {
+  if (!dias || dias.length === 0) return 'Sem escala definida';
+  if (dias.length === 7) return 'Todos os dias';
+  if (dias.length === 6 && !dias.includes(0)) return 'Seg a Sáb';
+  if (dias.length === 5 && !dias.includes(0) && !dias.includes(6)) return 'Seg a Sex';
+
+  const ordem = [1, 2, 3, 4, 5, 6, 0];
+  const ordenados = ordem.filter((d) => dias.includes(d));
+  return ordenados.map((d) => DIAS_SEMANA_LIST.find((item) => item.dia === d)?.label).join(', ');
+}
+
 export default function AjustesPage() {
   const { salao, salaoId, logout, user, refreshAuth, hasModule } = useAuth();
   const temModuloEstoque = hasModule('estoque');
@@ -95,6 +116,7 @@ export default function AjustesPage() {
   const [profNome, setProfNome] = useState('');
   const [profCor, setProfCor] = useState(COLOR_OPTIONS[0].class);
   const [profComissao, setProfComissao] = useState('40');
+  const [profDiasTrabalho, setProfDiasTrabalho] = useState<number[]>([1, 2, 3, 4, 5, 6]);
 
   const [isAssinaturaModalOpen, setIsAssinaturaModalOpen] = useState(false);
 
@@ -152,6 +174,7 @@ export default function AjustesPage() {
     setProfNome('');
     setProfCor(COLOR_OPTIONS[0].class);
     setProfComissao('40');
+    setProfDiasTrabalho([1, 2, 3, 4, 5, 6]);
     setIsProfModalOpen(true);
   }
 
@@ -160,6 +183,7 @@ export default function AjustesPage() {
     setProfNome(prof.nome);
     setProfCor(prof.cor || COLOR_OPTIONS[0].class);
     setProfComissao(String(prof.comissao_padrao_pct ?? 40));
+    setProfDiasTrabalho(Array.isArray(prof.dias_trabalho) ? prof.dias_trabalho : [1, 2, 3, 4, 5, 6]);
     setIsProfModalOpen(true);
   }
 
@@ -177,6 +201,7 @@ export default function AjustesPage() {
             nome: profNome,
             cor: profCor,
             comissao_padrao_pct: comissaoNum,
+            dias_trabalho: profDiasTrabalho,
           },
         },
         {
@@ -184,6 +209,7 @@ export default function AjustesPage() {
             setEditingProf(null);
             setProfNome('');
             setProfComissao('40');
+            setProfDiasTrabalho([1, 2, 3, 4, 5, 6]);
             setIsProfModalOpen(false);
           },
           onError: (err: any) => {
@@ -198,11 +224,13 @@ export default function AjustesPage() {
           nome: profNome,
           cor: profCor,
           comissao_padrao_pct: comissaoNum,
+          dias_trabalho: profDiasTrabalho,
         },
         {
           onSuccess: () => {
             setProfNome('');
             setProfComissao('40');
+            setProfDiasTrabalho([1, 2, 3, 4, 5, 6]);
             setIsProfModalOpen(false);
           },
           onError: (err: any) => {
@@ -762,6 +790,10 @@ export default function AjustesPage() {
                   </div>
 
                   <div className="flex items-center gap-2">
+                    <span className="text-[10px] px-2 py-1 rounded-full font-semibold bg-card border border-border text-muted hidden sm:inline-block">
+                      {formatDiasTrabalho(prof.dias_trabalho)}
+                    </span>
+
                     <span
                       className={`text-xs px-2.5 py-1 rounded-full font-semibold ${
                         (prof.comissao_padrao_pct ?? 40) === 0
@@ -1055,6 +1087,72 @@ export default function AjustesPage() {
                 </div>
                 <p className="text-[11px] text-muted/70 mt-1">
                   Digite 0 se o profissional for assalariado ou não receber repasse.
+                </p>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-semibold text-muted">
+                    Dias de Atendimento na Semana
+                  </label>
+                  <div className="flex items-center gap-1.5 text-[10px]">
+                    <button
+                      type="button"
+                      onClick={() => setProfDiasTrabalho([1, 2, 3, 4, 5])}
+                      className="text-accent hover:underline cursor-pointer font-medium"
+                    >
+                      Seg-Sex
+                    </button>
+                    <span className="text-muted/50">&middot;</span>
+                    <button
+                      type="button"
+                      onClick={() => setProfDiasTrabalho([1, 2, 3, 4, 5, 6])}
+                      className="text-accent hover:underline cursor-pointer font-medium"
+                    >
+                      Seg-Sáb
+                    </button>
+                    <span className="text-muted/50">&middot;</span>
+                    <button
+                      type="button"
+                      onClick={() => setProfDiasTrabalho([0, 1, 2, 3, 4, 5, 6])}
+                      className="text-accent hover:underline cursor-pointer font-medium"
+                    >
+                      Todos
+                    </button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-7 gap-1">
+                  {DIAS_SEMANA_LIST.map((d) => {
+                    const isSelected = profDiasTrabalho.includes(d.dia);
+                    return (
+                      <button
+                        key={d.dia}
+                        type="button"
+                        onClick={() => {
+                          if (isSelected) {
+                            if (profDiasTrabalho.length === 1) {
+                              alert('O profissional deve atender em pelo menos 1 dia.');
+                              return;
+                            }
+                            setProfDiasTrabalho(profDiasTrabalho.filter((item) => item !== d.dia));
+                          } else {
+                            setProfDiasTrabalho([...profDiasTrabalho, d.dia]);
+                          }
+                        }}
+                        className={`py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                          isSelected
+                            ? 'border-accent bg-accent text-white shadow-xs'
+                            : 'border-border bg-card text-muted hover:text-foreground'
+                        }`}
+                        title={d.full}
+                      >
+                        {d.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-[11px] text-muted/70 mt-1">
+                  O link público de agendamento bloqueará automaticamente os dias não marcados.
                 </p>
               </div>
 

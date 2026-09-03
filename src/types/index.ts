@@ -61,6 +61,20 @@ export interface Profissional {
   iniciais: string;
   cor: string; // Tailwind gradient classes
   comissao_padrao_pct?: number; // % de repasse para o profissional (ex: 40, 50, 0)
+  dias_trabalho?: number[]; // [0, 1, 2, 3, 4, 5, 6] onde 0=Domingo, 1=Segunda, etc.
+}
+
+export interface BloqueioAgenda {
+  id: string;
+  salao_id: string;
+  profissional_id: string;
+  profissional?: Profissional;
+  data: string; // YYYY-MM-DD
+  dia_inteiro: boolean;
+  hora_inicio?: string;
+  hora_fim?: string;
+  motivo?: string;
+  criado_em?: string;
 }
 
 export interface Servico {

@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { generateUUID } from '@/lib/uuid';
-import type { Agendamento, LancamentoFinanceiro, NovoAgendamentoForm, FormaPagamento, ModulosSalao, MovimentacaoFluxoCaixa, ProdutoExtra } from '@/types';
+import type { Agendamento, LancamentoFinanceiro, NovoAgendamentoForm, FormaPagamento, ModulosSalao, MovimentacaoFluxoCaixa, ProdutoExtra, BloqueioAgenda, Profissional } from '@/types';
 
 export const supabaseService = {
   async fetchAgendamentos(salaoId: string, data: string, profissionalId?: string): Promise<Agendamento[]> {
@@ -423,7 +423,9 @@ export const supabaseService = {
   // ==========================
   // PROFISSIONAIS
   // ==========================
-  async fetchProfissionais(salaoId: string) {
+  // PROFISSIONAIS
+  // ==========================
+  async fetchProfissionais(salaoId: string): Promise<Profissional[]> {
     const { data, error } = await supabase
       .from('profissionais')
       .select('*')
@@ -431,31 +433,52 @@ export const supabaseService = {
       .order('nome');
 
     if (error) throw error;
-    return data;
+    return (data || []).map((p: any) => ({
+      ...p,
+      dias_trabalho: Array.isArray(p.dias_trabalho) ? p.dias_trabalho : [1, 2, 3, 4, 5, 6],
+    }));
   },
 
-  async criarProfissional(salaoId: string, payload: { nome: string; cor: string; avatar_url?: string; comissao_padrao_pct?: number }) {
+  async criarProfissional(salaoId: string, payload: { nome: string; cor: string; avatar_url?: string; comissao_padrao_pct?: number; dias_trabalho?: number[] }) {
     const nomeLimpo = payload.nome.trim();
     const partesNome = nomeLimpo.split(' ');
     const iniciais = partesNome.length > 1
       ? `${partesNome[0][0]}${partesNome[1][0]}`.toUpperCase()
       : nomeLimpo.slice(0, 2).toUpperCase();
 
-    const { data, error } = await supabase
+    const insertData: Record<string, any> = {
+      salao_id: salaoId,
+      nome: nomeLimpo,
+      iniciais,
+      cor: payload.cor || 'from-purple-500 to-indigo-500',
+      avatar_url: payload.avatar_url,
+      comissao_padrao_pct: payload.comissao_padrao_pct ?? 40,
+      dias_trabalho: payload.dias_trabalho || [1, 2, 3, 4, 5, 6],
+    };
+
+    let { data, error } = await supabase
       .from('profissionais')
-      .insert({
-        salao_id: salaoId,
-        nome: nomeLimpo,
-        iniciais,
-        cor: payload.cor || 'from-purple-500 to-indigo-500',
-        avatar_url: payload.avatar_url,
-        comissao_padrao_pct: payload.comissao_padrao_pct ?? 40,
-      })
+      .insert(insertData)
       .select()
       .single();
 
+    // Fallback caso a coluna dias_trabalho ainda não exista no Supabase
+    if (error && error.message && error.message.includes('dias_trabalho')) {
+      const { dias_trabalho, ...fallbackData } = insertData;
+      const retry = await supabase
+        .from('profissionais')
+        .insert(fallbackData)
+        .select()
+        .single();
+      data = retry.data;
+      error = retry.error;
+    }
+
     if (error) throw error;
-    return data;
+    return {
+      ...data,
+      dias_trabalho: Array.isArray(data.dias_trabalho) ? data.dias_trabalho : (payload.dias_trabalho || [1, 2, 3, 4, 5, 6]),
+    };
   },
 
   async atualizarProfissional(
@@ -465,6 +488,7 @@ export const supabaseService = {
       cor?: string;
       comissao_padrao_pct?: number;
       avatar_url?: string;
+      dias_trabalho?: number[];
     }
   ) {
     const updateData: Record<string, any> = {};
@@ -480,16 +504,33 @@ export const supabaseService = {
     if (payload.cor !== undefined) updateData.cor = payload.cor;
     if (payload.comissao_padrao_pct !== undefined) updateData.comissao_padrao_pct = payload.comissao_padrao_pct;
     if (payload.avatar_url !== undefined) updateData.avatar_url = payload.avatar_url;
+    if (payload.dias_trabalho !== undefined) updateData.dias_trabalho = payload.dias_trabalho;
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('profissionais')
       .update(updateData)
       .eq('id', id)
       .select()
       .single();
 
+    // Fallback caso a coluna dias_trabalho ainda não exista no Supabase
+    if (error && error.message && error.message.includes('dias_trabalho')) {
+      const { dias_trabalho, ...fallbackData } = updateData;
+      const retry = await supabase
+        .from('profissionais')
+        .update(fallbackData)
+        .eq('id', id)
+        .select()
+        .single();
+      data = retry.data;
+      error = retry.error;
+    }
+
     if (error) throw error;
-    return data;
+    return {
+      ...data,
+      dias_trabalho: Array.isArray(data?.dias_trabalho) ? data.dias_trabalho : (payload.dias_trabalho || [1, 2, 3, 4, 5, 6]),
+    };
   },
 
   async deletarProfissional(id: string) {
@@ -499,6 +540,149 @@ export const supabaseService = {
       .eq('id', id);
 
     if (error) throw error;
+  },
+
+  // ==========================
+  // BLOQUEIOS DE AGENDA / FOLGAS
+  // ==========================
+  getLocalStorageBloqueios(salaoId: string): BloqueioAgenda[] {
+    if (typeof window === 'undefined') return [];
+    try {
+      const raw = localStorage.getItem(`bloqueios_agenda_${salaoId}`);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  },
+
+  setLocalStorageBloqueios(salaoId: string, itens: BloqueioAgenda[]) {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(`bloqueios_agenda_${salaoId}`, JSON.stringify(itens));
+    } catch {}
+  },
+
+  async fetchBloqueiosAgenda(salaoId: string, data?: string, profissionalId?: string): Promise<BloqueioAgenda[]> {
+    try {
+      let query = supabase
+        .from('bloqueios_agenda')
+        .select('*, profissional:profissionais(*)')
+        .eq('salao_id', salaoId);
+
+      if (data) {
+        query = query.eq('data', data);
+      }
+      if (profissionalId) {
+        query = query.eq('profissional_id', profissionalId);
+      }
+
+      const { data: dbData, error } = await query;
+
+      if (!error && dbData) {
+        this.setLocalStorageBloqueios(salaoId, dbData);
+        return dbData;
+      }
+    } catch (err) {
+      console.warn('Erro ao buscar bloqueios_agenda do Supabase, usando cache local:', err);
+    }
+
+    // Fallback para localStorage caso a tabela ainda não exista no Supabase
+    let local = this.getLocalStorageBloqueios(salaoId);
+    if (data) {
+      local = local.filter((b) => b.data === data);
+    }
+    if (profissionalId) {
+      local = local.filter((b) => b.profissional_id === profissionalId);
+    }
+    return local;
+  },
+
+  async criarBloqueioAgenda(
+    salaoId: string,
+    payload: {
+      profissional_id: string;
+      data: string;
+      motivo?: string;
+      dia_inteiro?: boolean;
+      hora_inicio?: string;
+      hora_fim?: string;
+      profissional?: Profissional;
+    }
+  ): Promise<BloqueioAgenda> {
+    const novoBloqueio: BloqueioAgenda = {
+      id: generateUUID(),
+      salao_id: salaoId,
+      profissional_id: payload.profissional_id,
+      data: payload.data,
+      dia_inteiro: payload.dia_inteiro ?? true,
+      hora_inicio: payload.hora_inicio,
+      hora_fim: payload.hora_fim,
+      motivo: payload.motivo?.trim() || 'Folga',
+      profissional: payload.profissional,
+      criado_em: new Date().toISOString(),
+    };
+
+    try {
+      const { data, error } = await supabase
+        .from('bloqueios_agenda')
+        .insert({
+          id: novoBloqueio.id,
+          salao_id: salaoId,
+          profissional_id: novoBloqueio.profissional_id,
+          data: novoBloqueio.data,
+          dia_inteiro: novoBloqueio.dia_inteiro,
+          hora_inicio: novoBloqueio.hora_inicio,
+          hora_fim: novoBloqueio.hora_fim,
+          motivo: novoBloqueio.motivo,
+        })
+        .select('*, profissional:profissionais(*)')
+        .single();
+
+      if (!error && data) {
+        const local = this.getLocalStorageBloqueios(salaoId);
+        this.setLocalStorageBloqueios(salaoId, [data, ...local.filter((b) => b.id !== data.id)]);
+        return data;
+      }
+    } catch (err: any) {
+      console.warn('Aviso: fallback para localStorage ao criar bloqueio:', err?.message);
+    }
+
+    // Fallback local
+    const local = this.getLocalStorageBloqueios(salaoId);
+    local.unshift(novoBloqueio);
+    this.setLocalStorageBloqueios(salaoId, local);
+    return novoBloqueio;
+  },
+
+  async deletarBloqueioAgenda(id: string, salaoId?: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('bloqueios_agenda')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.warn('Aviso ao deletar bloqueio no Supabase:', error.message);
+      }
+    } catch (err) {
+      console.warn('Supabase bloqueios_agenda delete fallback:', err);
+    }
+
+    if (salaoId) {
+      const local = this.getLocalStorageBloqueios(salaoId);
+      this.setLocalStorageBloqueios(salaoId, local.filter((b) => b.id !== id));
+    } else if (typeof window !== 'undefined') {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('bloqueios_agenda_')) {
+          try {
+            const list: BloqueioAgenda[] = JSON.parse(localStorage.getItem(key) || '[]');
+            const filtered = list.filter((b) => b.id !== id);
+            localStorage.setItem(key, JSON.stringify(filtered));
+          } catch (e) {}
+        }
+      }
+    }
   },
 
   // ==========================
