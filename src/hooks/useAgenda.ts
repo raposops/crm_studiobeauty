@@ -58,11 +58,32 @@ export function useAgenda(salaoId: string, data: string, profissionalId?: string
     },
   });
 
+  const atualizarHorario = useMutation({
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: {
+        hora_inicio: string;
+        hora_fim: string;
+        duracao_total: number;
+        data?: string;
+      };
+    }) => supabaseService.atualizarHorarioAgendamento(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['agendamentos'] });
+      queryClient.invalidateQueries({ queryKey: ['lancamentos'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+  });
+
   return {
     agendamentos: query.data || [],
     isLoading: query.isLoading,
     isError: query.isError,
     criarAgendamento,
+    atualizarHorario,
     deletarAgendamento,
   };
 }

@@ -41,6 +41,44 @@ export const supabaseService = {
     });
   },
 
+  async atualizarHorarioAgendamento(
+    agendamentoId: string,
+    payload: {
+      hora_inicio: string;
+      hora_fim: string;
+      duracao_total: number;
+      data?: string;
+    }
+  ) {
+    const updateData: Record<string, any> = {
+      hora_inicio: payload.hora_inicio,
+      hora_fim: payload.hora_fim,
+      duracao_total: payload.duracao_total,
+    };
+
+    if (payload.data) {
+      updateData.data = payload.data;
+      updateData.data_hora_inicio = `${payload.data}T${payload.hora_inicio}:00`;
+      updateData.data_hora_fim = `${payload.data}T${payload.hora_fim}:00`;
+    }
+
+    const { data, error } = await supabase
+      .from('agendamentos')
+      .update(updateData)
+      .eq('id', agendamentoId)
+      .select(`
+        *,
+        cliente:clientes(*),
+        profissional:profissionais(*),
+        servico:servicos!agendamentos_servico_id_fkey(*),
+        servicos:agendamento_servicos(servico:servicos!agendamento_servicos_servico_id_fkey(*))
+      `)
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
   async fetchLancamentos(
     salaoId: string, 
     filterStr: string, 

@@ -19,12 +19,15 @@ import {
   Wallet,
   Search,
   Trash2,
+  Pencil,
+  CheckCircle2,
 } from 'lucide-react';
 import type { Agendamento, FormaPagamento, ProdutoExtra, Servico } from '@/types';
 import {
   COMISSAO_PERCENTUAL,
   calcularComissao,
   formatCurrency,
+  addMinutesToTime,
 } from '@/data/mock';
 import { useCaixa } from '@/hooks/useCaixa';
 import { useAgenda } from '@/hooks/useAgenda';
@@ -93,6 +96,13 @@ export default function CheckoutModal({
   // Estado de Desconto
   const [valorDescontoInput, setValorDescontoInput] = useState('');
 
+  // Estados de Edição de Horário / Duração
+  const [isEditingTime, setIsEditingTime] = useState(false);
+  const [editHoraInicio, setEditHoraInicio] = useState(agendamento?.hora_inicio || '09:00');
+  const [editHoraFim, setEditHoraFim] = useState(agendamento?.hora_fim || '09:30');
+  const [isSavingTime, setIsSavingTime] = useState(false);
+  const [timeSaveSuccess, setTimeSaveSuccess] = useState(false);
+
   useEffect(() => {
     if (agendamento?.profissional) {
       setComissaoPct(
@@ -105,13 +115,70 @@ export default function CheckoutModal({
     } else {
       setUsarCredito(false);
     }
+    if (agendamento) {
+      setEditHoraInicio(agendamento.hora_inicio || '09:00');
+      setEditHoraFim(agendamento.hora_fim || '09:30');
+      setIsEditingTime(false);
+      setTimeSaveSuccess(false);
+    }
   }, [agendamento]);
 
   const { salaoId, hasModule } = useAuth();
   const { concluirAtendimento } = useCaixa(salaoId, agendamento?.data || '');
-  const { deletarAgendamento } = useAgenda(salaoId, agendamento?.data || '');
+  const { deletarAgendamento, atualizarHorario } = useAgenda(salaoId, agendamento?.data || '');
   const { servicos: catalogoServicos, isLoading: loadingCatalogoServicos } = useServicos(salaoId);
   const { produtos, isLoading: loadingProdutos } = useProdutos(salaoId);
+
+  // Duração calculada a partir dos horários digitados
+  const currentDurationMinutes = useMemo(() => {
+    if (!editHoraInicio || !editHoraFim) return 0;
+    const [h1, m1] = editHoraInicio.split(':').map((n) => parseInt(n, 10) || 0);
+    const [h2, m2] = editHoraFim.split(':').map((n) => parseInt(n, 10) || 0);
+    const diff = h2 * 60 + m2 - (h1 * 60 + m1);
+    return diff > 0 ? diff : 0;
+  }, [editHoraInicio, editHoraFim]);
+
+  function handleSetDuration(minutes: number) {
+    if (!editHoraInicio) return;
+    const newEnd = addMinutesToTime(editHoraInicio, minutes);
+    setEditHoraFim(newEnd);
+  }
+
+  async function handleSaveTime() {
+    if (!agendamento || !editHoraInicio || !editHoraFim) return;
+    if (editHoraFim <= editHoraInicio) {
+      alert('O horário de término deve ser posterior ao horário de início.');
+      return;
+    }
+
+    setIsSavingTime(true);
+    try {
+      await atualizarHorario.mutateAsync({
+        id: agendamento.id,
+        payload: {
+          hora_inicio: editHoraInicio,
+          hora_fim: editHoraFim,
+          duracao_total: currentDurationMinutes || 30,
+        },
+      });
+
+      // Atualiza o objeto agendamento localmente para reflexo visual imediato
+      agendamento.hora_inicio = editHoraInicio;
+      agendamento.hora_fim = editHoraFim;
+      agendamento.duracao_total = currentDurationMinutes || 30;
+
+      setTimeSaveSuccess(true);
+      setTimeout(() => {
+        setTimeSaveSuccess(false);
+        setIsEditingTime(false);
+      }, 1200);
+    } catch (err: any) {
+      console.error('Erro ao atualizar horário:', err);
+      alert('Erro ao salvar novo horário na agenda: ' + (err?.message || 'Erro inesperado'));
+    } finally {
+      setIsSavingTime(false);
+    }
+  }
 
   // Estados de Serviços Extras / Adicionais
   const [servicosAdicionais, setServicosAdicionais] = useState<Servico[]>([]);
@@ -412,19 +479,14 @@ export default function CheckoutModal({
         <div className="flex-1 overflow-y-auto px-5 pb-5 space-y-5">
           {/* Appointment Summary */}
           <div className="rounded-2xl bg-card border border-border p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <User size={14} className="text-accent-light" />
-              <span className="text-sm font-bold text-foreground">
-                {agendamento.cliente.nome}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Clock size={14} className="text-muted" />
-              <span className="text-xs text-muted">
-                {agendamento.hora_inicio} - {agendamento.hora_fim}
-              </span>
-              <span className="text-xs text-muted">&middot;</span>
-              <div className="flex items-center gap-1">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <User size={15} className="text-accent-light shrink-0" />
+                <span className="text-sm font-bold text-foreground">
+                  {agendamento.cliente.nome}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 bg-background/60 px-2.5 py-1 rounded-lg border border-border/40">
                 <div
                   className={`w-4 h-4 rounded-full bg-gradient-to-br ${agendamento.profissional.cor} flex items-center justify-center`}
                 >
@@ -432,11 +494,141 @@ export default function CheckoutModal({
                     {agendamento.profissional.iniciais}
                   </span>
                 </div>
-                <span className="text-xs text-muted">
+                <span className="text-xs font-medium text-foreground">
                   {agendamento.profissional.nome}
                 </span>
               </div>
             </div>
+
+            {/* Time / Duration Row with Edit Button */}
+            {!isEditingTime ? (
+              <div className="flex items-center justify-between gap-2 pt-0.5">
+                <div className="flex items-center gap-2">
+                  <Clock size={14} className="text-accent-light shrink-0" />
+                  <span className="text-xs font-mono font-bold text-foreground">
+                    {agendamento.hora_inicio} - {agendamento.hora_fim}
+                  </span>
+                  <span className="text-[11px] text-muted font-medium">
+                    ({agendamento.duracao_total || currentDurationMinutes || 30} min)
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsEditingTime(true)}
+                  className="text-[11px] font-semibold text-accent hover:text-accent-light flex items-center gap-1 px-2 py-0.5 rounded-md hover:bg-accent/10 transition-colors cursor-pointer active:scale-95"
+                  title="Ajustar horário ou duração deste atendimento"
+                >
+                  <Pencil size={11} />
+                  <span>Ajustar Horário</span>
+                </button>
+              </div>
+            ) : (
+              /* Inline Time / Duration Editor */
+              <div className="pt-2 pb-1 border-t border-border/60 space-y-3 animate-fade-in">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                    <Clock size={13} className="text-accent" />
+                    Editar Horário do Atendimento
+                  </span>
+                  <span className="text-[11px] font-semibold text-accent">
+                    Duração: {currentDurationMinutes} min
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] font-semibold uppercase text-muted block mb-1">
+                      Início
+                    </label>
+                    <input
+                      type="time"
+                      value={editHoraInicio}
+                      onChange={(e) => setEditHoraInicio(e.target.value)}
+                      className="w-full px-2.5 py-1.5 rounded-xl bg-background border border-border text-xs font-mono font-bold text-foreground focus:outline-none focus:border-accent"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-semibold uppercase text-muted block mb-1">
+                      Término
+                    </label>
+                    <input
+                      type="time"
+                      value={editHoraFim}
+                      onChange={(e) => setEditHoraFim(e.target.value)}
+                      className="w-full px-2.5 py-1.5 rounded-xl bg-background border border-border text-xs font-mono font-bold text-foreground focus:outline-none focus:border-accent"
+                    />
+                  </div>
+                </div>
+
+                {/* Quick duration presets */}
+                <div>
+                  <span className="text-[10px] font-semibold text-muted block mb-1.5">
+                    Ajustar duração rápida:
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      { label: '30m', min: 30 },
+                      { label: '45m', min: 45 },
+                      { label: '1h', min: 60 },
+                      { label: '1h15', min: 75 },
+                      { label: '1h30', min: 90 },
+                      { label: '2h', min: 120 },
+                      { label: '2h30', min: 150 },
+                      { label: '3h', min: 180 },
+                      { label: '4h', min: 240 },
+                    ].map(({ label, min }) => (
+                      <button
+                        key={min}
+                        type="button"
+                        onClick={() => handleSetDuration(min)}
+                        className={`text-[11px] font-semibold px-2 py-0.5 rounded-lg border transition-all cursor-pointer ${
+                          currentDurationMinutes === min
+                            ? 'bg-accent text-white border-accent shadow-xs'
+                            : 'bg-background border-border text-muted hover:text-foreground hover:bg-card-hover'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex items-center justify-end gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditHoraInicio(agendamento.hora_inicio);
+                      setEditHoraFim(agendamento.hora_fim);
+                      setIsEditingTime(false);
+                    }}
+                    className="px-3 py-1.5 rounded-xl text-xs font-semibold text-muted hover:text-foreground hover:bg-background border border-border transition-colors cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isSavingTime || timeSaveSuccess}
+                    onClick={handleSaveTime}
+                    className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-accent to-accent-light text-white text-xs font-bold shadow-md shadow-accent/20 hover:shadow-accent/40 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    {timeSaveSuccess ? (
+                      <>
+                        <CheckCircle2 size={13} className="text-white" />
+                        <span>Salvo!</span>
+                      </>
+                    ) : isSavingTime ? (
+                      <span>Salvando...</span>
+                    ) : (
+                      <>
+                        <Check size={13} />
+                        <span>Salvar na Agenda</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Services List */}
             <div className="space-y-2 pt-2 border-t border-border/50">
