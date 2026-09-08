@@ -70,20 +70,20 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6 animate-fade-in-up">
       {/* HEADER */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Dashboard</h1>
           <p className="text-sm text-muted">Visão geral do seu salão</p>
         </div>
         
-        <div className="flex items-center gap-2 bg-card border border-border rounded-xl p-1 shadow-sm">
-          <button onClick={prevMonth} className="px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-background rounded-lg transition-all">
+        <div className="flex items-center justify-between sm:justify-start gap-1 sm:gap-2 bg-card border border-border rounded-xl p-1 shadow-sm w-full sm:w-auto">
+          <button onClick={prevMonth} className="px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-background rounded-lg transition-all shrink-0">
             &larr; Anterior
           </button>
-          <span className="text-sm font-bold capitalize text-accent px-2">
+          <span className="text-sm font-bold capitalize text-accent px-2 text-center truncate">
             {mesAtualNome}
           </span>
-          <button onClick={nextMonth} className="px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-background rounded-lg transition-all">
+          <button onClick={nextMonth} className="px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-background rounded-lg transition-all shrink-0">
             Próximo &rarr;
           </button>
         </div>
