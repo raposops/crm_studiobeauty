@@ -197,13 +197,19 @@ function CadastrarSalaoContent() {
         },
       ]);
 
-      // Notificar Super Admin via WhatsApp
+      // Notificar Super Admin via WhatsApp (Server API Route)
       try {
-        const tipoModo = isTrialMode ? '🎁 TRIAL 14 DIAS GRÁTIS' : '💳 PAGO';
-        const msgAdmin = `🚀 *Novo Salão SaaS Cadastrado!*\n\n🏢 *Salão:* ${salaoNome.trim()}\n👤 *Responsável:* ${ownerNome.trim()}\n📧 *Email:* ${email.trim()}\n📱 *Telefone:* ${phone.trim()}\n📦 *Plano:* ${planoEscolhido} (${tipoModo})\n\n🎉 Uhuuu! Mais um cliente na plataforma!`;
-        await sendDirectWhatsAppMessage({
-          phone: '5551981108170',
-          message: msgAdmin,
+        await fetch('/api/notify-admin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            salaoNome: salaoNome.trim(),
+            ownerNome: ownerNome.trim(),
+            email: email.trim(),
+            phone: phone.trim(),
+            plano: planoEscolhido,
+            isTrialMode,
+          }),
         });
       } catch (notifyErr) {
         console.warn('Erro ao notificar super-admin via WhatsApp:', notifyErr);

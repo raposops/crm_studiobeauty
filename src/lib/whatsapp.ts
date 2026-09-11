@@ -209,8 +209,8 @@ export async function sendDirectWhatsAppMessage({
       process.env.EVOLUTION_INSTANCE_NAME ||
       'fidus';
 
-    const targetUrl = `${evolutionApiUrl.replace(/\/$/, '')}/message/sendText/${instanceName}`;
-    const res = await fetch(targetUrl, {
+    let targetUrl = `${evolutionApiUrl.replace(/\/$/, '')}/message/sendText/${instanceName}`;
+    let res = await fetch(targetUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -219,11 +219,35 @@ export async function sendDirectWhatsAppMessage({
       body: JSON.stringify({
         number: formattedPhone,
         text: message,
-        options: { delay: 1200, presence: 'composing', linkPreview: false },
+        options: { delay: 1000, presence: 'composing', linkPreview: false },
       }),
     });
 
-    const data = await res.json().catch(() => null);
+    let data = await res.json().catch(() => null);
+
+    // Se falhar ou der erro na instancia primária 'fidus', tenta a secundária 'meu_acessor'
+    if (!res.ok || (data && data.status >= 400)) {
+      console.warn(`[WhatsApp Direct] Instância ${instanceName} retornou erro, tentando fallback 'meu_acessor'...`);
+      const fallbackUrl = `${evolutionApiUrl.replace(/\/$/, '')}/message/sendText/meu_acessor`;
+      const fallbackRes = await fetch(fallbackUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: '306435C88588-4EE6-AD53-E5882B4EE2AD',
+        },
+        body: JSON.stringify({
+          number: formattedPhone,
+          text: message,
+          options: { delay: 1000, presence: 'composing', linkPreview: false },
+        }),
+      });
+
+      const fallbackData = await fallbackRes.json().catch(() => null);
+      if (fallbackRes.ok) {
+        return { success: true, data: fallbackData };
+      }
+    }
+
     return { success: res.ok, data };
   } catch (err: any) {
     console.error('Erro ao enviar mensagem WhatsApp direta:', err);
