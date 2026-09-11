@@ -29,6 +29,9 @@ function AssinarContent() {
 
   const querySalaoId = searchParams.get('salaoId');
   const queryPlano = searchParams.get('plano');
+  const queryReason = searchParams.get('reason');
+
+  const isTrialExpired = queryReason === 'trial_expired' || (salao?.status_assinatura === 'trial');
 
   const targetSalaoId = querySalaoId || authSalaoId || salao?.id || '';
   const initialPlan = queryPlano === 'basico' || salao?.plano === 'basico' ? 'basico' : 'pro';
@@ -169,6 +172,19 @@ function AssinarContent() {
             Quase lá! Realize o pagamento do seu plano para liberar o acesso imediato ao <strong>CRM Studio Beauty</strong>.
           </p>
         </div>
+
+        {/* Trial Expired Alert */}
+        {isTrialExpired && (
+          <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs space-y-1 shadow-lg">
+            <div className="flex items-center gap-2 font-bold text-amber-400 text-sm">
+              <Clock size={18} className="shrink-0 animate-pulse" />
+              <span>Seu período de teste grátis (14 dias) expirou!</span>
+            </div>
+            <p className="text-slate-300 text-[11px] leading-relaxed">
+              Para continuar utilizando a plataforma e acessar todos os seus agendamentos e clientes sem nenhuma perda de dados, escolha e ative seu plano abaixo.
+            </p>
+          </div>
+        )}
 
         {/* Error Alert */}
         {errorMessage && (

@@ -1,6 +1,6 @@
 'use client';
 
-import { Scissors, Shield, Store, Mail } from 'lucide-react';
+import { Scissors, Shield, Store, Mail, Clock } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 
@@ -16,6 +16,11 @@ export default function Header() {
     .join('')
     .slice(0, 2)
     .toUpperCase();
+
+  const isTrial = salao?.status_assinatura === 'trial' && salao.trial_ate;
+  const daysLeft = isTrial
+    ? Math.max(0, Math.ceil((new Date(salao.trial_ate!).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : 0;
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-[var(--nav-bg)] backdrop-blur-xl">
@@ -45,6 +50,17 @@ export default function Header() {
         </div>
 
         <div className="flex items-center gap-2">
+          {isTrial && (
+            <Link
+              href={`/assinar?salaoId=${salao.id}&plano=${salao.plano || 'pro'}`}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-400 text-xs font-bold hover:bg-amber-500/25 transition-all"
+              title="Período de Teste Grátis Ativo"
+            >
+              <Clock size={13} className="animate-pulse" />
+              <span>Trial: {daysLeft} {daysLeft === 1 ? 'dia' : 'dias'}</span>
+            </Link>
+          )}
+
           {isSuperAdmin && (
             <Link
               href="/admin"

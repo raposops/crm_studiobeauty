@@ -23,6 +23,8 @@ import {
   LogOut,
   ArrowRight,
   Mail,
+  Copy,
+  Clock,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabaseService } from '@/services/supabaseService';
@@ -38,6 +40,7 @@ interface SalaoRow {
   estado?: string;
   plano?: string;
   status_assinatura?: string;
+  trial_ate?: string;
   criado_em?: string;
   modulos_ativos?: ModulosSalao;
   asaas_customer_id?: string;
@@ -49,6 +52,7 @@ export default function AdminPage() {
   const [saloes, setSaloes] = useState<SalaoRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [copiedTrialLink, setCopiedTrialLink] = useState(false);
   
   // Admin Login & Session Gate
   const [adminAuthenticated, setAdminAuthenticated] = useState(false);
@@ -78,6 +82,15 @@ export default function AdminPage() {
       }
     }
   }, [isSuperAdmin]);
+
+  function handleCopyTrialLink() {
+    if (typeof window !== 'undefined' && navigator?.clipboard?.writeText) {
+      const trialUrl = `${window.location.origin}/cadastrar?plano=trial`;
+      navigator.clipboard.writeText(trialUrl);
+      setCopiedTrialLink(true);
+      setTimeout(() => setCopiedTrialLink(false), 2500);
+    }
+  }
 
   const fetchSaloes = async () => {
     setIsLoading(true);
@@ -381,6 +394,48 @@ export default function AdminPage() {
         </div>
       </div>
 
+      {/* Marketing Trial Link Section */}
+      <div className="rounded-3xl bg-gradient-to-r from-purple-950/60 via-indigo-950/60 to-slate-900/80 border border-purple-500/30 p-5 backdrop-blur-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xl">
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-2xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-400 shrink-0">
+            <Sparkles size={24} className="animate-pulse" />
+          </div>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-bold text-white">Link de Campanha: Trial 14 Dias Grátis</h2>
+              <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                Oculto no Cadastro Normal
+              </span>
+            </div>
+            <p className="text-xs text-slate-300">
+              Use este link exclusivo em campanhas de marketing para oferecer 14 dias de teste grátis com liberação imediata da plataforma.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 w-full md:w-auto shrink-0">
+          <div className="px-3 py-2 rounded-xl bg-slate-950/80 border border-slate-800 text-xs font-mono text-purple-300 truncate max-w-xs select-all">
+            {typeof window !== 'undefined' ? `${window.location.origin}/cadastrar?plano=trial` : '/cadastrar?plano=trial'}
+          </div>
+          <button
+            onClick={handleCopyTrialLink}
+            className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-lg shadow-purple-600/30 transition-all active:scale-95 cursor-pointer shrink-0"
+          >
+            {copiedTrialLink ? (
+              <>
+                <Check size={14} className="text-emerald-300" />
+                <span>Copiado!</span>
+              </>
+            ) : (
+              <>
+                <Copy size={14} />
+                <span>Copiar Link Trial</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
       {/* Metrics Row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="rounded-3xl bg-slate-900/60 border border-slate-800 p-5 flex items-center gap-4">
@@ -507,22 +562,46 @@ export default function AdminPage() {
                         </span>
                       </td>
                       <td className="py-3.5 px-4">
-                        <button
-                          onClick={() => handleToggleStatusSalao(salao)}
-                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                            (salao.status_assinatura || 'ativo') === 'ativo'
-                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 active:scale-95'
-                              : 'bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 active:scale-95'
-                          }`}
-                          title={(salao.status_assinatura || 'ativo') === 'ativo' ? 'Clique para bloquear/desativar acesso' : 'Clique para ativamento/liberar acesso'}
-                        >
-                          {(salao.status_assinatura || 'ativo') === 'ativo' ? (
-                            <Power size={13} className="text-emerald-400" />
-                          ) : (
-                            <PowerOff size={13} className="text-rose-400" />
-                          )}
-                          {salao.status_assinatura === 'ativo' || !salao.status_assinatura ? 'Ativo (Liberado)' : 'Bloqueado / Inativo'}
-                        </button>
+                        {(() => {
+                          const status = salao.status_assinatura || 'ativo';
+                          if (status === 'trial') {
+                            const isExpired = salao.trial_ate ? new Date().getTime() > new Date(salao.trial_ate).getTime() : false;
+                            const diffDays = salao.trial_ate
+                              ? Math.max(0, Math.ceil((new Date(salao.trial_ate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+                              : 0;
+
+                            return isExpired ? (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20" title="14 dias de teste expirados">
+                                <Clock size={13} className="text-amber-400" />
+                                Trial Expirado ({diffDays}d)
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20" title="Em período de teste de 14 dias">
+                                <Sparkles size={13} className="text-purple-400" />
+                                Trial 14 Dias ({diffDays}d)
+                              </span>
+                            );
+                          }
+
+                          return (
+                            <button
+                              onClick={() => handleToggleStatusSalao(salao)}
+                              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                                status === 'ativo'
+                                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 active:scale-95'
+                                  : 'bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 active:scale-95'
+                              }`}
+                              title={status === 'ativo' ? 'Clique para bloquear/desativar acesso' : 'Clique para ativamento/liberar acesso'}
+                            >
+                              {status === 'ativo' ? (
+                                <Power size={13} className="text-emerald-400" />
+                              ) : (
+                                <PowerOff size={13} className="text-rose-400" />
+                              )}
+                              {status === 'ativo' ? 'Ativo (Liberado)' : 'Bloqueado / Inativo'}
+                            </button>
+                          );
+                        })()}
                       </td>
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-1.5">
@@ -626,6 +705,7 @@ export default function AdminPage() {
                   className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs font-bold text-white focus:outline-none focus:border-purple-500"
                 >
                   <option value="ativo">Ativo (Acesso Liberado)</option>
+                  <option value="trial">Trial 14 Dias Grátis</option>
                   <option value="inativo">Inativo / Suspenso</option>
                 </select>
               </div>

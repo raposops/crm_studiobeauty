@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Scissors, Building2, User, Mail, Lock, Phone, Globe, ArrowRight, AlertCircle, Loader2, CheckCircle2, CreditCard, Check } from 'lucide-react';
+import { Scissors, Building2, User, Mail, Lock, Phone, Globe, ArrowRight, AlertCircle, Loader2, CheckCircle2, CreditCard, Check, Sparkles } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { generateUUID as uuidv4 } from '@/lib/uuid';
 import { PLANOS_SAAS } from '@/types';
@@ -31,6 +31,10 @@ function CadastrarSalaoContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryPlano = searchParams.get('plano');
+  const queryTrialParam = searchParams.get('trial');
+  const queryPromo = searchParams.get('promo');
+
+  const isTrialMode = queryPlano === 'trial' || queryTrialParam === '14' || queryTrialParam === 'true' || queryPromo === 'trial';
 
   // Form States
   const [salaoNome, setSalaoNome] = useState('');
@@ -128,7 +132,8 @@ function CadastrarSalaoContent() {
 
       const newUserId = authData.user.id;
 
-      // 3. Create Salon Row in 'saloes' table with pending subscription
+      // 3. Create Salon Row in 'saloes' table with pending or trial subscription
+      const trialEndDateIso = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
       const salaoPayload: any = {
         id: newSalaoId,
         nome: salaoNome.trim(),
@@ -136,13 +141,14 @@ function CadastrarSalaoContent() {
         telefone_whatsapp: formattedPhone,
         email: email.trim(),
         plano: planoEscolhido,
-        status_assinatura: 'pendente',
+        status_assinatura: isTrialMode ? 'trial' : 'pendente',
+        trial_ate: isTrialMode ? trialEndDateIso : null,
       };
 
       let { error: salaoErr } = await supabase.from('saloes').insert(salaoPayload);
-      if (salaoErr && salaoErr.message && salaoErr.message.includes('email')) {
-        delete salaoPayload.email;
-        const retry = await supabase.from('saloes').insert(salaoPayload);
+      if (salaoErr && salaoErr.message && (salaoErr.message.includes('email') || salaoErr.message.includes('trial_ate'))) {
+        const { trial_ate, email: emailField, ...fallbackPayload } = salaoPayload;
+        const retry = await supabase.from('saloes').insert(fallbackPayload);
         salaoErr = retry.error;
       }
 
@@ -193,7 +199,8 @@ function CadastrarSalaoContent() {
 
       // Notificar Super Admin via WhatsApp
       try {
-        const msgAdmin = `🚀 *Novo Salão SaaS Cadastrado!*\n\n🏢 *Salão:* ${salaoNome.trim()}\n👤 *Responsável:* ${ownerNome.trim()}\n📧 *Email:* ${email.trim()}\n📱 *Telefone:* ${phone.trim()}\n📦 *Plano Escolhido:* ${planoEscolhido}\n\n🎉 Uhuuu! Mais um cliente na plataforma!`;
+        const tipoModo = isTrialMode ? '🎁 TRIAL 14 DIAS GRÁTIS' : '💳 PAGO';
+        const msgAdmin = `🚀 *Novo Salão SaaS Cadastrado!*\n\n🏢 *Salão:* ${salaoNome.trim()}\n👤 *Responsável:* ${ownerNome.trim()}\n📧 *Email:* ${email.trim()}\n📱 *Telefone:* ${phone.trim()}\n📦 *Plano:* ${planoEscolhido} (${tipoModo})\n\n🎉 Uhuuu! Mais um cliente na plataforma!`;
         await sendDirectWhatsAppMessage({
           phone: '5551981108170',
           message: msgAdmin,
@@ -202,8 +209,12 @@ function CadastrarSalaoContent() {
         console.warn('Erro ao notificar super-admin via WhatsApp:', notifyErr);
       }
 
-      // Success -> Redireciona imediatamente para o checkout do plano antes de acessar a plataforma
-      router.push(`/assinar?salaoId=${newSalaoId}&plano=${planoEscolhido}`);
+      // Success -> Se for trial, vai direto para a agenda. Senão, checkout no assinar.
+      if (isTrialMode) {
+        router.push('/agenda');
+      } else {
+        router.push(`/assinar?salaoId=${newSalaoId}&plano=${planoEscolhido}`);
+      }
     } catch (err: any) {
       setErrorMessage(err?.message || 'Erro inesperado ao cadastrar salão.');
       setIsLoading(false);
@@ -237,6 +248,18 @@ function CadastrarSalaoContent() {
 
         {/* Form Card */}
         <div className="bg-slate-900/80 border border-white/15 rounded-3xl p-7 shadow-2xl backdrop-blur-2xl space-y-5">
+          {isTrialMode && (
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-500/20 via-indigo-500/20 to-emerald-500/20 border border-purple-500/40 text-white space-y-1 text-xs shadow-lg">
+              <div className="flex items-center gap-2 font-bold text-emerald-400 text-sm">
+                <Sparkles size={18} className="animate-pulse" />
+                <span>Ofertada Especial: 14 Dias Grátis!</span>
+              </div>
+              <p className="text-slate-300 leading-relaxed text-[11px]">
+                Você foi convidado para testar o <strong>CRM Studio Beauty</strong> por 14 dias sem pagar nada. Escolha seu plano de preferência abaixo e comece a usar agora mesmo!
+              </p>
+            </div>
+          )}
+
           {errorMessage && (
             <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 text-xs flex items-center gap-2">
               <AlertCircle size={16} className="shrink-0" />
@@ -449,7 +472,7 @@ function CadastrarSalaoContent() {
                 </>
               ) : (
                 <>
-                  <span>Prosseguir para Ativação ({PLANOS_SAAS[planoEscolhido].precoFormatado})</span>
+                  <span>{isTrialMode ? 'Criar Conta & Iniciar 14 Dias Grátis' : `Prosseguir para Ativação (${PLANOS_SAAS[planoEscolhido].precoFormatado})`}</span>
                   <ArrowRight size={16} />
                 </>
               )}

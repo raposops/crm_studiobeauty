@@ -15,6 +15,7 @@ export interface SalaoInfo {
   logo_url?: string;
   plano?: string;
   status_assinatura?: string;
+  trial_ate?: string;
   modulos_ativos?: ModulosSalao;
   asaas_customer_id?: string;
   asaas_payment_id?: string;

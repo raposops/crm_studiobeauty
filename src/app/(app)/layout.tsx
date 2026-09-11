@@ -14,8 +14,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (!isLoading) {
       if (!user) {
         router.replace('/login');
-      } else if (salao && salao.status_assinatura && salao.status_assinatura !== 'ativo') {
-        router.replace(`/assinar?salaoId=${salao.id}&plano=${salao.plano || 'pro'}`);
+      } else if (salao) {
+        const status = salao.status_assinatura;
+        if (status === 'trial' && salao.trial_ate) {
+          const isExpired = new Date().getTime() > new Date(salao.trial_ate).getTime();
+          if (isExpired) {
+            router.replace(`/assinar?salaoId=${salao.id}&plano=${salao.plano || 'pro'}&reason=trial_expired`);
+          }
+        } else if (status && status !== 'ativo' && status !== 'trial') {
+          router.replace(`/assinar?salaoId=${salao.id}&plano=${salao.plano || 'pro'}`);
+        }
       }
     }
   }, [user, salao, isLoading, router]);
