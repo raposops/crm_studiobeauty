@@ -40,7 +40,7 @@ interface SalaoRow {
   estado?: string;
   plano?: string;
   status_assinatura?: string;
-  trial_ate?: string;
+  trial_ate?: string | null;
   criado_em?: string;
   modulos_ativos?: ModulosSalao;
   asaas_customer_id?: string;
