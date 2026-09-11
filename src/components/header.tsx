@@ -17,9 +17,11 @@ export default function Header() {
     .slice(0, 2)
     .toUpperCase();
 
-  const isTrial = salao?.status_assinatura === 'trial' && salao.trial_ate;
+  const isTrial = salao?.status_assinatura === 'trial';
   const daysLeft = isTrial
-    ? Math.max(0, Math.ceil((new Date(salao.trial_ate!).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    ? salao.trial_ate
+      ? Math.max(0, Math.ceil((new Date(salao.trial_ate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+      : 14
     : 0;
 
   return (

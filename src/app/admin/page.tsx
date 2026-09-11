@@ -177,12 +177,23 @@ export default function AdminPage() {
     if (!selectedSalao) return;
     setIsSaving(true);
     try {
-      await supabaseService.atualizarStatusESalao(selectedSalao.id, {
+      const isTrial = editStatus === 'trial';
+      const calculatedTrialAte = isTrial
+        ? selectedSalao.trial_ate || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
+        : null;
+
+      const payload: any = {
         plano: editPlano,
         status_assinatura: editStatus,
         modulos_ativos: editModulos,
         email: editEmail.trim(),
-      });
+      };
+
+      if (isTrial) {
+        payload.trial_ate = calculatedTrialAte;
+      }
+
+      await supabaseService.atualizarStatusESalao(selectedSalao.id, payload);
 
       // Update local state
       setSaloes((prev) =>
@@ -192,6 +203,7 @@ export default function AdminPage() {
                 ...s,
                 plano: editPlano,
                 status_assinatura: editStatus,
+                trial_ate: isTrial ? calculatedTrialAte : s.trial_ate,
                 modulos_ativos: editModulos,
                 email: editEmail.trim(),
               }

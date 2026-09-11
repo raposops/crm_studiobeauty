@@ -1247,7 +1247,7 @@ export const supabaseService = {
     return data;
   },
 
-  async atualizarStatusESalao(salaoId: string, payload: { status_assinatura?: string; plano?: string; modulos_ativos?: ModulosSalao; email?: string }) {
+  async atualizarStatusESalao(salaoId: string, payload: { status_assinatura?: string; plano?: string; trial_ate?: string | null; modulos_ativos?: ModulosSalao; email?: string }) {
     const { data, error } = await supabase
       .from('saloes')
       .update(payload)
@@ -1256,8 +1256,8 @@ export const supabaseService = {
       .maybeSingle();
 
     if (error) {
-      if (error.message?.includes('modulos_ativos') || error.message?.includes('email')) {
-        const { modulos_ativos, email, ...fallbackPayload } = payload;
+      if (error.message?.includes('modulos_ativos') || error.message?.includes('email') || error.message?.includes('trial_ate')) {
+        const { modulos_ativos, email, trial_ate, ...fallbackPayload } = payload;
         if (Object.keys(fallbackPayload).length > 0) {
           await supabase.from('saloes').update(fallbackPayload).eq('id', salaoId);
         }
