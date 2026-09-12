@@ -21,6 +21,7 @@ import {
   Trash2,
   Pencil,
   CheckCircle2,
+  Zap,
 } from 'lucide-react';
 import type { Agendamento, FormaPagamento, ProdutoExtra, Servico } from '@/types';
 import {
@@ -87,6 +88,10 @@ export default function CheckoutModal({
   const [comissaoPct, setComissaoPct] = useState<number>(
     agendamento?.profissional?.comissao_padrao_pct ?? COMISSAO_PERCENTUAL
   );
+
+  const isEncaixe =
+    agendamento?.is_encaixe ||
+    Boolean(agendamento?.observacoes && agendamento.observacoes.includes('[ENCAIXE]'));
 
   // Estados de Crédito e Dinheiro
   const [usarCredito, setUsarCredito] = useState(false);
@@ -480,11 +485,17 @@ export default function CheckoutModal({
           {/* Appointment Summary */}
           <div className="rounded-2xl bg-card border border-border p-4 space-y-3">
             <div className="flex items-start justify-between gap-2">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <User size={15} className="text-accent-light shrink-0" />
                 <span className="text-sm font-bold text-foreground">
                   {agendamento.cliente.nome}
                 </span>
+                {isEncaixe && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/40">
+                    <Zap size={10} className="fill-amber-500 text-amber-500 shrink-0" />
+                    Encaixe
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-1.5 bg-background/60 px-2.5 py-1 rounded-lg border border-border/40">
                 <div

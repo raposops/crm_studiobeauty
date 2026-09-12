@@ -120,6 +120,7 @@ export interface Agendamento {
   duracao_total: number; // em minutos
   origem?: 'online' | 'presencial';
   observacoes?: string;
+  is_encaixe?: boolean;
 }
 
 // ========================

@@ -30,8 +30,14 @@ export const supabaseService = {
       if (mappedServicos.length === 0 && ag.servico) {
         mappedServicos = [ag.servico];
       }
+      const isEncaixe =
+        ag.is_encaixe === true ||
+        ag.encaixe === true ||
+        (typeof ag.observacoes === 'string' && ag.observacoes.includes('[ENCAIXE]'));
+
       return {
         ...ag,
+        is_encaixe: isEncaixe,
         servicos: mappedServicos,
         cliente: ag.cliente ? {
           ...ag.cliente,

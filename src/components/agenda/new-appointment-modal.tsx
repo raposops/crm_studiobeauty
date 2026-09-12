@@ -13,6 +13,7 @@ import {
   CalendarDays,
   MessageCircle,
   Sparkles,
+  Zap,
 } from 'lucide-react';
 import type { Cliente, Servico, Profissional, NovoAgendamentoForm } from '@/types';
 import {
@@ -86,6 +87,8 @@ export default function NewAppointmentModal({
     preselectedDate || new Date().toISOString().split('T')[0]
   );
   const [selectedTime, setSelectedTime] = useState('');
+  const [isEncaixe, setIsEncaixe] = useState(false);
+  const [observacaoEncaixe, setObservacaoEncaixe] = useState('');
   const [sendWhatsApp, setSendWhatsApp] = useState(true);
 
   // Fetch existing appointments and blocks for selected date and professional to check availability
@@ -135,8 +138,10 @@ export default function NewAppointmentModal({
     return addMinutesToTime(selectedTime, totalDuration);
   }, [selectedTime, totalDuration]);
 
-  // Compute occupied time slots for the selected professional & date based on duration
-  const occupiedSlots = useMemo(() => {
+  // Compute blocked slots (folga/fechamento) and appointment conflicts separately
+  const { blockedSlots, conflictingAppointmentsBySlot, occupiedSlots } = useMemo(() => {
+    const blocked = new Set<string>();
+    const conflicts = new Map<string, any[]>();
     const occupied = new Set<string>();
     const reqDuration = totalDuration > 0 ? totalDuration : 30;
     const activeAgendamentos = (existingAgendamentos || []).filter((ag) => ag.status !== 'cancelado');
@@ -145,7 +150,7 @@ export default function NewAppointmentModal({
       const slotStart = timeToMinutes(slotTime);
       const slotEnd = slotStart + reqDuration;
 
-      // 1. Checa conflito com bloqueios de agenda da profissional
+      // 1. Checa conflito com bloqueios de agenda da profissional (Folga / Salão fechado)
       const hasBlockConflict = (bloqueios || []).some((b) => {
         if (selectedProfId && b.profissional_id !== selectedProfId) return false;
         if (b.dia_inteiro || (!b.hora_inicio && !b.hora_fim)) return true;
@@ -155,12 +160,13 @@ export default function NewAppointmentModal({
       });
 
       if (hasBlockConflict) {
+        blocked.add(slotTime);
         occupied.add(slotTime);
         return;
       }
 
-      // 2. Checa conflito com agendamentos existentes
-      const hasConflict = activeAgendamentos.some((ag) => {
+      // 2. Checa conflito com agendamentos existentes (outras clientes)
+      const matchingAgs = activeAgendamentos.filter((ag) => {
         if (selectedProfId && ag.profissional?.id !== selectedProfId) return false;
 
         const agStart = timeToMinutes(ag.hora_inicio);
@@ -175,12 +181,13 @@ export default function NewAppointmentModal({
         return slotStart < agEnd && slotEnd > agStart;
       });
 
-      if (hasConflict) {
+      if (matchingAgs.length > 0) {
+        conflicts.set(slotTime, matchingAgs);
         occupied.add(slotTime);
       }
     });
 
-    return occupied;
+    return { blockedSlots: blocked, conflictingAppointmentsBySlot: conflicts, occupiedSlots: occupied };
   }, [existingAgendamentos, bloqueios, selectedProfId, totalDuration]);
 
   // Validation
@@ -202,6 +209,8 @@ export default function NewAppointmentModal({
     setSelectedProfId('');
     setSelectedDate(preselectedDate || new Date().toISOString().split('T')[0]);
     setSelectedTime('');
+    setIsEncaixe(false);
+    setObservacaoEncaixe('');
     setSendWhatsApp(true);
     setIsSubmitting(false);
   }
@@ -214,9 +223,18 @@ export default function NewAppointmentModal({
   async function handleSubmit() {
     if (!selectedClient || !canSubmit) return;
 
-    if (occupiedSlots.has(selectedTime)) {
-      alert('Este horário não está mais disponível para este profissional. Por favor, escolha outro horário.');
+    if (blockedSlots.has(selectedTime)) {
+      alert('Este horário está bloqueado na agenda da profissional (folga ou agenda fechada).');
       return;
+    }
+
+    const hasAppointmentConflict = conflictingAppointmentsBySlot.has(selectedTime);
+    if (hasAppointmentConflict && !isEncaixe) {
+      const confirmEncaixe = window.confirm(
+        'Este horário já possui outro atendimento agendado. Deseja registrar este atendimento como um Encaixe Simultâneo?'
+      );
+      if (!confirmEncaixe) return;
+      setIsEncaixe(true);
     }
 
     setIsSubmitting(true);
@@ -243,7 +261,12 @@ export default function NewAppointmentModal({
       }
 
       // 2. Insert into agendamentos (compatible with both schema variants)
-      const agendamentoPayload = {
+      const isActuallyEncaixe = isEncaixe || conflictingAppointmentsBySlot.has(selectedTime);
+      const obsFinal = isActuallyEncaixe
+        ? `[ENCAIXE] ${observacaoEncaixe ? observacaoEncaixe.trim() : 'Atendimento de encaixe simultâneo'}`
+        : observacaoEncaixe.trim() || null;
+
+      const agendamentoPayload: any = {
         salao_id: salaoId,
         cliente_id: clienteId,
         profissional_id: selectedProfId,
@@ -257,12 +280,24 @@ export default function NewAppointmentModal({
         valor_total: totalPrice,
         valor_servico: totalPrice,
         duracao_total: totalDuration,
+        observacoes: obsFinal,
+        is_encaixe: isActuallyEncaixe,
       };
 
-      const { data: insertedData, error } = await supabase
+      let { data: insertedData, error } = await supabase
         .from('agendamentos')
         .insert(agendamentoPayload)
         .select();
+
+      if (error && error.message && error.message.includes('is_encaixe')) {
+        const { is_encaixe: _, ...fallbackPayload } = agendamentoPayload;
+        const retry = await supabase
+          .from('agendamentos')
+          .insert(fallbackPayload)
+          .select();
+        insertedData = retry.data;
+        error = retry.error;
+      }
 
       if (error) {
         console.error('Erro ao salvar agendamento:', error);
@@ -619,30 +654,136 @@ export default function NewAppointmentModal({
                 />
               </div>
 
+              {/* Encaixe Mode Toggle Banner */}
+              <div
+                onClick={() => setIsEncaixe((prev) => !prev)}
+                className={`flex items-center justify-between p-3 rounded-2xl border transition-all duration-200 cursor-pointer ${
+                  isEncaixe
+                    ? 'bg-amber-500/15 border-amber-500/40 shadow-xs'
+                    : 'bg-card border-border hover:bg-card-hover'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                      isEncaixe
+                        ? 'bg-amber-500 text-white shadow-md shadow-amber-500/30'
+                        : 'bg-amber-500/10 text-amber-500'
+                    }`}
+                  >
+                    <Zap size={16} className={isEncaixe ? 'fill-white' : ''} />
+                  </div>
+                  <div className="min-w-0 text-left">
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-xs font-bold text-foreground">
+                        Permitir Encaixe / Atendimento Simultâneo
+                      </p>
+                      {isEncaixe && (
+                        <span className="text-[9px] uppercase font-extrabold px-1.5 py-0.5 rounded-full bg-amber-500 text-white">
+                          Ativo
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-muted truncate">
+                      Atender cliente enquanto um produto químico ou máscara age
+                    </p>
+                  </div>
+                </div>
+                <div
+                  className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                    isEncaixe ? 'bg-amber-500' : 'bg-muted/40'
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md transition duration-200 ease-in-out ${
+                      isEncaixe ? 'translate-x-4' : 'translate-x-0'
+                    }`}
+                  />
+                </div>
+              </div>
+
               {/* Time Selection */}
               <div>
-                <label className="flex items-center gap-1.5 text-sm font-semibold text-foreground mb-2">
-                  <Clock size={14} />
-                  Horário de início
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                    <Clock size={14} />
+                    Horário de início
+                  </label>
+                  {isEncaixe && (
+                    <span className="text-[10px] font-bold text-amber-500 flex items-center gap-1">
+                      <Zap size={10} /> Encaixes Liberados
+                    </span>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-4 gap-1.5 max-h-[180px] overflow-y-auto">
                   {AVAILABLE_HOURS.map((time) => {
                     const isSelected = selectedTime === time;
-                    const isOccupied = occupiedSlots.has(time);
+                    const isBlocked = blockedSlots.has(time);
+                    const conflicts = conflictingAppointmentsBySlot.get(time);
+                    const hasApptConflict = Boolean(conflicts && conflicts.length > 0);
 
+                    // Se for bloqueio real de folga/salão fechado, não permite
+                    if (isBlocked) {
+                      return (
+                        <button
+                          key={time}
+                          type="button"
+                          disabled={true}
+                          className="py-2 rounded-xl text-xs font-mono font-semibold border bg-rose-500/10 border-rose-500/20 text-rose-700/60 line-through cursor-not-allowed opacity-50 relative"
+                          title="Horário com bloqueio de agenda / folga da profissional"
+                        >
+                          {time}
+                        </button>
+                      );
+                    }
+
+                    // Se tiver conflito de agendamento (outra cliente no horário)
+                    if (hasApptConflict) {
+                      const clientName = conflicts?.[0]?.cliente?.nome || 'Cliente';
+                      const isEncaixeSelected = isSelected;
+
+                      return (
+                        <button
+                          key={time}
+                          type="button"
+                          onClick={() => {
+                            setSelectedTime(time);
+                            setIsEncaixe(true);
+                          }}
+                          className={`py-1.5 px-1 rounded-xl text-xs font-mono font-semibold border transition-all duration-200 relative flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
+                            isEncaixeSelected
+                              ? 'bg-amber-500 text-white border-amber-500 ring-2 ring-amber-500/30 shadow-md shadow-amber-500/20'
+                              : isEncaixe
+                              ? 'bg-amber-500/15 border-amber-500/40 text-amber-600 dark:text-amber-400 hover:bg-amber-500/25'
+                              : 'bg-rose-500/10 border-rose-500/20 text-rose-600/80 hover:bg-amber-500/15 hover:border-amber-500/30 hover:text-amber-500'
+                          }`}
+                          title={`Horário ocupado por ${clientName}. Clique para agendar encaixe.`}
+                        >
+                          <span>{time}</span>
+                          <span
+                            className={`text-[8px] font-sans font-bold flex items-center gap-0.5 ${
+                              isEncaixeSelected ? 'text-white' : 'text-amber-500'
+                            }`}
+                          >
+                            <Zap size={8} />
+                            Encaixe
+                          </span>
+                        </button>
+                      );
+                    }
+
+                    // Horário livre normal
                     return (
                       <button
                         key={time}
-                        disabled={isOccupied}
+                        type="button"
                         onClick={() => setSelectedTime(time)}
-                        className={`py-2 rounded-xl text-xs font-mono font-semibold border transition-all duration-200 relative ${
-                          isOccupied
-                            ? 'bg-rose-500/10 border-rose-500/20 text-rose-700/70 line-through cursor-not-allowed opacity-60'
-                            : isSelected
+                        className={`py-2 rounded-xl text-xs font-mono font-semibold border transition-all duration-200 relative cursor-pointer ${
+                          isSelected
                             ? 'bg-accent/15 border-accent/40 text-accent-light ring-2 ring-accent/30 font-bold'
                             : 'bg-card border-border text-foreground hover:bg-card-hover'
                         }`}
-                        title={isOccupied ? 'Horário indisponível / ocupado' : undefined}
                       >
                         {time}
                       </button>
@@ -656,6 +797,39 @@ export default function NewAppointmentModal({
                     <span className="font-bold text-foreground">{endTime}</span>
                   </p>
                 )}
+              </div>
+
+              {/* Contextual Encaixe Alert Banner */}
+              {selectedTime && conflictingAppointmentsBySlot.has(selectedTime) && (
+                <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 border border-amber-500/30 text-xs space-y-1.5 animate-fade-in">
+                  <div className="flex items-center gap-1.5 font-bold text-amber-700 dark:text-amber-300">
+                    <Zap size={14} className="text-amber-500 fill-amber-500 shrink-0" />
+                    <span>Atendimento em Encaixe Simultâneo</span>
+                  </div>
+                  <p className="text-[11px] text-amber-800 dark:text-amber-200 leading-relaxed">
+                    A profissional já possui atendimento com{' '}
+                    <strong>
+                      {conflictingAppointmentsBySlot.get(selectedTime)?.[0]?.cliente?.nome || 'outra cliente'}
+                    </strong>{' '}
+                    ({conflictingAppointmentsBySlot.get(selectedTime)?.[0]?.hora_inicio} às{' '}
+                    {conflictingAppointmentsBySlot.get(selectedTime)?.[0]?.hora_fim}).
+                    Este agendamento será registrado como <strong>Encaixe</strong> na grade.
+                  </p>
+                </div>
+              )}
+
+              {/* Optional Encaixe Note */}
+              <div>
+                <label className="text-xs font-semibold text-muted block mb-1">
+                  Observações do agendamento (opcional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ex: Cliente aguardando química agir / corte rápido"
+                  value={observacaoEncaixe}
+                  onChange={(e) => setObservacaoEncaixe(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-card border border-border text-xs text-foreground focus:outline-none focus:border-accent/50 transition-all placeholder:text-muted/60"
+                />
               </div>
 
               {/* WhatsApp Checkbox */}
