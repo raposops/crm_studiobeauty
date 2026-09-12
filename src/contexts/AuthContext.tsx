@@ -110,11 +110,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // 2. Fetch associated salao from 'saloes' table
-      const { data: salaoData, error: salaoErr } = await supabase
+      let { data: salaoData, error: salaoErr } = await supabase
         .from('saloes')
         .select('*')
         .eq('id', targetSalaoId)
         .maybeSingle();
+
+      // Fallback: se não encontrou pelo ID (ex: metadata antigo ou desatualizado), busca pelo e-mail do salão!
+      if (!salaoData && currentUser.email) {
+        const { data: salaoByEmail } = await supabase
+          .from('saloes')
+          .select('*')
+          .ilike('email', currentUser.email.trim())
+          .order('criado_em', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (salaoByEmail) {
+          salaoData = salaoByEmail;
+          salaoErr = null;
+          // Corrige metadata do usuário no Auth para os próximos acessos
+          try {
+            await supabase.auth.updateUser({
+              data: {
+                salao_id: salaoByEmail.id,
+                salao_nome: salaoByEmail.nome,
+                slug: salaoByEmail.slug,
+              },
+            });
+          } catch (e) {}
+        }
+      }
 
       if (salaoData && !salaoErr) {
         // Se o salão está inativo e não é superadmin, desconectar
@@ -137,7 +163,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSalao(salaoData);
         if (typeof window !== 'undefined') {
           localStorage.setItem('cached_salao_info', JSON.stringify(salaoData));
-          localStorage.setItem('cached_salao_' + targetSalaoId, JSON.stringify(salaoData));
+          localStorage.setItem('cached_salao_' + salaoData.id, JSON.stringify(salaoData));
         }
       } else {
         // SALÃO NÃO ENCONTRADO NO BANCO (Foi excluído pelo SuperAdmin)

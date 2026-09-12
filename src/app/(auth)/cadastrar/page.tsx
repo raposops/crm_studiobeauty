@@ -132,6 +132,20 @@ function CadastrarSalaoContent() {
 
       const newUserId = authData.user.id;
 
+      // Garantir atualização dos metadados caso o usuário já existisse no Auth
+      try {
+        await supabase.auth.updateUser({
+          data: {
+            nome: ownerNome.trim(),
+            salao_nome: salaoNome.trim(),
+            salao_id: newSalaoId,
+            slug: cleanSlug,
+          },
+        });
+      } catch (metaErr) {
+        console.warn('Aviso ao atualizar metadados do usuário:', metaErr);
+      }
+
       // 3. Create Salon Row in 'saloes' table with pending or trial subscription
       const trialEndDateIso = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
       const salaoPayload: any = {

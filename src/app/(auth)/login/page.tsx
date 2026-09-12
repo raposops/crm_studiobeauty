@@ -67,36 +67,63 @@ export default function LoginPage() {
             .eq('id', data.user.id)
             .maybeSingle();
 
-          const targetSalaoId =
+          let targetSalaoId =
             userProfile?.salao_id ||
             data.user.user_metadata?.salao_id;
 
+          let salaoData: any = null;
+
           if (targetSalaoId) {
-            const { data: salaoData } = await supabase
+            const { data: sData } = await supabase
               .from('saloes')
               .select('id, nome, status_assinatura')
               .eq('id', targetSalaoId)
               .maybeSingle();
+            salaoData = sData;
+          }
 
-            // Salão foi excluído do banco pelo Admin!
-            if (!salaoData) {
-              await supabase.auth.signOut();
-              if (typeof window !== 'undefined') {
-                localStorage.removeItem('cached_salao_info');
+          // Fallback: se não encontrou pelo ID (ex: metadata antigo ou salão criado com novo ID), busca pelo e-mail!
+          if (!salaoData && data.user.email) {
+            const { data: sByEmail } = await supabase
+              .from('saloes')
+              .select('id, nome, status_assinatura')
+              .ilike('email', data.user.email.trim())
+              .order('criado_em', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            if (sByEmail) {
+              salaoData = sByEmail;
+              targetSalaoId = sByEmail.id;
+              // Corrige user_metadata no Auth para os próximos acessos
+              try {
+                await supabase.auth.updateUser({
+                  data: { salao_id: sByEmail.id }
+                });
+              } catch (e) {}
+            }
+          }
+
+          // Salão foi realmente excluído do banco pelo Admin (não encontrado por ID nem por e-mail)!
+          if (!salaoData) {
+            await supabase.auth.signOut();
+            if (typeof window !== 'undefined') {
+              localStorage.removeItem('cached_salao_info');
+              if (targetSalaoId) {
                 localStorage.removeItem(`cached_salao_${targetSalaoId}`);
               }
-              setErrorMessage('Este salão foi excluído do sistema pelo administrador.');
-              setIsLoading(false);
-              return;
             }
+            setErrorMessage('Este salão foi excluído do sistema pelo administrador.');
+            setIsLoading(false);
+            return;
+          }
 
-            // Salão está inativo / suspenso
-            if (salaoData.status_assinatura === 'inativo') {
-              await supabase.auth.signOut();
-              setErrorMessage('O acesso deste salão está inativo. Entre em contato com o suporte.');
-              setIsLoading(false);
-              return;
-            }
+          // Salão está inativo / suspenso
+          if (salaoData.status_assinatura === 'inativo') {
+            await supabase.auth.signOut();
+            setErrorMessage('O acesso deste salão está inativo. Entre em contato com o suporte.');
+            setIsLoading(false);
+            return;
           }
         }
 
