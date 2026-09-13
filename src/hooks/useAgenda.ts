@@ -78,6 +78,14 @@ export function useAgenda(salaoId: string, data: string, profissionalId?: string
     },
   });
 
+  const confirmarSinal = useMutation({
+    mutationFn: (agendamentoId: string) => supabaseService.confirmarPagamentoSinal(agendamentoId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['agendamentos'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+  });
+
   return {
     agendamentos: query.data || [],
     isLoading: query.isLoading,
@@ -85,5 +93,6 @@ export function useAgenda(salaoId: string, data: string, profissionalId?: string
     criarAgendamento,
     atualizarHorario,
     deletarAgendamento,
+    confirmarSinal,
   };
 }

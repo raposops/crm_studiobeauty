@@ -41,16 +41,36 @@ export function useServicos(salaoId: string) {
   }, [salaoId, queryClient, queryKey]);
 
   const criarServico = useMutation({
-    mutationFn: (payload: { nome: string; preco: number; duracao_minutos: number; categoria: string }) =>
-      supabaseService.criarServico(salaoId, payload),
+    mutationFn: (payload: {
+      nome: string;
+      preco: number;
+      duracao_minutos: number;
+      categoria: string;
+      exige_sinal?: boolean;
+      porcentagem_sinal?: number;
+      valor_sinal_fixo?: number;
+    }) => supabaseService.criarServico(salaoId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
     },
   });
 
   const atualizarServico = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: { nome?: string; preco?: number; duracao_minutos?: number; categoria?: string } }) =>
-      supabaseService.atualizarServico(id, payload),
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: {
+        nome?: string;
+        preco?: number;
+        duracao_minutos?: number;
+        categoria?: string;
+        exige_sinal?: boolean;
+        porcentagem_sinal?: number;
+        valor_sinal_fixo?: number;
+      };
+    }) => supabaseService.atualizarServico(id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
     },

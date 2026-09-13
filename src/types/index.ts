@@ -83,6 +83,9 @@ export interface Servico {
   preco: number; // em centavos
   duracao_minutos: number;
   categoria: string;
+  exige_sinal?: boolean;
+  porcentagem_sinal?: number; // ex: 30, 50
+  valor_sinal_fixo?: number; // em centavos
 }
 
 export interface Cliente {
@@ -121,6 +124,9 @@ export interface Agendamento {
   origem?: 'online' | 'presencial';
   observacoes?: string;
   is_encaixe?: boolean;
+  exige_sinal?: boolean;
+  valor_sinal?: number; // em centavos
+  sinal_pago?: boolean;
 }
 
 // ========================

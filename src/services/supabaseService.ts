@@ -38,6 +38,9 @@ export const supabaseService = {
       return {
         ...ag,
         is_encaixe: isEncaixe,
+        exige_sinal: Boolean(ag.exige_sinal),
+        valor_sinal: Number(ag.valor_sinal || 0),
+        sinal_pago: Boolean(ag.sinal_pago),
         servicos: mappedServicos,
         cliente: ag.cliente ? {
           ...ag.cliente,
@@ -744,35 +747,84 @@ export const supabaseService = {
     return data;
   },
 
-  async criarServico(salaoId: string, payload: { nome: string; preco: number; duracao_minutos: number; categoria: string }) {
-    const { data, error } = await supabase
+  async criarServico(salaoId: string, payload: {
+    nome: string;
+    preco: number;
+    duracao_minutos: number;
+    categoria: string;
+    exige_sinal?: boolean;
+    porcentagem_sinal?: number;
+    valor_sinal_fixo?: number;
+  }) {
+    const insertPayload: Record<string, any> = {
+      salao_id: salaoId,
+      nome: payload.nome.trim(),
+      preco: payload.preco,
+      duracao_minutos: payload.duracao_minutos,
+      categoria: payload.categoria.trim() || 'Geral',
+      exige_sinal: Boolean(payload.exige_sinal),
+      porcentagem_sinal: payload.porcentagem_sinal ?? 30,
+      valor_sinal_fixo: payload.valor_sinal_fixo ?? null,
+    };
+
+    let { data, error } = await supabase
       .from('servicos')
-      .insert({
-        salao_id: salaoId,
-        nome: payload.nome.trim(),
-        preco: payload.preco,
-        duracao_minutos: payload.duracao_minutos,
-        categoria: payload.categoria.trim() || 'Geral',
-      })
+      .insert(insertPayload)
       .select()
       .single();
+
+    if (error && error.message && (error.message.includes('exige_sinal') || error.message.includes('porcentagem_sinal'))) {
+      const { exige_sinal: _e, porcentagem_sinal: _p, valor_sinal_fixo: _v, ...fallbackPayload } = insertPayload;
+      const retry = await supabase
+        .from('servicos')
+        .insert(fallbackPayload)
+        .select()
+        .single();
+      data = retry.data;
+      error = retry.error;
+    }
 
     if (error) throw error;
     return data;
   },
 
-  async atualizarServico(id: string, payload: { nome?: string; preco?: number; duracao_minutos?: number; categoria?: string }) {
-    const { data, error } = await supabase
+  async atualizarServico(id: string, payload: {
+    nome?: string;
+    preco?: number;
+    duracao_minutos?: number;
+    categoria?: string;
+    exige_sinal?: boolean;
+    porcentagem_sinal?: number;
+    valor_sinal_fixo?: number;
+  }) {
+    const updatePayload: Record<string, any> = {
+      ...(payload.nome ? { nome: payload.nome.trim() } : {}),
+      ...(payload.preco !== undefined ? { preco: payload.preco } : {}),
+      ...(payload.duracao_minutos !== undefined ? { duracao_minutos: payload.duracao_minutos } : {}),
+      ...(payload.categoria ? { categoria: payload.categoria.trim() } : {}),
+      ...(payload.exige_sinal !== undefined ? { exige_sinal: Boolean(payload.exige_sinal) } : {}),
+      ...(payload.porcentagem_sinal !== undefined ? { porcentagem_sinal: payload.porcentagem_sinal } : {}),
+      ...(payload.valor_sinal_fixo !== undefined ? { valor_sinal_fixo: payload.valor_sinal_fixo } : {}),
+    };
+
+    let { data, error } = await supabase
       .from('servicos')
-      .update({
-        ...(payload.nome ? { nome: payload.nome.trim() } : {}),
-        ...(payload.preco !== undefined ? { preco: payload.preco } : {}),
-        ...(payload.duracao_minutos !== undefined ? { duracao_minutos: payload.duracao_minutos } : {}),
-        ...(payload.categoria ? { categoria: payload.categoria.trim() } : {}),
-      })
+      .update(updatePayload)
       .eq('id', id)
       .select()
       .single();
+
+    if (error && error.message && (error.message.includes('exige_sinal') || error.message.includes('porcentagem_sinal'))) {
+      const { exige_sinal: _e, porcentagem_sinal: _p, valor_sinal_fixo: _v, ...fallbackPayload } = updatePayload;
+      const retry = await supabase
+        .from('servicos')
+        .update(fallbackPayload)
+        .eq('id', id)
+        .select()
+        .single();
+      data = retry.data;
+      error = retry.error;
+    }
 
     if (error) throw error;
     return data;
@@ -1701,7 +1753,16 @@ export const supabaseService = {
 
   async atualizarDadosSalao(
     salaoId: string,
-    payload: { nome?: string; slug?: string; telefone_whatsapp?: string }
+    payload: {
+      nome?: string;
+      slug?: string;
+      telefone_whatsapp?: string;
+      pix_chave?: string;
+      pix_tipo?: string;
+      pix_titular?: string;
+      link_pagamento?: string;
+      instrucoes_sinal?: string;
+    }
   ) {
     const updateData: Record<string, any> = {};
     if (payload.nome !== undefined) updateData.nome = payload.nome.trim();
@@ -1718,14 +1779,31 @@ export const supabaseService = {
     if (payload.telefone_whatsapp !== undefined) {
       updateData.telefone_whatsapp = payload.telefone_whatsapp ? payload.telefone_whatsapp.replace(/\D/g, '') : '';
     }
+    if (payload.pix_chave !== undefined) updateData.pix_chave = payload.pix_chave.trim();
+    if (payload.pix_tipo !== undefined) updateData.pix_tipo = payload.pix_tipo.trim();
+    if (payload.pix_titular !== undefined) updateData.pix_titular = payload.pix_titular.trim();
+    if (payload.link_pagamento !== undefined) updateData.link_pagamento = payload.link_pagamento.trim();
+    if (payload.instrucoes_sinal !== undefined) updateData.instrucoes_sinal = payload.instrucoes_sinal.trim();
 
-    // 1. Tentar update com maybeSingle para não quebrar se 0 linhas forem retornadas
+    // 1. Tentar update com maybeSingle
     let { data, error } = await supabase
       .from('saloes')
       .update(updateData)
       .eq('id', salaoId)
       .select()
       .maybeSingle();
+
+    if (error && error.message && (error.message.includes('pix_') || error.message.includes('link_pagamento') || error.message.includes('instrucoes_sinal'))) {
+      const { pix_chave: _pc, pix_tipo: _pt, pix_titular: _pti, link_pagamento: _lp, instrucoes_sinal: _is, ...fallbackData } = updateData;
+      const retry = await supabase
+        .from('saloes')
+        .update(fallbackData)
+        .eq('id', salaoId)
+        .select()
+        .maybeSingle();
+      data = retry.data;
+      error = retry.error;
+    }
 
     if (error) {
       console.warn('Erro ao atualizar salão no Supabase:', error.message);
@@ -1784,6 +1862,21 @@ export const supabaseService = {
       } catch {}
     }
 
+    return data;
+  },
+
+  async confirmarPagamentoSinal(agendamentoId: string) {
+    const { data, error } = await supabase
+      .from('agendamentos')
+      .update({
+        sinal_pago: true,
+        status: 'confirmado',
+      })
+      .eq('id', agendamentoId)
+      .select()
+      .maybeSingle();
+
+    if (error) throw error;
     return data;
   }
 };

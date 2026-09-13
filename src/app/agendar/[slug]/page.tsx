@@ -16,6 +16,8 @@ import {
   CalendarX,
   AlertCircle,
   Lock,
+  Copy,
+  ExternalLink,
 } from 'lucide-react';
 import { useServicos } from '@/hooks/useServicos';
 import { useProfissionais } from '@/hooks/useProfissionais';
@@ -95,8 +97,19 @@ export default function AgendarPublicSlugPage({ params }: { params: Promise<{ sl
   const resolvedParams = use(params);
   const targetSlug = resolvedParams.slug;
 
-  const [salao, setSalao] = useState<{ id: string; nome: string; slug: string; telefone_whatsapp?: string } | null>(null);
+  const [salao, setSalao] = useState<{
+    id: string;
+    nome: string;
+    slug: string;
+    telefone_whatsapp?: string;
+    pix_chave?: string;
+    pix_tipo?: string;
+    pix_titular?: string;
+    link_pagamento?: string;
+    instrucoes_sinal?: string;
+  } | null>(null);
   const [loadingSalao, setLoadingSalao] = useState(true);
+  const [copiedPix, setCopiedPix] = useState(false);
 
   useEffect(() => {
     async function loadSalao() {
@@ -162,6 +175,23 @@ export default function AgendarPublicSlugPage({ params }: { params: Promise<{ sl
   const totalDuration = useMemo(() => {
     return selectedServices.reduce((sum, s) => sum + s.duracao_minutos, 0);
   }, [selectedServices]);
+
+  const servicesRequiringSinal = useMemo(() => {
+    return selectedServices.filter((s) => s.exige_sinal);
+  }, [selectedServices]);
+
+  const hasSinalRequired = servicesRequiringSinal.length > 0;
+
+  const totalSinal = useMemo(() => {
+    if (!hasSinalRequired) return 0;
+    return servicesRequiringSinal.reduce((sum, s) => {
+      if (s.valor_sinal_fixo && s.valor_sinal_fixo > 0) {
+        return sum + s.valor_sinal_fixo;
+      }
+      const pct = s.porcentagem_sinal ?? 50;
+      return sum + Math.round((s.preco * pct) / 100);
+    }, 0);
+  }, [servicesRequiringSinal, hasSinalRequired]);
 
   const endTime = useMemo(() => {
     return calculateEndTime(selectedTime, totalDuration);
@@ -415,21 +445,36 @@ export default function AgendarPublicSlugPage({ params }: { params: Promise<{ sl
         duracao_total: totalDuration,
         valor_total: totalPrice,
         valor_servico: totalPrice,
-        status: 'agendado',
+        status: hasSinalRequired ? 'pendente' : 'agendado',
         origem: 'online',
         observacoes: observacoes.trim() || 'Agendamento feito via Link Público Online',
+        exige_sinal: hasSinalRequired,
+        valor_sinal: totalSinal,
+        sinal_pago: false,
       };
 
       let { error: agErr } = await supabase
         .from('agendamentos')
         .insert(agendamentoPayload);
 
-      // Fallback: se a coluna 'origem' ainda não existir no banco, tenta inserir sem ela
-      if (agErr && agErr.message && agErr.message.includes('origem')) {
-        const { origem, ...payloadSemOrigem } = agendamentoPayload;
+      // Fallback: se colunas novas ainda não existirem no banco, tenta inserir com fallbacks seguros
+      if (agErr && agErr.message) {
+        let fallbackPayload: any = { ...agendamentoPayload };
+        if (
+          agErr.message.includes('exige_sinal') ||
+          agErr.message.includes('valor_sinal') ||
+          agErr.message.includes('sinal_pago')
+        ) {
+          delete fallbackPayload.exige_sinal;
+          delete fallbackPayload.valor_sinal;
+          delete fallbackPayload.sinal_pago;
+        }
+        if (agErr.message.includes('origem')) {
+          delete fallbackPayload.origem;
+        }
         const retry = await supabase
           .from('agendamentos')
-          .insert(payloadSemOrigem);
+          .insert(fallbackPayload);
         agErr = retry.error;
       }
 
@@ -563,13 +608,18 @@ export default function AgendarPublicSlugPage({ params }: { params: Promise<{ sl
                     }`}
                   >
                     <div className="space-y-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-bold text-sm text-foreground">
                           {servico.nome}
                         </h3>
                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-border/60 text-muted font-medium">
                           {servico.categoria}
                         </span>
+                        {servico.exige_sinal && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-semibold">
+                            Sinal {servico.porcentagem_sinal || 50}%
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center gap-3 text-xs text-muted">
                         <span className="flex items-center gap-1">
@@ -862,6 +912,78 @@ export default function AgendarPublicSlugPage({ params }: { params: Promise<{ sl
               </div>
             </div>
 
+            {/* Aviso de Sinal Obrigatório */}
+            {hasSinalRequired && (
+              <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-3 animate-fade-in">
+                <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 font-bold text-xs">
+                  <AlertCircle size={16} />
+                  <span>Este atendimento exige adiantamento (Sinal)</span>
+                </div>
+
+                <div className="flex items-baseline justify-between text-xs border-b border-amber-500/20 pb-2">
+                  <span className="text-muted">Valor do sinal a antecipar:</span>
+                  <span className="text-base font-extrabold text-amber-600 dark:text-amber-400">
+                    R$ {(totalSinal / 100).toFixed(2).replace('.', ',')}
+                  </span>
+                </div>
+
+                <p className="text-[11px] text-muted leading-relaxed">
+                  {salao?.instrucoes_sinal ||
+                    'Para garantir sua vaga, efetue o pagamento do sinal e envie o comprovante. O restante será pago no salão no dia do atendimento.'}
+                </p>
+
+                {/* PIX */}
+                {salao?.pix_chave && (
+                  <div className="p-3 rounded-xl bg-card border border-border flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-[10px] text-muted font-semibold uppercase tracking-wider">
+                        Chave PIX ({salao.pix_tipo || 'Chave'}):
+                      </p>
+                      <p className="text-xs font-mono font-bold text-foreground truncate select-all">
+                        {salao.pix_chave}
+                      </p>
+                      {salao.pix_titular && (
+                        <p className="text-[10px] text-muted truncate">
+                          Titular: {salao.pix_titular}
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                          navigator.clipboard.writeText(salao.pix_chave || '');
+                          setCopiedPix(true);
+                          setTimeout(() => setCopiedPix(false), 2000);
+                        }
+                      }}
+                      className="shrink-0 px-2.5 py-1.5 rounded-lg bg-accent/15 hover:bg-accent/25 text-accent text-xs font-semibold flex items-center gap-1 transition-all active:scale-95"
+                    >
+                      {copiedPix ? <Check size={14} /> : <Copy size={14} />}
+                      <span>{copiedPix ? 'Copiado!' : 'Copiar'}</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* Link de Pagamento */}
+                {salao?.link_pagamento && (
+                  <a
+                    href={
+                      salao.link_pagamento.startsWith('http')
+                        ? salao.link_pagamento
+                        : `https://${salao.link_pagamento}`
+                    }
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-1.5 w-full py-2.5 px-3 rounded-xl bg-card border border-accent/40 hover:border-accent text-accent font-semibold text-xs text-center transition-all shadow-xs"
+                  >
+                    <span>Pagar via Link de Pagamento</span>
+                    <ExternalLink size={13} />
+                  </a>
+                )}
+              </div>
+            )}
+
             {/* Client Inputs */}
             <div className="space-y-3">
               <div className="space-y-1">
@@ -937,40 +1059,180 @@ export default function AgendarPublicSlugPage({ params }: { params: Promise<{ sl
         {/* STEP 5: Sucesso / Conclusão */}
         {step === 5 && (
           <div className="py-8 text-center space-y-5 animate-fade-in-up">
-            <div className="w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/20">
-              <CheckCircle2 size={36} />
-            </div>
+            {hasSinalRequired ? (
+              <>
+                <div className="w-16 h-16 rounded-full bg-amber-500/20 text-amber-500 border border-amber-500/30 flex items-center justify-center mx-auto shadow-lg shadow-amber-500/20">
+                  <Clock size={36} />
+                </div>
 
-            <div className="space-y-2">
-              <h2 className="text-2xl font-bold text-foreground tracking-tight">
-                Agendamento Confirmado! 🎉
-              </h2>
-              <p className="text-xs text-muted max-w-xs mx-auto">
-                Obrigado, <strong className="text-foreground">{clientNome}</strong>! Seu horário no <strong className="text-foreground">{salaoNome}</strong> foi reservado com sucesso.
-              </p>
-            </div>
+                <div className="space-y-2">
+                  <h2 className="text-2xl font-bold text-foreground tracking-tight">
+                    Agendamento Pré-Reservado! ⏳
+                  </h2>
+                  <p className="text-xs text-muted max-w-xs mx-auto">
+                    Olá, <strong className="text-foreground">{clientNome}</strong>! Seu horário no{' '}
+                    <strong className="text-foreground">{salaoNome}</strong> foi pré-reservado.
+                  </p>
+                </div>
 
-            <div className="p-4 rounded-2xl bg-card border border-border text-xs text-left space-y-2 max-w-sm mx-auto shadow-sm">
-              <div className="flex items-center gap-2 text-emerald-500 font-bold border-b border-border/60 pb-2">
-                <CalendarIcon size={16} />
-                <span>
-                  {selectedDate.split('-').reverse().join('/')} às {selectedTime}
-                </span>
-              </div>
-              <p className="text-muted">
-                <strong className="text-foreground">Serviço:</strong>{' '}
-                {selectedServices.map((s) => s.nome).join(', ')}
-              </p>
-              <p className="text-muted">
-                <strong className="text-foreground">Valor:</strong> R${' '}
-                {(totalPrice / 100).toFixed(2).replace('.', ',')}
-              </p>
-            </div>
+                {/* Box de Confirmação do Sinal */}
+                <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-xs text-left space-y-3 max-w-sm mx-auto shadow-sm">
+                  <div className="flex items-center justify-between border-b border-amber-500/20 pb-2">
+                    <span className="font-bold text-amber-700 dark:text-amber-300">
+                      Sinal para Confirmação:
+                    </span>
+                    <span className="font-extrabold text-sm text-amber-600 dark:text-amber-400">
+                      R$ {(totalSinal / 100).toFixed(2).replace('.', ',')}
+                    </span>
+                  </div>
 
-            <p className="text-xs text-muted flex items-center justify-center gap-1.5 pt-2">
-              <Phone size={14} className="text-emerald-500" />
-              Uma mensagem de confirmação foi enviada para seu WhatsApp!
-            </p>
+                  <p className="text-muted leading-relaxed">
+                    {salao?.instrucoes_sinal ||
+                      'Para confirmar seu horário em definitivo, efetue o pagamento do sinal e envie o comprovante pelo WhatsApp.'}
+                  </p>
+
+                  {salao?.pix_chave && (
+                    <div className="p-2.5 rounded-xl bg-card border border-border flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-[10px] text-muted font-semibold">
+                          Chave PIX ({salao.pix_tipo || 'Chave'}):
+                        </p>
+                        <p className="font-mono text-xs font-bold text-foreground truncate select-all">
+                          {salao.pix_chave}
+                        </p>
+                        {salao.pix_titular && (
+                          <p className="text-[10px] text-muted truncate">
+                            Titular: {salao.pix_titular}
+                          </p>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                            navigator.clipboard.writeText(salao.pix_chave || '');
+                            setCopiedPix(true);
+                            setTimeout(() => setCopiedPix(false), 2000);
+                          }
+                        }}
+                        className="shrink-0 px-2.5 py-1.5 rounded-lg bg-accent/15 text-accent text-xs font-semibold hover:bg-accent/25 transition-all active:scale-95"
+                      >
+                        {copiedPix ? 'Copiado!' : 'Copiar'}
+                      </button>
+                    </div>
+                  )}
+
+                  {salao?.link_pagamento && (
+                    <a
+                      href={
+                        salao.link_pagamento.startsWith('http')
+                          ? salao.link_pagamento
+                          : `https://${salao.link_pagamento}`
+                      }
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-1.5 w-full py-2.5 px-3 rounded-xl bg-card border border-accent/40 hover:border-accent text-accent font-semibold text-xs text-center transition-all shadow-xs"
+                    >
+                      <span>Abrir Link de Pagamento</span>
+                      <ExternalLink size={13} />
+                    </a>
+                  )}
+
+                  {/* Botão Enviar Comprovante WhatsApp */}
+                  {(() => {
+                    const rawSalaoPhone = (salao?.telefone_whatsapp || '').replace(/\D/g, '');
+                    const cleanPhone =
+                      rawSalaoPhone.length === 10 || rawSalaoPhone.length === 11
+                        ? `55${rawSalaoPhone}`
+                        : rawSalaoPhone;
+
+                    if (!cleanPhone) return null;
+
+                    const msg = `Olá! Sou ${clientNome.trim()} e acabei de solicitar um agendamento de ${selectedServices
+                      .map((s) => s.nome)
+                      .join(', ')} para o dia ${selectedDate
+                      .split('-')
+                      .reverse()
+                      .join('/')} às ${selectedTime}. Segue o comprovante do sinal de R$ ${(
+                      totalSinal / 100
+                    )
+                      .toFixed(2)
+                      .replace('.', ',')} para confirmação.`;
+
+                    return (
+                      <a
+                        href={`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-2 w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/30 transition-all active:scale-95 cursor-pointer mt-1"
+                      >
+                        <Phone size={15} />
+                        <span>Enviar Comprovante pelo WhatsApp</span>
+                      </a>
+                    );
+                  })()}
+                </div>
+
+                <div className="p-4 rounded-2xl bg-card border border-border text-xs text-left space-y-2 max-w-sm mx-auto shadow-sm">
+                  <div className="flex items-center gap-2 text-amber-500 font-bold border-b border-border/60 pb-2">
+                    <CalendarIcon size={16} />
+                    <span>
+                      {selectedDate.split('-').reverse().join('/')} às {selectedTime}
+                    </span>
+                  </div>
+                  <p className="text-muted">
+                    <strong className="text-foreground">Serviço:</strong>{' '}
+                    {selectedServices.map((s) => s.nome).join(', ')}
+                  </p>
+                  <p className="text-muted">
+                    <strong className="text-foreground">Valor Total do Atendimento:</strong> R${' '}
+                    {(totalPrice / 100).toFixed(2).replace('.', ',')}
+                  </p>
+                  <p className="text-muted">
+                    <strong className="text-foreground">Valor Restante no Dia:</strong> R${' '}
+                    {((totalPrice - totalSinal) / 100).toFixed(2).replace('.', ',')}
+                  </p>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/20">
+                  <CheckCircle2 size={36} />
+                </div>
+
+                <div className="space-y-2">
+                  <h2 className="text-2xl font-bold text-foreground tracking-tight">
+                    Agendamento Confirmado! 🎉
+                  </h2>
+                  <p className="text-xs text-muted max-w-xs mx-auto">
+                    Obrigado, <strong className="text-foreground">{clientNome}</strong>! Seu horário no{' '}
+                    <strong className="text-foreground">{salaoNome}</strong> foi reservado com sucesso.
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-card border border-border text-xs text-left space-y-2 max-w-sm mx-auto shadow-sm">
+                  <div className="flex items-center gap-2 text-emerald-500 font-bold border-b border-border/60 pb-2">
+                    <CalendarIcon size={16} />
+                    <span>
+                      {selectedDate.split('-').reverse().join('/')} às {selectedTime}
+                    </span>
+                  </div>
+                  <p className="text-muted">
+                    <strong className="text-foreground">Serviço:</strong>{' '}
+                    {selectedServices.map((s) => s.nome).join(', ')}
+                  </p>
+                  <p className="text-muted">
+                    <strong className="text-foreground">Valor:</strong> R${' '}
+                    {(totalPrice / 100).toFixed(2).replace('.', ',')}
+                  </p>
+                </div>
+
+                <p className="text-xs text-muted flex items-center justify-center gap-1.5 pt-2">
+                  <Phone size={14} className="text-emerald-500" />
+                  Uma mensagem de confirmação foi enviada para seu WhatsApp!
+                </p>
+              </>
+            )}
           </div>
         )}
       </main>

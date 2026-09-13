@@ -81,15 +81,28 @@ export default function AppointmentCard({ agendamento, onClick }: AppointmentCar
         </div>
 
         {/* Price & Status Badge */}
-        <div className="flex flex-col items-end gap-2 shrink-0">
+        <div className="flex flex-col items-end gap-1.5 shrink-0">
           <span className="text-sm font-extrabold text-slate-900">
             {formatCurrency(agendamento.valor_total)}
           </span>
-          <span
-            className={`text-[10px] uppercase tracking-wider font-extrabold px-2.5 py-0.5 rounded-full border shadow-2xs ${config.badgeBg}`}
-          >
-            {config.label}
-          </span>
+          <div className="flex flex-col items-end gap-1">
+            <span
+              className={`text-[10px] uppercase tracking-wider font-extrabold px-2.5 py-0.5 rounded-full border shadow-2xs ${config.badgeBg}`}
+            >
+              {config.label}
+            </span>
+            {agendamento.exige_sinal && (
+              agendamento.sinal_pago ? (
+                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                  ✓ Sinal ({formatCurrency(agendamento.valor_sinal || 0)})
+                </span>
+              ) : (
+                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">
+                  ⏳ Aguardando Sinal ({formatCurrency(agendamento.valor_sinal || 0)})
+                </span>
+              )
+            )}
+          </div>
         </div>
       </div>
     </div>

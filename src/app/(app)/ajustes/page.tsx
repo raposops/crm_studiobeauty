@@ -27,6 +27,7 @@ import {
   ShoppingBag,
   Building2,
   Package,
+  Zap,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useProfissionais } from '@/hooks/useProfissionais';
@@ -83,6 +84,11 @@ export default function AjustesPage() {
   const [salaoNomeInput, setSalaoNomeInput] = useState('');
   const [salaoSlugInput, setSalaoSlugInput] = useState('');
   const [salaoPhoneInput, setSalaoPhoneInput] = useState('');
+  const [pixChaveInput, setPixChaveInput] = useState('');
+  const [pixTipoInput, setPixTipoInput] = useState('celular');
+  const [pixTitularInput, setPixTitularInput] = useState('');
+  const [linkPagamentoInput, setLinkPagamentoInput] = useState('');
+  const [instrucoesSinalInput, setInstrucoesSinalInput] = useState('');
   const [isSavingSalao, setIsSavingSalao] = useState(false);
 
   // Hooks
@@ -126,6 +132,8 @@ export default function AjustesPage() {
   const [servPreco, setServPreco] = useState('');
   const [servDuracao, setServDuracao] = useState('30');
   const [servCategoria, setServCategoria] = useState('Cabelo');
+  const [servExigeSinal, setServExigeSinal] = useState(false);
+  const [servPorcentagemSinal, setServPorcentagemSinal] = useState('30');
 
   // Modal Produto Extra state
   const [isProdModalOpen, setIsProdModalOpen] = useState(false);
@@ -142,6 +150,11 @@ export default function AjustesPage() {
     setSalaoNomeInput(salao?.nome || '');
     setSalaoSlugInput(salao?.slug || '');
     setSalaoPhoneInput(salao?.telefone_whatsapp || '');
+    setPixChaveInput(salao?.pix_chave || '');
+    setPixTipoInput(salao?.pix_tipo || 'celular');
+    setPixTitularInput(salao?.pix_titular || '');
+    setLinkPagamentoInput(salao?.link_pagamento || '');
+    setInstrucoesSinalInput(salao?.instrucoes_sinal || '');
     setIsSalaoModalOpen(true);
   }
 
@@ -157,6 +170,11 @@ export default function AjustesPage() {
         nome: salaoNomeInput.trim(),
         slug: salaoSlugInput.trim() || undefined,
         telefone_whatsapp: salaoPhoneInput.trim() || '',
+        pix_chave: pixChaveInput.trim() || '',
+        pix_tipo: pixTipoInput.trim() || 'celular',
+        pix_titular: pixTitularInput.trim() || '',
+        link_pagamento: linkPagamentoInput.trim() || '',
+        instrucoes_sinal: instrucoesSinalInput.trim() || '',
       });
       await refreshAuth();
       setIsSalaoModalOpen(false);
@@ -249,6 +267,8 @@ export default function AjustesPage() {
     setServPreco('');
     setServDuracao('30');
     setServCategoria('Cabelo');
+    setServExigeSinal(false);
+    setServPorcentagemSinal('30');
     setIsServModalOpen(true);
   }
 
@@ -258,6 +278,8 @@ export default function AjustesPage() {
     setServPreco((serv.preco / 100).toFixed(2));
     setServDuracao(String(serv.duracao_minutos));
     setServCategoria(serv.categoria || 'Cabelo');
+    setServExigeSinal(Boolean(serv.exige_sinal));
+    setServPorcentagemSinal(String(serv.porcentagem_sinal ?? 30));
     setIsServModalOpen(true);
   }
 
@@ -271,6 +293,7 @@ export default function AjustesPage() {
       return;
     }
     const precoCentavos = Math.round(priceFloat * 100);
+    const pctSinalNum = parseInt(servPorcentagemSinal, 10) || 30;
 
     if (editingServ) {
       atualizarServico.mutate(
@@ -281,6 +304,8 @@ export default function AjustesPage() {
             preco: precoCentavos,
             duracao_minutos: parseInt(servDuracao) || 30,
             categoria: servCategoria,
+            exige_sinal: servExigeSinal,
+            porcentagem_sinal: pctSinalNum,
           },
         },
         {
@@ -289,6 +314,8 @@ export default function AjustesPage() {
             setServNome('');
             setServPreco('');
             setServDuracao('30');
+            setServExigeSinal(false);
+            setServPorcentagemSinal('30');
             setIsServModalOpen(false);
           },
           onError: (err: any) => {
@@ -304,12 +331,16 @@ export default function AjustesPage() {
           preco: precoCentavos,
           duracao_minutos: parseInt(servDuracao) || 30,
           categoria: servCategoria,
+          exige_sinal: servExigeSinal,
+          porcentagem_sinal: pctSinalNum,
         },
         {
           onSuccess: () => {
             setServNome('');
             setServPreco('');
             setServDuracao('30');
+            setServExigeSinal(false);
+            setServPorcentagemSinal('30');
             setIsServModalOpen(false);
           },
           onError: (err: any) => {
@@ -858,13 +889,18 @@ export default function AjustesPage() {
                   className="flex items-center justify-between p-3.5 rounded-2xl bg-card border border-border"
                 >
                   <div className="space-y-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-accent/10 text-accent">
                         {serv.categoria}
                       </span>
                       <p className="text-sm font-bold text-foreground">
                         {serv.nome}
                       </p>
+                      {serv.exige_sinal && (
+                        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                          Sinal {serv.porcentagem_sinal || 30}%
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-3 text-xs text-muted">
                       <span className="flex items-center gap-1 font-semibold text-foreground">
@@ -1264,6 +1300,74 @@ export default function AjustesPage() {
                 </select>
               </div>
 
+              {/* Seção de Sinal / Adiantamento */}
+              <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                      <Zap size={14} className="fill-amber-500" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-foreground">Exigir Sinal (Adiantamento)</p>
+                      <p className="text-[10px] text-muted">Cliente paga uma parte para reservar</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setServExigeSinal(!servExigeSinal)}
+                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                      servExigeSinal ? 'bg-amber-500' : 'bg-muted/40'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md transition duration-200 ease-in-out ${
+                        servExigeSinal ? 'translate-x-4' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {servExigeSinal && (
+                  <div className="pt-1 space-y-2 border-t border-amber-500/20 animate-fade-in">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-foreground mb-1">
+                        Porcentagem do Sinal (%)
+                      </label>
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {['20', '30', '40', '50'].map((pct) => (
+                          <button
+                            key={pct}
+                            type="button"
+                            onClick={() => setServPorcentagemSinal(pct)}
+                            className={`py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                              servPorcentagemSinal === pct
+                                ? 'bg-amber-500 text-white border-amber-500 shadow-xs'
+                                : 'bg-card border-border text-foreground hover:bg-card-hover'
+                            }`}
+                          >
+                            {pct}%
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {servPreco && !isNaN(parseFloat(servPreco.replace(',', '.'))) && (
+                      <p className="text-[11px] text-amber-700 dark:text-amber-300 font-semibold bg-amber-500/15 p-2 rounded-xl text-center">
+                        💰 Sinal de R${' '}
+                        {(
+                          (parseFloat(servPreco.replace(',', '.')) *
+                            (parseInt(servPorcentagemSinal, 10) || 30)) /
+                          100
+                        )
+                          .toFixed(2)
+                          .replace('.', ',')}{' '}
+                        ({servPorcentagemSinal}%) no agendamento.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+
               <div className="pt-2 flex gap-2">
                 <button
                   type="button"
@@ -1536,6 +1640,95 @@ export default function AjustesPage() {
                 <p className="text-[10px] text-muted mt-1">
                   Neste número você receberá os alertas automáticos de novos agendamentos feitos pelos clientes.
                 </p>
+              </div>
+
+              {/* Seção PIX e Sinal */}
+              <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 space-y-3 text-left">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                    <Zap size={16} className="fill-amber-500" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-foreground">
+                      Chave PIX & Cobrança de Sinal
+                    </h4>
+                    <p className="text-[10px] text-muted">
+                      Configuração para clientes pagarem sinal de reserva no agendamento
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="col-span-1">
+                    <label className="block text-[11px] font-semibold text-muted mb-1">
+                      Tipo Chave
+                    </label>
+                    <select
+                      value={pixTipoInput}
+                      onChange={(e) => setPixTipoInput(e.target.value)}
+                      className="w-full px-2.5 py-2 rounded-xl bg-background border border-border text-xs text-foreground focus:outline-none focus:border-accent"
+                    >
+                      <option value="celular">Celular</option>
+                      <option value="cpf_cnpj">CPF/CNPJ</option>
+                      <option value="email">E-mail</option>
+                      <option value="aleatoria">Aleatória</option>
+                    </select>
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-[11px] font-semibold text-muted mb-1">
+                      Chave PIX
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ex: 51981108170 ou chave@pix.com"
+                      value={pixChaveInput}
+                      onChange={(e) => setPixChaveInput(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-background border border-border text-xs text-foreground focus:outline-none focus:border-accent font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-muted mb-1">
+                    Nome do Titular / Banco (Opcional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ex: Maria da Silva - Nubank"
+                    value={pixTitularInput}
+                    onChange={(e) => setPixTitularInput(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-border text-xs text-foreground focus:outline-none focus:border-accent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-muted mb-1">
+                    Link de Pagamento Externo (Opcional)
+                  </label>
+                  <input
+                    type="url"
+                    placeholder="Ex: https://mpago.la/... ou https://pagbank.com/..."
+                    value={linkPagamentoInput}
+                    onChange={(e) => setLinkPagamentoInput(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-border text-xs text-foreground focus:outline-none focus:border-accent font-mono text-[11px]"
+                  />
+                  <p className="text-[10px] text-muted mt-0.5">
+                    Caso tenha link de cartão (Mercado Pago, PagBank, InfinitePay, PicPay, etc.).
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-muted mb-1">
+                    Instruções para o Cliente (Opcional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ex: Envie o comprovante no WhatsApp para garantir seu horário!"
+                    value={instrucoesSinalInput}
+                    onChange={(e) => setInstrucoesSinalInput(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-border text-xs text-foreground focus:outline-none focus:border-accent"
+                  />
+                </div>
               </div>
 
               <div className="pt-3 flex gap-2">

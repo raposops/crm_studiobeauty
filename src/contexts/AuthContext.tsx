@@ -19,6 +19,11 @@ export interface SalaoInfo {
   modulos_ativos?: ModulosSalao;
   asaas_customer_id?: string;
   asaas_payment_id?: string;
+  pix_chave?: string;
+  pix_tipo?: string;
+  pix_titular?: string;
+  link_pagamento?: string;
+  instrucoes_sinal?: string;
 }
 
 export interface UserProfile {

@@ -98,6 +98,10 @@ export default function CheckoutModal({
   const [valorDinheiroEntregueInput, setValorDinheiroEntregueInput] = useState('');
   const [deixarTrocoComoCredito, setDeixarTrocoComoCredito] = useState(true);
 
+  // Estados de Sinal
+  const [sinalPagoLocal, setSinalPagoLocal] = useState(Boolean(agendamento?.sinal_pago));
+  const [isConfirmingSinal, setIsConfirmingSinal] = useState(false);
+
   // Estado de Desconto
   const [valorDescontoInput, setValorDescontoInput] = useState('');
 
@@ -121,6 +125,7 @@ export default function CheckoutModal({
       setUsarCredito(false);
     }
     if (agendamento) {
+      setSinalPagoLocal(Boolean(agendamento.sinal_pago));
       setEditHoraInicio(agendamento.hora_inicio || '09:00');
       setEditHoraFim(agendamento.hora_fim || '09:30');
       setIsEditingTime(false);
@@ -130,7 +135,7 @@ export default function CheckoutModal({
 
   const { salaoId, hasModule } = useAuth();
   const { concluirAtendimento } = useCaixa(salaoId, agendamento?.data || '');
-  const { deletarAgendamento, atualizarHorario } = useAgenda(salaoId, agendamento?.data || '');
+  const { deletarAgendamento, atualizarHorario, confirmarSinal } = useAgenda(salaoId, agendamento?.data || '');
   const { servicos: catalogoServicos, isLoading: loadingCatalogoServicos } = useServicos(salaoId);
   const { produtos, isLoading: loadingProdutos } = useProdutos(salaoId);
 
@@ -226,18 +231,27 @@ export default function CheckoutModal({
   // Saldo da cliente disponível
   const saldoCliente = agendamento?.cliente?.saldo_credito || 0;
   
-  // Abatimento de crédito
-  const valorCreditoAbatido = usarCredito ? Math.min(saldoCliente, valorTotalBruto) : 0;
-  const valorRestanteAPagar = Math.max(0, valorTotalBruto - valorCreditoAbatido);
+  // Abatimento de Sinal pré-pago
+  const exigeSinal = Boolean(agendamento?.exige_sinal);
+  const valorSinalAbatido = (exigeSinal && sinalPagoLocal) ? (agendamento?.valor_sinal || 0) : 0;
+  const valorAposSinal = Math.max(0, valorTotalBruto - valorSinalAbatido);
 
-  // Se o saldo cobrir 100% da conta, a forma de pagamento é saldo
+  // Abatimento de crédito
+  const valorCreditoAbatido = usarCredito ? Math.min(saldoCliente, valorAposSinal) : 0;
+  const valorRestanteAPagar = Math.max(0, valorAposSinal - valorCreditoAbatido);
+
+  // Se o saldo ou sinal cobrir 100% da conta
   useEffect(() => {
-    if (valorRestanteAPagar === 0 && valorTotalBruto > 0 && usarCredito) {
-      setFormaPagamento('saldo');
+    if (valorRestanteAPagar === 0 && valorTotalBruto > 0) {
+      if (usarCredito && valorCreditoAbatido > 0) {
+        setFormaPagamento('saldo');
+      } else if (valorSinalAbatido >= valorTotalBruto) {
+        setFormaPagamento('pix');
+      }
     } else if (formaPagamento === 'saldo' && valorRestanteAPagar > 0) {
       setFormaPagamento(null);
     }
-  }, [valorRestanteAPagar, valorTotalBruto, usarCredito, formaPagamento]);
+  }, [valorRestanteAPagar, valorTotalBruto, usarCredito, valorCreditoAbatido, valorSinalAbatido, formaPagamento]);
 
   // Cálculo de troco quando em dinheiro
   const valorDinheiroEntregueCentavos = useMemo(() => {
@@ -328,7 +342,22 @@ export default function CheckoutModal({
     setValorDinheiroEntregueInput('');
     setDeixarTrocoComoCredito(true);
     setValorDescontoInput('');
+    setSinalPagoLocal(false);
+    setIsConfirmingSinal(false);
     setIsSubmitting(false);
+  }
+
+  async function handleConfirmarSinal() {
+    if (!agendamento) return;
+    setIsConfirmingSinal(true);
+    try {
+      await confirmarSinal.mutateAsync(agendamento.id);
+      setSinalPagoLocal(true);
+    } catch (err: any) {
+      alert(`Erro ao confirmar recebimento do sinal: ${err?.message || 'Tente novamente.'}`);
+    } finally {
+      setIsConfirmingSinal(false);
+    }
   }
 
   function handleClose() {
@@ -637,6 +666,59 @@ export default function CheckoutModal({
                       </>
                     )}
                   </button>
+                </div>
+              </div>
+            )}
+
+            {/* SINAL / ADIANTAMENTO PRÉ-PAGO */}
+            {exigeSinal && (
+              <div
+                className={`p-3.5 rounded-2xl border transition-all ${
+                  sinalPagoLocal
+                    ? 'bg-emerald-500/10 border-emerald-500/30'
+                    : 'bg-amber-500/10 border-amber-500/30'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 font-bold text-xs">
+                      {sinalPagoLocal ? (
+                        <>
+                          <CheckCircle2 size={15} className="text-emerald-500 shrink-0" />
+                          <span className="text-emerald-700 dark:text-emerald-300">
+                            Sinal Pago Antecipadamente
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <Clock size={15} className="text-amber-500 shrink-0" />
+                          <span className="text-amber-700 dark:text-amber-300">
+                            Aguardando Confirmação do Sinal
+                          </span>
+                        </>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-muted mt-0.5">
+                      {sinalPagoLocal
+                        ? `Valor de ${formatCurrency(agendamento?.valor_sinal || 0)} abatido do total a pagar.`
+                        : `Valor do sinal exigido: ${formatCurrency(agendamento?.valor_sinal || 0)}`}
+                    </p>
+                  </div>
+
+                  {sinalPagoLocal ? (
+                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/15 px-2.5 py-1 rounded-lg shrink-0">
+                      Abatido ✓
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleConfirmarSinal}
+                      disabled={isConfirmingSinal}
+                      className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/20 transition-all active:scale-95 cursor-pointer disabled:opacity-50 shrink-0"
+                    >
+                      {isConfirmingSinal ? 'Confirmando...' : 'Confirmar Sinal'}
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -1052,6 +1134,12 @@ export default function CheckoutModal({
                 </span>
               </div>
             )}
+            {valorSinalAbatido > 0 && (
+              <div className="flex items-center justify-between text-sm text-emerald-500 font-medium">
+                <span>Sinal Pago Antecipado</span>
+                <span>- {formatCurrency(valorSinalAbatido)}</span>
+              </div>
+            )}
             {valorCreditoAbatido > 0 && (
               <div className="flex items-center justify-between text-sm text-emerald-400 font-medium">
                 <span>Crédito Abatido</span>
@@ -1076,7 +1164,9 @@ export default function CheckoutModal({
 
             <div className="h-px bg-border/50" />
             <div className="flex items-center justify-between">
-              <span className="text-sm font-bold text-foreground">Total {valorCreditoAbatido > 0 ? 'a Pagar' : ''}</span>
+              <span className="text-sm font-bold text-foreground">
+                Total {valorCreditoAbatido > 0 || valorSinalAbatido > 0 ? 'a Pagar' : ''}
+              </span>
               <span className="text-lg font-bold text-foreground">
                 {formatCurrency(valorRestanteAPagar)}
               </span>
