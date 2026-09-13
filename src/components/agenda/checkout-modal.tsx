@@ -134,6 +134,7 @@ export default function CheckoutModal({
   }, [agendamento]);
 
   const { salaoId, hasModule } = useAuth();
+  const temModuloSinal = hasModule('cobranca_sinal');
   const { concluirAtendimento } = useCaixa(salaoId, agendamento?.data || '');
   const { deletarAgendamento, atualizarHorario, confirmarSinal } = useAgenda(salaoId, agendamento?.data || '');
   const { servicos: catalogoServicos, isLoading: loadingCatalogoServicos } = useServicos(salaoId);
@@ -232,7 +233,7 @@ export default function CheckoutModal({
   const saldoCliente = agendamento?.cliente?.saldo_credito || 0;
   
   // Abatimento de Sinal pré-pago
-  const exigeSinal = Boolean(agendamento?.exige_sinal);
+  const exigeSinal = temModuloSinal && Boolean(agendamento?.exige_sinal);
   const valorSinalAbatido = (exigeSinal && sinalPagoLocal) ? (agendamento?.valor_sinal || 0) : 0;
   const valorAposSinal = Math.max(0, valorTotalBruto - valorSinalAbatido);
 

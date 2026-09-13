@@ -98,6 +98,7 @@ export default function AgendarPublicSlugPage({ params }: { params: Promise<{ sl
     id: string;
     nome: string;
     slug: string;
+    modulos_ativos?: Record<string, boolean>;
     telefone_whatsapp?: string;
     pix_chave?: string;
     pix_tipo?: string;
@@ -134,6 +135,7 @@ export default function AgendarPublicSlugPage({ params }: { params: Promise<{ sl
 
   const salaoId = salao?.id || '00000000-0000-0000-0000-000000000000';
   const salaoNome = salao?.nome || 'Studio Beauty';
+  const isModuloSinalAtivo = (salao as any)?.modulos_ativos?.cobranca_sinal !== false;
 
   useEffect(() => {
     if (salaoNome && typeof document !== 'undefined') {
@@ -174,8 +176,9 @@ export default function AgendarPublicSlugPage({ params }: { params: Promise<{ sl
   }, [selectedServices]);
 
   const servicesRequiringSinal = useMemo(() => {
+    if (!isModuloSinalAtivo) return [];
     return selectedServices.filter((s) => s.exige_sinal);
-  }, [selectedServices]);
+  }, [selectedServices, isModuloSinalAtivo]);
 
   const hasSinalRequired = servicesRequiringSinal.length > 0;
 
@@ -612,7 +615,7 @@ export default function AgendarPublicSlugPage({ params }: { params: Promise<{ sl
                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-border/60 text-muted font-medium">
                           {servico.categoria}
                         </span>
-                        {servico.exige_sinal && (
+                        {servico.exige_sinal && isModuloSinalAtivo && (
                           <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-semibold">
                             Sinal {servico.porcentagem_sinal || 50}%
                           </span>

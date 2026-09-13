@@ -73,6 +73,7 @@ function formatDiasTrabalho(dias?: number[]): string {
 export default function AjustesPage() {
   const { salao, salaoId, logout, user, refreshAuth, hasModule } = useAuth();
   const temModuloEstoque = hasModule('estoque');
+  const temModuloSinal = hasModule('cobranca_sinal');
   const salaoSlug = salao?.slug || 'studio-beauty';
   const publicBookingUrl = typeof window !== 'undefined' ? `${window.location.origin}/agendar/${salaoSlug}` : `http://localhost:3000/agendar/${salaoSlug}`;
 
@@ -304,8 +305,8 @@ export default function AjustesPage() {
             preco: precoCentavos,
             duracao_minutos: parseInt(servDuracao) || 30,
             categoria: servCategoria,
-            exige_sinal: servExigeSinal,
-            porcentagem_sinal: pctSinalNum,
+            exige_sinal: temModuloSinal ? servExigeSinal : false,
+            porcentagem_sinal: temModuloSinal ? pctSinalNum : undefined,
           },
         },
         {
@@ -331,8 +332,8 @@ export default function AjustesPage() {
           preco: precoCentavos,
           duracao_minutos: parseInt(servDuracao) || 30,
           categoria: servCategoria,
-          exige_sinal: servExigeSinal,
-          porcentagem_sinal: pctSinalNum,
+          exige_sinal: temModuloSinal ? servExigeSinal : false,
+          porcentagem_sinal: temModuloSinal ? pctSinalNum : undefined,
         },
         {
           onSuccess: () => {
@@ -896,7 +897,7 @@ export default function AjustesPage() {
                       <p className="text-sm font-bold text-foreground">
                         {serv.nome}
                       </p>
-                      {serv.exige_sinal && (
+                      {serv.exige_sinal && temModuloSinal && (
                         <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
                           Sinal {serv.porcentagem_sinal || 30}%
                         </span>
@@ -1301,72 +1302,89 @@ export default function AjustesPage() {
               </div>
 
               {/* Seção de Sinal / Adiantamento */}
-              <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-                      <Zap size={14} className="fill-amber-500" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-foreground">Exigir Sinal (Adiantamento)</p>
-                      <p className="text-[10px] text-muted">Cliente paga uma parte para reservar</p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setServExigeSinal(!servExigeSinal)}
-                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                      servExigeSinal ? 'bg-amber-500' : 'bg-muted/40'
-                    }`}
-                  >
-                    <span
-                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
-                        servExigeSinal ? 'translate-x-4' : 'translate-x-0'
-                      }`}
-                    />
-                  </button>
-                </div>
-
-                {servExigeSinal && (
-                  <div className="space-y-2 pt-1 border-t border-amber-500/20 animate-fade-in">
-                    <div>
-                      <label className="block text-[11px] font-semibold text-muted mb-1">
-                        Porcentagem de Adiantamento:
-                      </label>
-                      <div className="grid grid-cols-4 gap-1.5">
-                        {['20', '30', '40', '50'].map((pct) => (
-                          <button
-                            key={pct}
-                            type="button"
-                            onClick={() => setServPorcentagemSinal(pct)}
-                            className={`py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                              servPorcentagemSinal === pct
-                                ? 'bg-amber-500 text-white border-amber-500 shadow-xs'
-                                : 'bg-white border-border text-foreground hover:bg-slate-50'
-                            }`}
-                          >
-                            {pct}%
-                          </button>
-                        ))}
+              {temModuloSinal ? (
+                <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                        <Zap size={14} className="fill-amber-500" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-foreground">Exigir Sinal (Adiantamento)</p>
+                        <p className="text-[10px] text-muted">Cliente paga uma parte para reservar</p>
                       </div>
                     </div>
-
-                    {servPreco && !isNaN(parseFloat(servPreco.replace(',', '.'))) && (
-                      <p className="text-[11px] text-amber-700 dark:text-amber-300 font-semibold bg-amber-500/15 p-2 rounded-xl text-center">
-                        💰 Sinal de R${' '}
-                        {(
-                          (parseFloat(servPreco.replace(',', '.')) *
-                            (parseInt(servPorcentagemSinal, 10) || 30)) /
-                          100
-                        )
-                          .toFixed(2)
-                          .replace('.', ',')}{' '}
-                        ({servPorcentagemSinal}%) no agendamento.
-                      </p>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => setServExigeSinal(!servExigeSinal)}
+                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                        servExigeSinal ? 'bg-amber-500' : 'bg-muted/40'
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                          servExigeSinal ? 'translate-x-4' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
                   </div>
-                )}
-              </div>
+
+                  {servExigeSinal && (
+                    <div className="space-y-2 pt-1 border-t border-amber-500/20 animate-fade-in">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-muted mb-1">
+                          Porcentagem de Adiantamento:
+                        </label>
+                        <div className="grid grid-cols-4 gap-1.5">
+                          {['20', '30', '40', '50'].map((pct) => (
+                            <button
+                              key={pct}
+                              type="button"
+                              onClick={() => setServPorcentagemSinal(pct)}
+                              className={`py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                                servPorcentagemSinal === pct
+                                  ? 'bg-amber-500 text-white border-amber-500 shadow-xs'
+                                  : 'bg-white border-border text-foreground hover:bg-slate-50'
+                              }`}
+                            >
+                              {pct}%
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {servPreco && !isNaN(parseFloat(servPreco.replace(',', '.'))) && (
+                        <p className="text-[11px] text-amber-700 dark:text-amber-300 font-semibold bg-amber-500/15 p-2 rounded-xl text-center">
+                          💰 Sinal de R${' '}
+                          {(
+                            (parseFloat(servPreco.replace(',', '.')) *
+                              (parseInt(servPorcentagemSinal, 10) || 30)) /
+                            100
+                          )
+                            .toFixed(2)
+                            .replace('.', ',')}{' '}
+                          ({servPorcentagemSinal}%) no agendamento.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="p-3 rounded-2xl bg-slate-100 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 flex items-center justify-between opacity-80">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-500 flex items-center justify-center">
+                      <Zap size={14} />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-foreground">Cobrança de Sinal</p>
+                      <p className="text-[10px] text-muted">Módulo desativado no painel admin</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold text-muted uppercase tracking-wider px-2 py-0.5 rounded-md bg-slate-200 dark:bg-slate-700">
+                    Bloqueado
+                  </span>
+                </div>
+              )}
 
               <div className="pt-2 flex gap-2">
                 <button
@@ -1644,93 +1662,115 @@ export default function AjustesPage() {
               </div>
 
               {/* Seção PIX e Sinal */}
-              <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 space-y-3 text-left">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-                    <Zap size={16} className="fill-amber-500" />
+              {temModuloSinal ? (
+                <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 space-y-3 text-left">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                      <Zap size={16} className="fill-amber-500" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-foreground">
+                        Chave PIX & Cobrança de Sinal
+                      </h4>
+                      <p className="text-[10px] text-muted">
+                        Configuração para clientes pagarem sinal de reserva no agendamento
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-foreground">
-                      Chave PIX & Cobrança de Sinal
-                    </h4>
-                    <p className="text-[10px] text-muted">
-                      Configuração para clientes pagarem sinal de reserva no agendamento
-                    </p>
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="col-span-1">
-                    <label className="block text-[11px] font-semibold text-muted mb-1">
-                      Tipo Chave
-                    </label>
-                    <select
-                      value={pixTipoInput}
-                      onChange={(e) => setPixTipoInput(e.target.value)}
-                      className="w-full px-2.5 py-2 rounded-xl bg-background border border-border text-xs text-foreground focus:outline-none focus:border-accent"
-                    >
-                      <option value="celular">Celular</option>
-                      <option value="cpf_cnpj">CPF/CNPJ</option>
-                      <option value="email">E-mail</option>
-                      <option value="aleatoria">Aleatória</option>
-                    </select>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="col-span-1">
+                      <label className="block text-[11px] font-semibold text-muted mb-1">
+                        Tipo Chave
+                      </label>
+                      <select
+                        value={pixTipoInput}
+                        onChange={(e) => setPixTipoInput(e.target.value)}
+                        className="w-full px-2.5 py-2 rounded-xl bg-background border border-border text-xs text-foreground focus:outline-none focus:border-accent"
+                      >
+                        <option value="celular">Celular</option>
+                        <option value="cpf_cnpj">CPF/CNPJ</option>
+                        <option value="email">E-mail</option>
+                        <option value="aleatoria">Aleatória</option>
+                      </select>
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-[11px] font-semibold text-muted mb-1">
+                        Chave PIX
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Ex: 51981108170 ou chave@pix.com"
+                        value={pixChaveInput}
+                        onChange={(e) => setPixChaveInput(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-background border border-border text-xs text-foreground focus:outline-none focus:border-accent font-mono"
+                      >
+                      </input>
+                    </div>
                   </div>
-                  <div className="col-span-2">
+
+                  <div>
                     <label className="block text-[11px] font-semibold text-muted mb-1">
-                      Chave PIX
+                      Nome do Titular / Banco (Opcional)
                     </label>
                     <input
                       type="text"
-                      placeholder="Ex: 51981108170 ou chave@pix.com"
-                      value={pixChaveInput}
-                      onChange={(e) => setPixChaveInput(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-background border border-border text-xs text-foreground focus:outline-none focus:border-accent font-mono"
+                      placeholder="Ex: Maria da Silva - Nubank"
+                      value={pixTitularInput}
+                      onChange={(e) => setPixTitularInput(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-background border border-border text-xs text-foreground focus:outline-none focus:border-accent"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-muted mb-1">
+                      Link de Pagamento Externo (Opcional)
+                    </label>
+                    <input
+                      type="url"
+                      placeholder="Ex: https://mpago.la/... ou https://pagbank.com/..."
+                      value={linkPagamentoInput}
+                      onChange={(e) => setLinkPagamentoInput(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-background border border-border text-xs text-foreground focus:outline-none focus:border-accent font-mono text-[11px]"
+                    />
+                    <p className="text-[10px] text-muted mt-0.5">
+                      Caso tenha link de cartão (Mercado Pago, PagBank, InfinitePay, PicPay, etc.).
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-muted mb-1">
+                      Instruções para o Cliente (Opcional)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ex: Envie o comprovante no WhatsApp para garantir seu horário!"
+                      value={instrucoesSinalInput}
+                      onChange={(e) => setInstrucoesSinalInput(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-background border border-border text-xs text-foreground focus:outline-none focus:border-accent"
                     />
                   </div>
                 </div>
-
-                <div>
-                  <label className="block text-[11px] font-semibold text-muted mb-1">
-                    Nome do Titular / Banco (Opcional)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Ex: Maria da Silva - Nubank"
-                    value={pixTitularInput}
-                    onChange={(e) => setPixTitularInput(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-border text-xs text-foreground focus:outline-none focus:border-accent"
-                  />
+              ) : (
+                <div className="p-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 flex items-center justify-between opacity-80">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-500 flex items-center justify-center shrink-0">
+                      <Zap size={16} />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-foreground">
+                        Cobrança de Sinal (Adiantamento)
+                      </h4>
+                      <p className="text-[10px] text-muted">
+                        Módulo desativado no painel de administração
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold text-muted uppercase tracking-wider px-2 py-0.5 rounded-md bg-slate-200 dark:bg-slate-700">
+                    Bloqueado
+                  </span>
                 </div>
-
-                <div>
-                  <label className="block text-[11px] font-semibold text-muted mb-1">
-                    Link de Pagamento Externo (Opcional)
-                  </label>
-                  <input
-                    type="url"
-                    placeholder="Ex: https://mpago.la/... ou https://pagbank.com/..."
-                    value={linkPagamentoInput}
-                    onChange={(e) => setLinkPagamentoInput(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-border text-xs text-foreground focus:outline-none focus:border-accent font-mono text-[11px]"
-                  />
-                  <p className="text-[10px] text-muted mt-0.5">
-                    Caso tenha link de cartão (Mercado Pago, PagBank, InfinitePay, PicPay, etc.).
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-semibold text-muted mb-1">
-                    Instruções para o Cliente (Opcional)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Ex: Envie o comprovante no WhatsApp para garantir seu horário!"
-                    value={instrucoesSinalInput}
-                    onChange={(e) => setInstrucoesSinalInput(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-border text-xs text-foreground focus:outline-none focus:border-accent"
-                  />
-                </div>
-              </div>
+              )}
 
               <div className="pt-3 flex gap-2">
                 <button

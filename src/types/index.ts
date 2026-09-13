@@ -152,6 +152,11 @@ export const MODULOS_DISPONIVEIS: Array<{ key: string; nome: string; descricao: 
     descricao: 'Gestão completa de estoque, quantidades em tempo real e baixa automática ao vender produtos na comanda',
   },
   {
+    key: 'cobranca_sinal',
+    nome: 'Cobrança de Sinal (Adiantamento)',
+    descricao: 'Permite ao salão exigir sinal/adiantamento via PIX ou Link nos agendamentos de serviços.',
+  },
+  {
     key: 'comissao_customizada',
     nome: 'Comissão Customizada por Profissional',
     descricao: 'Permite alterar a % de repasse individual de cada profissional no cadastro',
@@ -198,6 +203,7 @@ export const PLANOS_SAAS: Record<'basico' | 'pro', PlanoSaaS> = {
       comissao_customizada: true,
       whatsapp_automatico: true,
       relatorios_avancados: true,
+      cobranca_sinal: false,
       fluxo_de_caixa: false,
       fluxo_caixa_avancado: false,
       estoque: false,
@@ -213,6 +219,7 @@ export const PLANOS_SAAS: Record<'basico' | 'pro', PlanoSaaS> = {
     recursos: [
       'Todos os benefícios do Plano Básico',
       'Controle de Estoque com baixa automática na comanda',
+      'Cobrança de Sinal / Adiantamento nos agendamentos online',
       'Fluxo de Caixa com controle de receitas e despesas fixas',
       'Lançamento Avulso de entradas e saídas',
       'Relatórios financeiros avançados e gráficos executivos',
@@ -222,6 +229,7 @@ export const PLANOS_SAAS: Record<'basico' | 'pro', PlanoSaaS> = {
       comissao_customizada: true,
       whatsapp_automatico: true,
       relatorios_avancados: true,
+      cobranca_sinal: true,
       fluxo_de_caixa: true,
       fluxo_caixa_avancado: true,
       estoque: true,

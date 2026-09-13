@@ -59,6 +59,7 @@ const DEFAULT_SALAO: SalaoInfo = {
     comissao_customizada: true,
     whatsapp_automatico: true,
     relatorios_avancados: true,
+    cobranca_sinal: true,
   },
 };
 
