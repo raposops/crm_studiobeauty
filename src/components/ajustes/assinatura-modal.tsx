@@ -92,7 +92,7 @@ export default function AssinaturaModal({ isOpen, onClose }: AssinaturaModalProp
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
-      <div className="w-full max-w-lg bg-background border border-border rounded-3xl p-6 space-y-5 shadow-2xl animate-fade-in-up max-h-[92vh] overflow-y-auto">
+      <div className="w-full max-w-lg bg-modal border border-slate-300 rounded-3xl p-6 space-y-5 shadow-2xl shadow-slate-950/25 ring-1 ring-black/5 animate-fade-in-up max-h-[92vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">

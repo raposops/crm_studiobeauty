@@ -101,7 +101,7 @@ export default function FechamentoResumoModal({
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-md bg-background border border-border rounded-t-3xl sm:rounded-3xl max-h-[90dvh] flex flex-col animate-fade-in-up">
+      <div className="relative w-full max-w-md bg-modal border border-slate-300 shadow-2xl shadow-slate-950/25 ring-1 ring-black/5 rounded-t-3xl sm:rounded-3xl max-h-[90dvh] flex flex-col animate-fade-in-up">
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-5 pb-3">
           <div className="flex items-center gap-2">

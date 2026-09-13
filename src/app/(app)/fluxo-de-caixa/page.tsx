@@ -413,7 +413,7 @@ export default function FluxoCaixaPage() {
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
           <form
             onSubmit={handleSubmit}
-            className="w-full max-w-md bg-card border border-border rounded-3xl p-6 space-y-4 shadow-2xl animate-fade-in-up"
+            className="w-full max-w-md bg-modal border border-slate-300 rounded-3xl p-6 space-y-4 shadow-2xl shadow-slate-950/25 ring-1 ring-black/5 animate-fade-in-up"
           >
             <div className="flex items-center justify-between pb-2 border-b border-border">
               <h3 className="text-sm font-bold text-foreground flex items-center gap-2">

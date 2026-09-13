@@ -5,6 +5,8 @@
   --foreground: #0f172a;
   --card: #f8fafc;
   --card-hover: #ffffff;
+  --modal: #f1f5f9;
+  --modal-border: #94a3b8;
   --border: #cbd5e1;
   --muted: #475569;
   --accent: #9333ea;
@@ -21,6 +23,8 @@
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-hover: var(--card-hover);
+  --color-modal: var(--modal);
+  --color-modal-border: var(--modal-border);
   --color-border: var(--border);
   --color-muted: var(--muted);
   --color-accent: var(--accent);

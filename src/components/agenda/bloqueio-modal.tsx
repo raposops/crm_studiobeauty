@@ -124,7 +124,7 @@ export default function BloqueioModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
       <div
-        className="w-full max-w-lg bg-card border border-border rounded-3xl shadow-2xl overflow-hidden animate-scale-up"
+        className="w-full max-w-lg bg-modal border border-slate-300 rounded-3xl shadow-2xl shadow-slate-950/25 ring-1 ring-black/5 overflow-hidden animate-scale-up"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}

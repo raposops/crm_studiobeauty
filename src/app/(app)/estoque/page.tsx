@@ -674,7 +674,7 @@ export default function EstoquePage() {
       {/* MODAL: CRIAR / EDITAR PRODUTO */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
-          <div className="w-full max-w-md bg-card border border-border rounded-3xl p-6 space-y-4 shadow-2xl animate-scale-up">
+          <div className="w-full max-w-md bg-modal border border-slate-300 rounded-3xl p-6 space-y-4 shadow-2xl shadow-slate-950/25 ring-1 ring-black/5 animate-scale-up">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-accent/15 text-accent-light flex items-center justify-center">
@@ -816,7 +816,7 @@ export default function EstoquePage() {
       {/* MODAL: AJUSTE RÁPIDO / ENTRADA DE MERCADORIA */}
       {isAjusteModalOpen && ajustandoProd && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
-          <div className="w-full max-w-sm bg-card border border-border rounded-3xl p-6 space-y-4 shadow-2xl animate-scale-up">
+          <div className="w-full max-w-sm bg-modal border border-slate-300 rounded-3xl p-6 space-y-4 shadow-2xl shadow-slate-950/25 ring-1 ring-black/5 animate-scale-up">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="font-bold text-base text-foreground">

@@ -323,7 +323,7 @@ export default function ClientesPage() {
       {/* Modal Cadastro / Edição de Cliente */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in">
-          <div className="w-full max-w-md bg-card border border-border rounded-2xl p-6 shadow-2xl space-y-5 animate-scale-up">
+          <div className="w-full max-w-md bg-modal border border-slate-300 rounded-2xl p-6 shadow-2xl shadow-slate-950/25 ring-1 ring-black/5 space-y-5 animate-scale-up">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-accent/10 flex items-center justify-center text-accent">
@@ -460,7 +460,7 @@ export default function ClientesPage() {
       {/* Confirmation Dialog to Delete Client */}
       {clienteParaDeletar && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in">
-          <div className="w-full max-w-sm bg-card border border-border rounded-2xl p-6 shadow-2xl space-y-4">
+          <div className="w-full max-w-sm bg-modal border border-slate-300 rounded-2xl p-6 shadow-2xl shadow-slate-950/25 ring-1 ring-black/5 space-y-4">
             <h3 className="text-base font-bold text-foreground">Excluir Cliente</h3>
             <p className="text-xs text-muted leading-relaxed">
               Tem certeza que deseja excluir este cliente do sistema? Esta ação não pode ser desfeita.

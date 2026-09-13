@@ -1050,14 +1050,14 @@ export default function AjustesPage() {
       {/* MODAL: PROFISSIONAL (CRIAR / EDITAR) */}
       {isProfModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-sm bg-background border border-border rounded-3xl p-5 space-y-4 animate-fade-in-up">
+          <div className="w-full max-w-sm bg-modal border border-slate-300 rounded-3xl p-5 space-y-4 shadow-2xl shadow-slate-950/25 ring-1 ring-black/5 animate-fade-in-up">
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold text-foreground">
                 {editingProf ? 'Editar Profissional' : 'Cadastrar Profissional'}
               </h3>
               <button
                 onClick={() => setIsProfModalOpen(false)}
-                className="w-7 h-7 rounded-lg bg-card border border-border flex items-center justify-center cursor-pointer"
+                className="w-7 h-7 rounded-lg bg-white border border-border flex items-center justify-center hover:bg-slate-100 transition-colors cursor-pointer"
               >
                 <X size={16} className="text-muted" />
               </button>
@@ -1074,7 +1074,7 @@ export default function AjustesPage() {
                   placeholder="Ex: Carlos Silva"
                   value={profNome}
                   onChange={(e) => setProfNome(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-card border border-border text-sm text-foreground focus:outline-none focus:border-accent"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-border text-sm text-foreground focus:outline-none focus:border-accent shadow-2xs"
                 />
               </div>
 
@@ -1196,7 +1196,7 @@ export default function AjustesPage() {
                 <button
                   type="button"
                   onClick={() => setIsProfModalOpen(false)}
-                  className="flex-1 py-2.5 rounded-xl border border-border text-xs font-semibold text-muted hover:bg-card cursor-pointer"
+                  className="flex-1 py-2.5 rounded-xl bg-white border border-border text-xs font-semibold text-muted hover:text-foreground hover:bg-slate-100 transition-colors cursor-pointer"
                 >
                   Cancelar
                 </button>
@@ -1218,7 +1218,7 @@ export default function AjustesPage() {
       {/* MODAL: SERVIÇO (CRIAR / EDITAR) */}
       {isServModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-sm bg-background border border-border rounded-3xl p-5 space-y-4 animate-fade-in-up">
+          <div className="w-full max-w-sm bg-modal border border-slate-300 rounded-3xl p-5 space-y-4 shadow-2xl shadow-slate-950/25 ring-1 ring-black/5 animate-fade-in-up">
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold text-foreground">
                 {editingServ ? 'Editar Serviço' : 'Cadastrar Serviço'}
@@ -1228,7 +1228,7 @@ export default function AjustesPage() {
                   setIsServModalOpen(false);
                   setEditingServ(null);
                 }}
-                className="w-7 h-7 rounded-lg bg-card border border-border flex items-center justify-center cursor-pointer"
+                className="w-7 h-7 rounded-lg bg-white border border-border flex items-center justify-center hover:bg-slate-100 transition-colors cursor-pointer"
               >
                 <X size={16} className="text-muted" />
               </button>
@@ -1245,7 +1245,7 @@ export default function AjustesPage() {
                   placeholder="Ex: Corte Degradê"
                   value={servNome}
                   onChange={(e) => setServNome(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-card border border-border text-sm text-foreground focus:outline-none focus:border-accent"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-border text-sm text-foreground focus:outline-none focus:border-accent shadow-2xs"
                 />
               </div>
 
@@ -1261,7 +1261,7 @@ export default function AjustesPage() {
                     placeholder="45.00"
                     value={servPreco}
                     onChange={(e) => setServPreco(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-card border border-border text-sm text-foreground focus:outline-none focus:border-accent"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-border text-sm text-foreground focus:outline-none focus:border-accent shadow-2xs"
                   />
                 </div>
 
@@ -1276,7 +1276,7 @@ export default function AjustesPage() {
                     placeholder="30"
                     value={servDuracao}
                     onChange={(e) => setServDuracao(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-card border border-border text-sm text-foreground focus:outline-none focus:border-accent"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-border text-sm text-foreground focus:outline-none focus:border-accent shadow-2xs"
                   />
                 </div>
               </div>
@@ -1288,7 +1288,7 @@ export default function AjustesPage() {
                 <select
                   value={servCategoria}
                   onChange={(e) => setServCategoria(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-card border border-border text-sm text-foreground focus:outline-none focus:border-accent"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-border text-sm text-foreground focus:outline-none focus:border-accent shadow-2xs"
                 >
                   <option value="Cabelo">Cabelo</option>
                   <option value="Barba">Barba</option>
@@ -1320,7 +1320,7 @@ export default function AjustesPage() {
                     }`}
                   >
                     <span
-                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md transition duration-200 ease-in-out ${
+                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
                         servExigeSinal ? 'translate-x-4' : 'translate-x-0'
                       }`}
                     />
@@ -1328,10 +1328,10 @@ export default function AjustesPage() {
                 </div>
 
                 {servExigeSinal && (
-                  <div className="pt-1 space-y-2 border-t border-amber-500/20 animate-fade-in">
+                  <div className="space-y-2 pt-1 border-t border-amber-500/20 animate-fade-in">
                     <div>
-                      <label className="block text-[11px] font-semibold text-foreground mb-1">
-                        Porcentagem do Sinal (%)
+                      <label className="block text-[11px] font-semibold text-muted mb-1">
+                        Porcentagem de Adiantamento:
                       </label>
                       <div className="grid grid-cols-4 gap-1.5">
                         {['20', '30', '40', '50'].map((pct) => (
@@ -1342,7 +1342,7 @@ export default function AjustesPage() {
                             className={`py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                               servPorcentagemSinal === pct
                                 ? 'bg-amber-500 text-white border-amber-500 shadow-xs'
-                                : 'bg-card border-border text-foreground hover:bg-card-hover'
+                                : 'bg-white border-border text-foreground hover:bg-slate-50'
                             }`}
                           >
                             {pct}%
@@ -1375,7 +1375,7 @@ export default function AjustesPage() {
                     setIsServModalOpen(false);
                     setEditingServ(null);
                   }}
-                  className="flex-1 py-2.5 rounded-xl border border-border text-xs font-semibold text-muted hover:bg-card cursor-pointer"
+                  className="flex-1 py-2.5 rounded-xl bg-white border border-border text-xs font-semibold text-muted hover:text-foreground hover:bg-slate-100 transition-colors cursor-pointer"
                 >
                   Cancelar
                 </button>
@@ -1397,7 +1397,7 @@ export default function AjustesPage() {
       {/* MODAL: PRODUTO EXTRA (CRIAR / EDITAR) */}
       {isProdModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-sm bg-background border border-border rounded-3xl p-5 space-y-4 animate-fade-in-up">
+          <div className="w-full max-w-sm bg-modal border border-slate-300 rounded-3xl p-5 space-y-4 shadow-2xl shadow-slate-950/25 ring-1 ring-black/5 animate-fade-in-up">
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold text-foreground">
                 {editingProd ? 'Editar Produto Extra' : 'Cadastrar Produto Extra'}
@@ -1407,7 +1407,7 @@ export default function AjustesPage() {
                   setIsProdModalOpen(false);
                   setEditingProd(null);
                 }}
-                className="w-7 h-7 rounded-lg bg-card border border-border flex items-center justify-center cursor-pointer"
+                className="w-7 h-7 rounded-lg bg-white border border-border flex items-center justify-center hover:bg-slate-100 transition-colors cursor-pointer"
               >
                 <X size={16} className="text-muted" />
               </button>
@@ -1424,7 +1424,7 @@ export default function AjustesPage() {
                   placeholder="Ex: Shampoo Nutritivo 300ml"
                   value={prodNome}
                   onChange={(e) => setProdNome(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-card border border-border text-sm text-foreground focus:outline-none focus:border-accent"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-border text-sm text-foreground focus:outline-none focus:border-accent shadow-2xs"
                 />
               </div>
 
@@ -1440,7 +1440,7 @@ export default function AjustesPage() {
                   placeholder="45.00"
                   value={prodPreco}
                   onChange={(e) => setProdPreco(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-card border border-border text-sm text-foreground focus:outline-none focus:border-accent"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-border text-sm text-foreground focus:outline-none focus:border-accent shadow-2xs"
                 />
               </div>
 
@@ -1451,10 +1451,11 @@ export default function AjustesPage() {
                 <select
                   value={prodCategoria}
                   onChange={(e) => setProdCategoria(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-card border border-border text-sm text-foreground focus:outline-none focus:border-accent"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-border text-sm text-foreground focus:outline-none focus:border-accent shadow-2xs"
                 >
                   <option value="Cabelo">Cabelo</option>
                   <option value="Barba">Barba</option>
+                  <option value="Combo">Combo</option>
                   <option value="Tratamento">Tratamento</option>
                   <option value="Unhas">Unhas</option>
                   <option value="Estética">Estética</option>
@@ -1464,7 +1465,7 @@ export default function AjustesPage() {
               </div>
 
               {temModuloEstoque && (
-                <div className="p-3 rounded-2xl bg-card/60 border border-border space-y-3">
+                <div className="p-3 rounded-2xl bg-white/70 border border-border space-y-3">
                   <div className="flex items-center gap-1.5 text-accent font-bold text-xs">
                     <Package size={14} />
                     <span>Controle de Estoque (Plano PRO)</span>
@@ -1481,7 +1482,7 @@ export default function AjustesPage() {
                         placeholder="10"
                         value={prodQuantidade}
                         onChange={(e) => setProdQuantidade(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl bg-background border border-border text-xs text-foreground focus:outline-none focus:border-accent"
+                        className="w-full px-3 py-2 rounded-xl bg-white border border-border text-xs text-foreground focus:outline-none focus:border-accent"
                       />
                     </div>
 
@@ -1495,7 +1496,7 @@ export default function AjustesPage() {
                         placeholder="2"
                         value={prodEstoqueMinimo}
                         onChange={(e) => setProdEstoqueMinimo(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl bg-background border border-border text-xs text-foreground focus:outline-none focus:border-accent"
+                        className="w-full px-3 py-2 rounded-xl bg-white border border-border text-xs text-foreground focus:outline-none focus:border-accent"
                       />
                     </div>
                   </div>
@@ -1511,7 +1512,7 @@ export default function AjustesPage() {
                       placeholder="20.00"
                       value={prodCusto}
                       onChange={(e) => setProdCusto(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-background border border-border text-xs text-foreground focus:outline-none focus:border-accent"
+                      className="w-full px-3 py-2 rounded-xl bg-white border border-border text-xs text-foreground focus:outline-none focus:border-accent"
                     />
                   </div>
                 </div>
@@ -1524,7 +1525,7 @@ export default function AjustesPage() {
                     setIsProdModalOpen(false);
                     setEditingProd(null);
                   }}
-                  className="flex-1 py-2.5 rounded-xl border border-border text-xs font-semibold text-muted hover:bg-card cursor-pointer"
+                  className="flex-1 py-2.5 rounded-xl bg-white border border-border text-xs font-semibold text-muted hover:text-foreground hover:bg-slate-100 transition-colors cursor-pointer"
                 >
                   Cancelar
                 </button>
@@ -1546,7 +1547,7 @@ export default function AjustesPage() {
       {/* MODAL: EDITAR PERFIL DO SALÃO */}
       {isSalaoModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
-          <div className="w-full max-w-md bg-card border border-border rounded-3xl p-6 space-y-5 shadow-2xl animate-scale-up">
+          <div className="w-full max-w-md bg-modal border border-slate-300 rounded-3xl p-6 space-y-5 shadow-2xl shadow-slate-950/25 ring-1 ring-black/5 animate-scale-up">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <div className="w-10 h-10 rounded-2xl bg-accent/10 flex items-center justify-center text-accent">

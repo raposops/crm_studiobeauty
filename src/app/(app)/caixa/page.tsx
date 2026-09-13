@@ -774,7 +774,7 @@ export default function CaixaPage() {
       {/* UPGRADE MODAL PARA MÓDULO BLOQUEADO */}
       {isUpgradeModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="w-full max-w-md bg-card border border-border rounded-3xl p-6 space-y-4 animate-fade-in-up text-center shadow-2xl">
+          <div className="w-full max-w-md bg-modal border border-slate-300 rounded-3xl p-6 space-y-4 shadow-2xl shadow-slate-950/25 ring-1 ring-black/5 animate-fade-in-up text-center">
             <div className="w-14 h-14 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center mx-auto border border-amber-500/20 shadow-lg">
               <Sparkles size={28} />
             </div>
