@@ -27,6 +27,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useFluxoCaixa, PeriodoFiltro } from '@/hooks/useFluxoCaixa';
 import { CATEGORIAS_FLUXO_CAIXA, CategoriaMovimentacao } from '@/types';
+import { getTodayDateString } from '@/lib/dateUtils';
 
 function formatarMoeda(centavos: number) {
   return (centavos / 100).toLocaleString('pt-BR', {
@@ -82,7 +83,7 @@ export default function FluxoCaixaPage() {
   const [categoria, setCategoria] = useState<CategoriaMovimentacao>('aluguel');
   const [descricao, setDescricao] = useState('');
   const [valorInput, setValorInput] = useState('');
-  const [dataInput, setDataInput] = useState(new Date().toISOString().split('T')[0]);
+  const [dataInput, setDataInput] = useState(getTodayDateString());
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   function handleOpenModal(tipo: 'saida' | 'entrada') {
@@ -90,7 +91,7 @@ export default function FluxoCaixaPage() {
     setCategoria(tipo === 'saida' ? 'aluguel' : 'receita_avulsa');
     setDescricao('');
     setValorInput('');
-    setDataInput(new Date().toISOString().split('T')[0]);
+    setDataInput(getTodayDateString());
     setIsModalOpen(true);
   }
 

@@ -13,10 +13,11 @@ import { useAgenda } from '@/hooks/useAgenda';
 import { useProfissionais } from '@/hooks/useProfissionais';
 import { useBloqueiosAgenda } from '@/hooks/useBloqueiosAgenda';
 import { useAuth } from '@/contexts/AuthContext';
+import { getLocalDateString, parseLocalDateString, getTodayDateString } from '@/lib/dateUtils';
 
 export default function AgendaPage() {
   const { salao, salaoId, user, profile } = useAuth();
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date>(() => parseLocalDateString(getTodayDateString()));
   const [selectedProfId, setSelectedProfId] = useState<string | null>(null);
   
   // Modals state
@@ -25,7 +26,7 @@ export default function AgendaPage() {
   const [checkoutAgendamento, setCheckoutAgendamento] = useState<Agendamento | null>(null);
   const [isSendingReminders, setIsSendingReminders] = useState(false);
 
-  const dateStr = selectedDate.toISOString().split('T')[0];
+  const dateStr = getLocalDateString(selectedDate);
 
   const { agendamentos: fetchedAgendamentos, isLoading } = useAgenda(salaoId, dateStr, selectedProfId ?? undefined);
   const { profissionais } = useProfissionais(salaoId);
@@ -208,6 +209,7 @@ export default function AgendaPage() {
         ) : (
           <TimeGrid
             agendamentos={filteredAgendamentos}
+            selectedDateStr={dateStr}
             onAppointmentClick={handleAppointmentClick}
           />
         )}

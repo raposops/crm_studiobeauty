@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { getLocalDateString } from '@/lib/dateUtils';
 
 function formatPhone(phone: string): string {
   if (!phone) return '';
@@ -23,10 +24,7 @@ function getTomorrowDateStr(): string {
   // Data de amanhã considerando timezone de Brasília (-03:00)
   const now = new Date();
   const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-  const year = tomorrow.getFullYear();
-  const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
-  const day = String(tomorrow.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  return getLocalDateString(tomorrow);
 }
 
 async function processarLembretes(req: NextRequest) {

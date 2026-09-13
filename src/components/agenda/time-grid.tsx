@@ -4,9 +4,11 @@ import type { Agendamento } from '@/types';
 import { HORARIOS } from '@/data/mock';
 import { Zap, Clock } from 'lucide-react';
 import AppointmentCard from './appointment-card';
+import { getTodayDateString } from '@/lib/dateUtils';
 
 interface TimeGridProps {
   agendamentos: Agendamento[];
+  selectedDateStr?: string;
   onAppointmentClick?: (agendamento: Agendamento) => void;
 }
 
@@ -40,7 +42,11 @@ function getOngoingAgendamentosForHour(
   });
 }
 
-export default function TimeGrid({ agendamentos, onAppointmentClick }: TimeGridProps) {
+export default function TimeGrid({ agendamentos, selectedDateStr, onAppointmentClick }: TimeGridProps) {
+  const todayStr = getTodayDateString();
+  const isViewingToday = (selectedDateStr || todayStr) === todayStr;
+  const isFutureDate = selectedDateStr ? selectedDateStr > todayStr : false;
+
   const now = new Date();
   const currentHour = now.getHours();
   const currentMinute = now.getMinutes();
@@ -51,8 +57,8 @@ export default function TimeGrid({ agendamentos, onAppointmentClick }: TimeGridP
         const horaNum = parseInt(hora.split(':')[0], 10);
         const horaAgendamentos = getAgendamentosForHour(agendamentos, hora);
         const ongoingAgendamentos = getOngoingAgendamentosForHour(agendamentos, hora);
-        const isCurrentHour = horaNum === currentHour;
-        const isPast = horaNum < currentHour;
+        const isCurrentHour = isViewingToday && horaNum === currentHour;
+        const isPast = isViewingToday ? horaNum < currentHour : !isFutureDate;
 
         const hasSimultaneous =
           horaAgendamentos.length > 1 ||

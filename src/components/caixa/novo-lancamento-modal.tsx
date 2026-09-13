@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import type { FormaPagamento, Profissional } from '@/types';
 import { formatCurrency, COMISSAO_PERCENTUAL } from '@/data/mock';
+import { getTodayDateString } from '@/lib/dateUtils';
 
 interface NovoLancamentoModalProps {
   isOpen: boolean;
@@ -79,7 +80,7 @@ export default function NovoLancamentoModal({
   profissionais,
   onSubmit,
 }: NovoLancamentoModalProps) {
-  const [dateStr, setDateStr] = useState(defaultDate || new Date().toISOString().split('T')[0]);
+  const [dateStr, setDateStr] = useState(defaultDate || getTodayDateString());
   const [timeStr, setTimeStr] = useState('12:00');
   const [clienteNome, setClienteNome] = useState('');
   const [profissionalId, setProfissionalId] = useState('');

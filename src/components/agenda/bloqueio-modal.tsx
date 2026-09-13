@@ -13,6 +13,7 @@ import {
   ShieldAlert,
 } from 'lucide-react';
 import type { Profissional } from '@/types';
+import { getTodayDateString } from '@/lib/dateUtils';
 
 interface BloqueioModalProps {
   isOpen: boolean;
@@ -59,7 +60,7 @@ export default function BloqueioModal({
 
   useEffect(() => {
     if (isOpen) {
-      setData(preselectedDate || new Date().toISOString().split('T')[0]);
+      setData(preselectedDate || getTodayDateString());
       if (preselectedProfId && profissionais.some((p) => p.id === preselectedProfId)) {
         setSelectedProfId(preselectedProfId);
       } else if (profissionais.length > 0) {

@@ -1,6 +1,7 @@
 /**
  * Service de Integração com a API Asaas v3 (Sandbox & Produção)
  */
+import { getLocalDateString } from '@/lib/dateUtils';
 
 export interface AsaasCustomerInput {
   name: string;
@@ -172,7 +173,7 @@ class AsaasService {
   async criarAssinatura(input: AsaasSubscriptionInput): Promise<{ id: string; [key: string]: any }> {
     const today = new Date();
     // Vencimento padrão: hoje + 3 dias ou especificado
-    const defaultDueDate = new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const defaultDueDate = getLocalDateString(new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000));
 
     const body = {
       customer: input.customerId,
@@ -202,7 +203,7 @@ class AsaasService {
     billingType?: 'PIX' | 'BOLETO' | 'CREDIT_CARD' | 'UNDEFINED';
   }): Promise<AsaasPayment> {
     const today = new Date();
-    const dueDate = input.dueDate || new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const dueDate = input.dueDate || getLocalDateString(new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000));
 
     return this.request<AsaasPayment>('/payments', {
       method: 'POST',

@@ -8,15 +8,16 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
 } from 'recharts';
 import { Loader2, TrendingUp, Calendar as CalendarIcon, DollarSign, RefreshCw } from 'lucide-react';
+import { getLocalDateString } from '@/lib/dateUtils';
 
 function getMonthStartEnd(date: Date) {
   const year = date.getFullYear();
   const month = date.getMonth();
-  const start = new Date(year, month, 1);
-  const end = new Date(year, month + 1, 0);
+  const start = new Date(year, month, 1, 12, 0, 0);
+  const end = new Date(year, month + 1, 0, 12, 0, 0);
 
-  const startStr = start.toISOString().split('T')[0];
-  const endStr = end.toISOString().split('T')[0];
+  const startStr = getLocalDateString(start);
+  const endStr = getLocalDateString(end);
   return { startStr, endStr };
 }
 

@@ -26,6 +26,7 @@ import { useBloqueiosAgenda } from '@/hooks/useBloqueiosAgenda';
 import { supabase } from '@/lib/supabase';
 import { generateUUID as uuidv4 } from '@/lib/uuid';
 import { triggerWhatsAppNotification } from '@/lib/whatsapp';
+import { getTodayDateString } from '@/lib/dateUtils';
 
 const NOMES_DIAS_SEMANA = [
   'Domingos',
@@ -79,11 +80,7 @@ function timeToMinutes(t: string): number {
 }
 
 function getLocalDateStr(): string {
-  const d = new Date();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  return getTodayDateString();
 }
 
 function formatPhoneInput(value: string) {
@@ -204,7 +201,7 @@ export default function AgendarPublicSlugPage({ params }: { params: Promise<{ sl
     }
 
     const [y, m, d] = selectedDate.split('-').map(Number);
-    const dateObj = new Date(y, m - 1, d);
+    const dateObj = new Date(y, m - 1, d, 12, 0, 0);
     const dayOfWeek = dateObj.getDay(); // 0 = Domingo, 1 = Segunda, etc.
 
     if (selectedProfId) {

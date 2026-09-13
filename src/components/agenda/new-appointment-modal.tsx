@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   X,
   Search,
@@ -29,6 +29,7 @@ import { useClientes } from '@/hooks/useClientes';
 import { useAgenda } from '@/hooks/useAgenda';
 import { useBloqueiosAgenda } from '@/hooks/useBloqueiosAgenda';
 import { useAuth } from '@/contexts/AuthContext';
+import { getTodayDateString } from '@/lib/dateUtils';
 
 interface NewAppointmentModalProps {
   isOpen: boolean;
@@ -84,12 +85,18 @@ export default function NewAppointmentModal({
 
   // Step 3: Date/Time
   const [selectedDate, setSelectedDate] = useState(
-    preselectedDate || new Date().toISOString().split('T')[0]
+    preselectedDate || getTodayDateString()
   );
   const [selectedTime, setSelectedTime] = useState('');
   const [isEncaixe, setIsEncaixe] = useState(false);
   const [observacaoEncaixe, setObservacaoEncaixe] = useState('');
   const [sendWhatsApp, setSendWhatsApp] = useState(true);
+
+  useEffect(() => {
+    if (isOpen && preselectedDate) {
+      setSelectedDate(preselectedDate);
+    }
+  }, [isOpen, preselectedDate]);
 
   // Fetch existing appointments and blocks for selected date and professional to check availability
   const { agendamentos: existingAgendamentos } = useAgenda(
@@ -207,7 +214,7 @@ export default function NewAppointmentModal({
     setSelectedClient(null);
     setSelectedServiceIds([]);
     setSelectedProfId('');
-    setSelectedDate(preselectedDate || new Date().toISOString().split('T')[0]);
+    setSelectedDate(preselectedDate || getTodayDateString());
     setSelectedTime('');
     setIsEncaixe(false);
     setObservacaoEncaixe('');

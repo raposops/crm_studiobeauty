@@ -23,6 +23,7 @@ import {
   PieChart,
   Sparkles,
 } from 'lucide-react';
+import { getLocalDateString, parseLocalDateString, getTodayDateString } from '@/lib/dateUtils';
 import type { FormaPagamento, Profissional } from '@/types';
 import {
   formatCurrency,
@@ -58,7 +59,7 @@ export default function CaixaPage() {
   const { salaoId, hasModule } = useAuth();
   const temFluxoCaixaAvancado = hasModule('fluxo_caixa_avancado');
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
-  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const todayStr = useMemo(() => getTodayDateString(), []);
   const currentMonthStr = useMemo(() => todayStr.slice(0, 7), [todayStr]);
 
   const [modoFiltro, setModoFiltro] = useState<ModoFiltro>('dia');
@@ -155,15 +156,15 @@ export default function CaixaPage() {
 
   // Date Navigation handlers
   function handlePrevDay() {
-    const d = new Date(`${selectedDate}T12:00:00`);
+    const d = parseLocalDateString(selectedDate);
     d.setDate(d.getDate() - 1);
-    setSelectedDate(d.toISOString().split('T')[0]);
+    setSelectedDate(getLocalDateString(d));
   }
 
   function handleNextDay() {
-    const d = new Date(`${selectedDate}T12:00:00`);
+    const d = parseLocalDateString(selectedDate);
     d.setDate(d.getDate() + 1);
-    setSelectedDate(d.toISOString().split('T')[0]);
+    setSelectedDate(getLocalDateString(d));
   }
 
   function handleGoToToday() {

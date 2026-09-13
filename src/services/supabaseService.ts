@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { generateUUID } from '@/lib/uuid';
+import { getTodayDateString } from '@/lib/dateUtils';
 import type { Agendamento, LancamentoFinanceiro, NovoAgendamentoForm, FormaPagamento, ModulosSalao, MovimentacaoFluxoCaixa, ProdutoExtra, BloqueioAgenda, Profissional } from '@/types';
 
 export const supabaseService = {
@@ -144,7 +145,7 @@ export const supabaseService = {
 
       const timeDate = l.data_fechamento ? new Date(l.data_fechamento) : new Date();
       const timeStr = `${String(timeDate.getHours()).padStart(2, '0')}:${String(timeDate.getMinutes()).padStart(2, '0')}`;
-      const dateOnlyStr = l.data_fechamento ? l.data_fechamento.split('T')[0] : new Date().toISOString().split('T')[0];
+      const dateOnlyStr = l.data_fechamento ? l.data_fechamento.split('T')[0] : getTodayDateString();
 
       return {
         id: l.id,
@@ -1685,7 +1686,7 @@ export const supabaseService = {
     const ticketMedio = lan.length > 0 ? Math.round(receitaTotal / lan.length) : 0;
 
     // 3. Agendamentos Hoje (Count de agendamentos com data = hoje)
-    const hoje = new Date().toISOString().split('T')[0];
+    const hoje = getTodayDateString();
     const agendamentosHoje = ag.filter(a => a.data === hoje).length;
 
     // 4. Gráfico: Online vs Presencial

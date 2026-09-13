@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabaseService } from '@/services/supabaseService';
 import type { MovimentacaoFluxoCaixa, CategoriaMovimentacao } from '@/types';
+import { getTodayDateString, getLocalDateString } from '@/lib/dateUtils';
 
 export type PeriodoFiltro = 'hoje' | 'mes' | '30dias';
 
@@ -16,7 +17,7 @@ export function useFluxoCaixa(salaoId: string, periodo: PeriodoFiltro = 'mes') {
   // Helper date range calculator
   const { dataInicio, dataFim, labelPeriodo } = useMemo(() => {
     const agora = new Date();
-    const hojeStr = agora.toISOString().split('T')[0];
+    const hojeStr = getTodayDateString();
 
     if (periodo === 'hoje') {
       return {
@@ -28,7 +29,7 @@ export function useFluxoCaixa(salaoId: string, periodo: PeriodoFiltro = 'mes') {
       const inicio = new Date(agora);
       inicio.setDate(agora.getDate() - 30);
       return {
-        dataInicio: inicio.toISOString().split('T')[0],
+        dataInicio: getLocalDateString(inicio),
         dataFim: hojeStr,
         labelPeriodo: 'Últimos 30 Dias',
       };
