@@ -60,6 +60,7 @@ const DEFAULT_SALAO: SalaoInfo = {
     whatsapp_automatico: true,
     relatorios_avancados: true,
     cobranca_sinal: true,
+    encaixe_agenda: true,
   },
 };
 

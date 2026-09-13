@@ -67,7 +67,8 @@ export default function NewAppointmentModal({
   onClose,
   preselectedDate,
 }: NewAppointmentModalProps) {
-  const { salaoId, salao } = useAuth();
+  const { salaoId, salao, hasModule } = useAuth();
+  const temModuloEncaixe = hasModule('encaixe_agenda');
   const { profissionais } = useProfissionais(salaoId);
   const { servicos } = useServicos(salaoId);
   const { clientes } = useClientes(salaoId);
@@ -236,12 +237,18 @@ export default function NewAppointmentModal({
     }
 
     const hasAppointmentConflict = conflictingAppointmentsBySlot.has(selectedTime);
-    if (hasAppointmentConflict && !isEncaixe) {
-      const confirmEncaixe = window.confirm(
-        'Este horário já possui outro atendimento agendado. Deseja registrar este atendimento como um Encaixe Simultâneo?'
-      );
-      if (!confirmEncaixe) return;
-      setIsEncaixe(true);
+    if (hasAppointmentConflict) {
+      if (!temModuloEncaixe) {
+        alert('Este horário já possui outro atendimento agendado e o módulo de Encaixe na Agenda não está ativo.');
+        return;
+      }
+      if (!isEncaixe) {
+        const confirmEncaixe = window.confirm(
+          'Este horário já possui outro atendimento agendado. Deseja registrar este atendimento como um Encaixe Simultâneo?'
+        );
+        if (!confirmEncaixe) return;
+        setIsEncaixe(true);
+      }
     }
 
     setIsSubmitting(true);
@@ -662,52 +669,54 @@ export default function NewAppointmentModal({
               </div>
 
               {/* Encaixe Mode Toggle Banner */}
-              <div
-                onClick={() => setIsEncaixe((prev) => !prev)}
-                className={`flex items-center justify-between p-3 rounded-2xl border transition-all duration-200 cursor-pointer ${
-                  isEncaixe
-                    ? 'bg-amber-500/15 border-amber-500/40 shadow-xs'
-                    : 'bg-card border-border hover:bg-card-hover'
-                }`}
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div
-                    className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
-                      isEncaixe
-                        ? 'bg-amber-500 text-white shadow-md shadow-amber-500/30'
-                        : 'bg-amber-500/10 text-amber-500'
-                    }`}
-                  >
-                    <Zap size={16} className={isEncaixe ? 'fill-white' : ''} />
-                  </div>
-                  <div className="min-w-0 text-left">
-                    <div className="flex items-center gap-1.5">
-                      <p className="text-xs font-bold text-foreground">
-                        Permitir Encaixe / Atendimento Simultâneo
-                      </p>
-                      {isEncaixe && (
-                        <span className="text-[9px] uppercase font-extrabold px-1.5 py-0.5 rounded-full bg-amber-500 text-white">
-                          Ativo
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-muted truncate">
-                      Atender cliente enquanto um produto químico ou máscara age
-                    </p>
-                  </div>
-                </div>
+              {temModuloEncaixe && (
                 <div
-                  className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                    isEncaixe ? 'bg-amber-500' : 'bg-muted/40'
+                  onClick={() => setIsEncaixe((prev) => !prev)}
+                  className={`flex items-center justify-between p-3 rounded-2xl border transition-all duration-200 cursor-pointer ${
+                    isEncaixe
+                      ? 'bg-amber-500/15 border-amber-500/40 shadow-xs'
+                      : 'bg-card border-border hover:bg-card-hover'
                   }`}
                 >
-                  <span
-                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md transition duration-200 ease-in-out ${
-                      isEncaixe ? 'translate-x-4' : 'translate-x-0'
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div
+                      className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                        isEncaixe
+                          ? 'bg-amber-500 text-white shadow-md shadow-amber-500/30'
+                          : 'bg-amber-500/10 text-amber-500'
+                      }`}
+                    >
+                      <Zap size={16} className={isEncaixe ? 'fill-white' : ''} />
+                    </div>
+                    <div className="min-w-0 text-left">
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-xs font-bold text-foreground">
+                          Permitir Encaixe / Atendimento Simultâneo
+                        </p>
+                        {isEncaixe && (
+                          <span className="text-[9px] uppercase font-extrabold px-1.5 py-0.5 rounded-full bg-amber-500 text-white">
+                            Ativo
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-muted truncate">
+                        Atender cliente enquanto um produto químico ou máscara age
+                      </p>
+                    </div>
+                  </div>
+                  <div
+                    className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                      isEncaixe ? 'bg-amber-500' : 'bg-muted/40'
                     }`}
-                  />
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md transition duration-200 ease-in-out ${
+                        isEncaixe ? 'translate-x-4' : 'translate-x-0'
+                      }`}
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Time Selection */}
               <div>
@@ -716,7 +725,7 @@ export default function NewAppointmentModal({
                     <Clock size={14} />
                     Horário de início
                   </label>
-                  {isEncaixe && (
+                  {isEncaixe && temModuloEncaixe && (
                     <span className="text-[10px] font-bold text-amber-500 flex items-center gap-1">
                       <Zap size={10} /> Encaixes Liberados
                     </span>
@@ -748,6 +757,21 @@ export default function NewAppointmentModal({
                     // Se tiver conflito de agendamento (outra cliente no horário)
                     if (hasApptConflict) {
                       const clientName = conflicts?.[0]?.cliente?.nome || 'Cliente';
+
+                      if (!temModuloEncaixe) {
+                        return (
+                          <button
+                            key={time}
+                            type="button"
+                            disabled={true}
+                            className="py-2 rounded-xl text-xs font-mono font-semibold border bg-rose-500/10 border-rose-500/20 text-rose-700/60 line-through cursor-not-allowed opacity-50 relative"
+                            title={`Horário já ocupado por ${clientName}`}
+                          >
+                            {time}
+                          </button>
+                        );
+                      }
+
                       const isEncaixeSelected = isSelected;
 
                       return (
