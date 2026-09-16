@@ -54,12 +54,30 @@ export const STATUS_CONFIG: Record<
 // Entities
 // ========================
 
+export const ATIVIDADES_PROFISSIONAL_COMUNS = [
+  'Cabeleireira(o)',
+  'Manicure / Pedicure',
+  'Escovista',
+  'Designer de Sobrancelhas',
+  'Maquiadora',
+  'Lash Designer (Cílios)',
+  'Depiladora',
+  'Esteticista',
+  'Barbeiro',
+  'Colorista',
+  'Massoterapeuta',
+  'Trancista',
+  'Podóloga',
+  'Outros',
+] as const;
+
 export interface Profissional {
   id: string;
   nome: string;
   avatar_url?: string;
   iniciais: string;
   cor: string; // Tailwind gradient classes
+  especialidade?: string; // ex: 'Manicure / Pedicure', 'Escovista', etc.
   comissao_padrao_pct?: number; // % de repasse para o profissional (ex: 40, 50, 0)
   dias_trabalho?: number[]; // [0, 1, 2, 3, 4, 5, 6] onde 0=Domingo, 1=Segunda, etc.
 }

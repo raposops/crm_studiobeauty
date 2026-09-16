@@ -487,7 +487,7 @@ export const supabaseService = {
     }));
   },
 
-  async criarProfissional(salaoId: string, payload: { nome: string; cor: string; avatar_url?: string; comissao_padrao_pct?: number; dias_trabalho?: number[] }) {
+  async criarProfissional(salaoId: string, payload: { nome: string; cor: string; avatar_url?: string; especialidade?: string; comissao_padrao_pct?: number; dias_trabalho?: number[] }) {
     const nomeLimpo = payload.nome.trim();
     const partesNome = nomeLimpo.split(' ');
     const iniciais = partesNome.length > 1
@@ -499,6 +499,7 @@ export const supabaseService = {
       nome: nomeLimpo,
       iniciais,
       cor: payload.cor || 'from-purple-500 to-indigo-500',
+      especialidade: payload.especialidade?.trim() || null,
       avatar_url: payload.avatar_url,
       comissao_padrao_pct: payload.comissao_padrao_pct ?? 40,
       dias_trabalho: payload.dias_trabalho || [1, 2, 3, 4, 5, 6],
@@ -510,9 +511,11 @@ export const supabaseService = {
       .select()
       .single();
 
-    // Fallback caso a coluna dias_trabalho ainda não exista no Supabase
-    if (error && error.message && error.message.includes('dias_trabalho')) {
-      const { dias_trabalho, ...fallbackData } = insertData;
+    // Fallback caso a coluna especialidade ou dias_trabalho ainda não exista no Supabase
+    if (error && error.message && (error.message.includes('especialidade') || error.message.includes('dias_trabalho'))) {
+      const fallbackData = { ...insertData };
+      if (error.message.includes('especialidade')) delete fallbackData.especialidade;
+      if (error.message.includes('dias_trabalho')) delete fallbackData.dias_trabalho;
       const retry = await supabase
         .from('profissionais')
         .insert(fallbackData)
@@ -534,6 +537,7 @@ export const supabaseService = {
     payload: {
       nome?: string;
       cor?: string;
+      especialidade?: string;
       comissao_padrao_pct?: number;
       avatar_url?: string;
       dias_trabalho?: number[];
@@ -550,6 +554,7 @@ export const supabaseService = {
       updateData.iniciais = iniciais;
     }
     if (payload.cor !== undefined) updateData.cor = payload.cor;
+    if (payload.especialidade !== undefined) updateData.especialidade = payload.especialidade?.trim() || null;
     if (payload.comissao_padrao_pct !== undefined) updateData.comissao_padrao_pct = payload.comissao_padrao_pct;
     if (payload.avatar_url !== undefined) updateData.avatar_url = payload.avatar_url;
     if (payload.dias_trabalho !== undefined) updateData.dias_trabalho = payload.dias_trabalho;
@@ -561,9 +566,11 @@ export const supabaseService = {
       .select()
       .single();
 
-    // Fallback caso a coluna dias_trabalho ainda não exista no Supabase
-    if (error && error.message && error.message.includes('dias_trabalho')) {
-      const { dias_trabalho, ...fallbackData } = updateData;
+    // Fallback caso a coluna especialidade ou dias_trabalho ainda não exista no Supabase
+    if (error && error.message && (error.message.includes('especialidade') || error.message.includes('dias_trabalho'))) {
+      const fallbackData = { ...updateData };
+      if (error.message.includes('especialidade')) delete fallbackData.especialidade;
+      if (error.message.includes('dias_trabalho')) delete fallbackData.dias_trabalho;
       const retry = await supabase
         .from('profissionais')
         .update(fallbackData)

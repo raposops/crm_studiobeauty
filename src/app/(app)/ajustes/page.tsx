@@ -37,7 +37,7 @@ import { formatCurrency } from '@/data/mock';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabaseService } from '@/services/supabaseService';
 import AssinaturaModal from '@/components/ajustes/assinatura-modal';
-import type { Profissional, Servico, ProdutoExtra } from '@/types';
+import { ATIVIDADES_PROFISSIONAL_COMUNS, type Profissional, type Servico, type ProdutoExtra } from '@/types';
 
 type ViewMode = 'menu' | 'profissionais' | 'servicos' | 'produtos';
 
@@ -122,6 +122,8 @@ export default function AjustesPage() {
   const [editingProf, setEditingProf] = useState<Profissional | null>(null);
   const [profNome, setProfNome] = useState('');
   const [profCor, setProfCor] = useState(COLOR_OPTIONS[0].class);
+  const [profEspecialidadeTipo, setProfEspecialidadeTipo] = useState('');
+  const [profEspecialidadeOutro, setProfEspecialidadeOutro] = useState('');
   const [profComissao, setProfComissao] = useState('40');
   const [profDiasTrabalho, setProfDiasTrabalho] = useState<number[]>([1, 2, 3, 4, 5, 6]);
 
@@ -192,6 +194,8 @@ export default function AjustesPage() {
     setEditingProf(null);
     setProfNome('');
     setProfCor(COLOR_OPTIONS[0].class);
+    setProfEspecialidadeTipo('');
+    setProfEspecialidadeOutro('');
     setProfComissao('40');
     setProfDiasTrabalho([1, 2, 3, 4, 5, 6]);
     setIsProfModalOpen(true);
@@ -201,6 +205,18 @@ export default function AjustesPage() {
     setEditingProf(prof);
     setProfNome(prof.nome);
     setProfCor(prof.cor || COLOR_OPTIONS[0].class);
+    if (prof.especialidade) {
+      if ((ATIVIDADES_PROFISSIONAL_COMUNS as readonly string[]).includes(prof.especialidade)) {
+        setProfEspecialidadeTipo(prof.especialidade);
+        setProfEspecialidadeOutro('');
+      } else {
+        setProfEspecialidadeTipo('Outros');
+        setProfEspecialidadeOutro(prof.especialidade);
+      }
+    } else {
+      setProfEspecialidadeTipo('');
+      setProfEspecialidadeOutro('');
+    }
     setProfComissao(String(prof.comissao_padrao_pct ?? 40));
     setProfDiasTrabalho(Array.isArray(prof.dias_trabalho) ? prof.dias_trabalho : [1, 2, 3, 4, 5, 6]);
     setIsProfModalOpen(true);
@@ -211,6 +227,9 @@ export default function AjustesPage() {
     if (!profNome.trim()) return;
 
     const comissaoNum = Math.max(0, Math.min(100, parseFloat(profComissao) || 0));
+    const especialidadeFinal = profEspecialidadeTipo === 'Outros'
+      ? profEspecialidadeOutro.trim()
+      : profEspecialidadeTipo.trim();
 
     if (editingProf) {
       atualizarProfissional.mutate(
@@ -219,6 +238,7 @@ export default function AjustesPage() {
           payload: {
             nome: profNome,
             cor: profCor,
+            especialidade: especialidadeFinal || undefined,
             comissao_padrao_pct: comissaoNum,
             dias_trabalho: profDiasTrabalho,
           },
@@ -227,6 +247,8 @@ export default function AjustesPage() {
           onSuccess: () => {
             setEditingProf(null);
             setProfNome('');
+            setProfEspecialidadeTipo('');
+            setProfEspecialidadeOutro('');
             setProfComissao('40');
             setProfDiasTrabalho([1, 2, 3, 4, 5, 6]);
             setIsProfModalOpen(false);
@@ -242,12 +264,15 @@ export default function AjustesPage() {
         {
           nome: profNome,
           cor: profCor,
+          especialidade: especialidadeFinal || undefined,
           comissao_padrao_pct: comissaoNum,
           dias_trabalho: profDiasTrabalho,
         },
         {
           onSuccess: () => {
             setProfNome('');
+            setProfEspecialidadeTipo('');
+            setProfEspecialidadeOutro('');
             setProfComissao('40');
             setProfDiasTrabalho([1, 2, 3, 4, 5, 6]);
             setIsProfModalOpen(false);
@@ -814,9 +839,16 @@ export default function AjustesPage() {
                       </span>
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-foreground">
-                        {prof.nome}
-                      </p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-bold text-foreground">
+                          {prof.nome}
+                        </p>
+                        {prof.especialidade && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent/10 text-accent font-semibold border border-accent/20">
+                            {prof.especialidade}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-[10px] font-mono text-muted">ID: {prof.id.slice(0, 8)}...</p>
                     </div>
                   </div>
@@ -1078,6 +1110,43 @@ export default function AjustesPage() {
                   className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-border text-sm text-foreground focus:outline-none focus:border-accent shadow-2xs"
                 />
               </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-muted mb-1">
+                  Tipo / Especialidade do Profissional
+                </label>
+                <select
+                  value={profEspecialidadeTipo}
+                  onChange={(e) => setProfEspecialidadeTipo(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-border text-sm text-foreground focus:outline-none focus:border-accent shadow-2xs cursor-pointer"
+                >
+                  <option value="">Selecione a atividade (opcional)</option>
+                  {ATIVIDADES_PROFISSIONAL_COMUNS.map((esp) => (
+                    <option key={esp} value={esp}>
+                      {esp}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[10px] text-muted mt-1">
+                  Exibido para suas clientes na escolha do profissional no agendamento online.
+                </p>
+              </div>
+
+              {profEspecialidadeTipo === 'Outros' && (
+                <div className="animate-fade-in">
+                  <label className="block text-xs font-semibold text-muted mb-1">
+                    Especifique a Especialidade / Função
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: Trancista, Podóloga, Terapeuta Capilar..."
+                    value={profEspecialidadeOutro}
+                    onChange={(e) => setProfEspecialidadeOutro(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-border text-sm text-foreground focus:outline-none focus:border-accent shadow-2xs"
+                  />
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs font-semibold text-muted mb-2">

@@ -624,9 +624,16 @@ export default function NewAppointmentModal({
                               {prof.iniciais}
                             </span>
                           </div>
-                          <span className="text-xs font-semibold text-foreground truncate">
-                            {prof.nome.split(' ')[0]}
-                          </span>
+                          <div className="min-w-0 text-left">
+                            <span className="text-xs font-semibold text-foreground truncate block">
+                              {prof.nome.split(' ')[0]}
+                            </span>
+                            {prof.especialidade && (
+                              <span className="text-[9px] text-muted truncate block">
+                                {prof.especialidade}
+                              </span>
+                            )}
+                          </div>
                         </button>
                       );
                     })}

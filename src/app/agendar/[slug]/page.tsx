@@ -736,9 +736,16 @@ export default function AgendarPublicSlugPage({ params }: { params: Promise<{ sl
                         {prof.iniciais}
                       </div>
                       <div>
-                        <h3 className="font-bold text-sm text-foreground">
-                          {prof.nome}
-                        </h3>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <h3 className="font-bold text-sm text-foreground">
+                            {prof.nome}
+                          </h3>
+                          {prof.especialidade && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent/10 text-accent font-semibold border border-accent/20">
+                              {prof.especialidade}
+                            </span>
+                          )}
+                        </div>
                         <p className="text-[11px] text-muted">
                           {formatDiasProfissional(prof.dias_trabalho)}
                         </p>
@@ -903,6 +910,14 @@ export default function AgendarPublicSlugPage({ params }: { params: Promise<{ sl
                 <p>
                   <strong className="text-foreground">Serviço(s):</strong>{' '}
                   {selectedServices.map((s) => s.nome).join(', ')}
+                </p>
+                <p>
+                  <strong className="text-foreground">Profissional:</strong>{' '}
+                  {(() => {
+                    const prof = profissionais.find((p) => p.id === selectedProfId);
+                    if (!prof) return 'Qualquer Profissional disponível';
+                    return `${prof.nome}${prof.especialidade ? ` (${prof.especialidade})` : ''}`;
+                  })()}
                 </p>
                 <p>
                   <strong className="text-foreground">Data e Hora:</strong>{' '}
