@@ -1082,13 +1082,14 @@ export default function AjustesPage() {
 
       {/* MODAL: PROFISSIONAL (CRIAR / EDITAR) */}
       {isProfModalOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-sm bg-modal border border-slate-300 rounded-3xl p-5 space-y-4 shadow-2xl shadow-slate-950/25 ring-1 ring-black/5 animate-fade-in-up">
-            <div className="flex items-center justify-between">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
+          <div className="w-full max-w-md bg-modal border border-slate-300 rounded-3xl p-5 shadow-2xl shadow-slate-950/25 ring-1 ring-black/5 animate-fade-in-up max-h-[90vh] flex flex-col my-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-border/40 shrink-0">
               <h3 className="text-base font-bold text-foreground">
                 {editingProf ? 'Editar Profissional' : 'Cadastrar Profissional'}
               </h3>
               <button
+                type="button"
                 onClick={() => setIsProfModalOpen(false)}
                 className="w-7 h-7 rounded-lg bg-white border border-border flex items-center justify-center hover:bg-slate-100 transition-colors cursor-pointer"
               >
@@ -1096,173 +1097,175 @@ export default function AjustesPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmitProfissional} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-muted mb-1">
-                  Nome Completo
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ex: Carlos Silva"
-                  value={profNome}
-                  onChange={(e) => setProfNome(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-border text-sm text-foreground focus:outline-none focus:border-accent shadow-2xs"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-muted mb-1">
-                  Tipo / Especialidade do Profissional
-                </label>
-                <select
-                  value={profEspecialidadeTipo}
-                  onChange={(e) => setProfEspecialidadeTipo(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-border text-sm text-foreground focus:outline-none focus:border-accent shadow-2xs cursor-pointer"
-                >
-                  <option value="">Selecione a atividade (opcional)</option>
-                  {ATIVIDADES_PROFISSIONAL_COMUNS.map((esp) => (
-                    <option key={esp} value={esp}>
-                      {esp}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-[10px] text-muted mt-1">
-                  Exibido para suas clientes na escolha do profissional no agendamento online.
-                </p>
-              </div>
-
-              {profEspecialidadeTipo === 'Outros' && (
-                <div className="animate-fade-in">
+            <form onSubmit={handleSubmitProfissional} className="flex flex-col flex-1 min-h-0">
+              <div className="flex-1 overflow-y-auto pr-1 py-3 space-y-3.5">
+                <div>
                   <label className="block text-xs font-semibold text-muted mb-1">
-                    Especifique a Especialidade / Função
+                    Nome Completo
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder="Ex: Trancista, Podóloga, Terapeuta Capilar..."
-                    value={profEspecialidadeOutro}
-                    onChange={(e) => setProfEspecialidadeOutro(e.target.value)}
+                    placeholder="Ex: Carlos Silva"
+                    value={profNome}
+                    onChange={(e) => setProfNome(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-border text-sm text-foreground focus:outline-none focus:border-accent shadow-2xs"
                   />
                 </div>
-              )}
 
-              <div>
-                <label className="block text-xs font-semibold text-muted mb-2">
-                  Cor de Identificação
-                </label>
-                <div className="grid grid-cols-5 gap-2">
-                  {COLOR_OPTIONS.map((c) => (
-                    <button
-                      key={c.class}
-                      type="button"
-                      onClick={() => setProfCor(c.class)}
-                      className={`h-9 rounded-xl bg-gradient-to-br ${c.class} flex items-center justify-center transition-all ${
-                        profCor === c.class
-                          ? 'ring-2 ring-foreground scale-105'
-                          : 'opacity-70 hover:opacity-100'
-                      }`}
-                    >
-                      {profCor === c.class && (
-                        <Check size={14} className="text-white" />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-muted mb-1">
-                  % de Repasse / Comissão
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    required
-                    placeholder="Ex: 40"
-                    value={profComissao}
-                    onChange={(e) => setProfComissao(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-card border border-border text-sm text-foreground focus:outline-none focus:border-accent pr-8"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted text-sm font-semibold">
-                    %
-                  </span>
-                </div>
-                <p className="text-[11px] text-muted/70 mt-1">
-                  Digite 0 se o profissional for assalariado ou não receber repasse.
-                </p>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-semibold text-muted">
-                    Dias de Atendimento na Semana
+                <div>
+                  <label className="block text-xs font-semibold text-muted mb-1">
+                    Tipo / Especialidade do Profissional
                   </label>
-                  <div className="flex items-center gap-1.5 text-[10px]">
-                    <button
-                      type="button"
-                      onClick={() => setProfDiasTrabalho([1, 2, 3, 4, 5])}
-                      className="text-accent hover:underline cursor-pointer font-medium"
-                    >
-                      Seg-Sex
-                    </button>
-                    <span className="text-muted/50">&middot;</span>
-                    <button
-                      type="button"
-                      onClick={() => setProfDiasTrabalho([1, 2, 3, 4, 5, 6])}
-                      className="text-accent hover:underline cursor-pointer font-medium"
-                    >
-                      Seg-Sáb
-                    </button>
-                    <span className="text-muted/50">&middot;</span>
-                    <button
-                      type="button"
-                      onClick={() => setProfDiasTrabalho([0, 1, 2, 3, 4, 5, 6])}
-                      className="text-accent hover:underline cursor-pointer font-medium"
-                    >
-                      Todos
-                    </button>
+                  <select
+                    value={profEspecialidadeTipo}
+                    onChange={(e) => setProfEspecialidadeTipo(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-border text-sm text-foreground focus:outline-none focus:border-accent shadow-2xs cursor-pointer"
+                  >
+                    <option value="">Selecione a atividade (opcional)</option>
+                    {ATIVIDADES_PROFISSIONAL_COMUNS.map((esp) => (
+                      <option key={esp} value={esp}>
+                        {esp}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[10px] text-muted mt-1">
+                    Exibido para suas clientes na escolha do profissional no agendamento online.
+                  </p>
+                </div>
+
+                {profEspecialidadeTipo === 'Outros' && (
+                  <div className="animate-fade-in">
+                    <label className="block text-xs font-semibold text-muted mb-1">
+                      Especifique a Especialidade / Função
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ex: Trancista, Podóloga, Terapeuta Capilar..."
+                      value={profEspecialidadeOutro}
+                      onChange={(e) => setProfEspecialidadeOutro(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-border text-sm text-foreground focus:outline-none focus:border-accent shadow-2xs"
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-xs font-semibold text-muted mb-2">
+                    Cor de Identificação
+                  </label>
+                  <div className="grid grid-cols-5 gap-2">
+                    {COLOR_OPTIONS.map((c) => (
+                      <button
+                        key={c.class}
+                        type="button"
+                        onClick={() => setProfCor(c.class)}
+                        className={`h-9 rounded-xl bg-gradient-to-br ${c.class} flex items-center justify-center transition-all ${
+                          profCor === c.class
+                            ? 'ring-2 ring-foreground scale-105'
+                            : 'opacity-70 hover:opacity-100'
+                        }`}
+                      >
+                        {profCor === c.class && (
+                          <Check size={14} className="text-white" />
+                        )}
+                      </button>
+                    ))}
                   </div>
                 </div>
-                <div className="grid grid-cols-7 gap-1">
-                  {DIAS_SEMANA_LIST.map((d) => {
-                    const isSelected = profDiasTrabalho.includes(d.dia);
-                    return (
-                      <button
-                        key={d.dia}
-                        type="button"
-                        onClick={() => {
-                          if (isSelected) {
-                            if (profDiasTrabalho.length === 1) {
-                              alert('O profissional deve atender em pelo menos 1 dia.');
-                              return;
-                            }
-                            setProfDiasTrabalho(profDiasTrabalho.filter((item) => item !== d.dia));
-                          } else {
-                            setProfDiasTrabalho([...profDiasTrabalho, d.dia]);
-                          }
-                        }}
-                        className={`py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                          isSelected
-                            ? 'border-accent bg-accent text-white shadow-xs'
-                            : 'border-border bg-card text-muted hover:text-foreground'
-                        }`}
-                        title={d.full}
-                      >
-                        {d.label}
-                      </button>
-                    );
-                  })}
+
+                <div>
+                  <label className="block text-xs font-semibold text-muted mb-1">
+                    % de Repasse / Comissão
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      required
+                      placeholder="Ex: 40"
+                      value={profComissao}
+                      onChange={(e) => setProfComissao(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-card border border-border text-sm text-foreground focus:outline-none focus:border-accent pr-8"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted text-sm font-semibold">
+                      %
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted/70 mt-1">
+                    Digite 0 se o profissional for assalariado ou não receber repasse.
+                  </p>
                 </div>
-                <p className="text-[11px] text-muted/70 mt-1">
-                  O link público de agendamento bloqueará automaticamente os dias não marcados.
-                </p>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-semibold text-muted">
+                      Dias de Atendimento na Semana
+                    </label>
+                    <div className="flex items-center gap-1.5 text-[10px]">
+                      <button
+                        type="button"
+                        onClick={() => setProfDiasTrabalho([1, 2, 3, 4, 5])}
+                        className="text-accent hover:underline cursor-pointer font-medium"
+                      >
+                        Seg-Sex
+                      </button>
+                      <span className="text-muted/50">&middot;</span>
+                      <button
+                        type="button"
+                        onClick={() => setProfDiasTrabalho([1, 2, 3, 4, 5, 6])}
+                        className="text-accent hover:underline cursor-pointer font-medium"
+                      >
+                        Seg-Sáb
+                      </button>
+                      <span className="text-muted/50">&middot;</span>
+                      <button
+                        type="button"
+                        onClick={() => setProfDiasTrabalho([0, 1, 2, 3, 4, 5, 6])}
+                        className="text-accent hover:underline cursor-pointer font-medium"
+                      >
+                        Todos
+                      </button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-7 gap-1">
+                    {DIAS_SEMANA_LIST.map((d) => {
+                      const isSelected = profDiasTrabalho.includes(d.dia);
+                      return (
+                        <button
+                          key={d.dia}
+                          type="button"
+                          onClick={() => {
+                            if (isSelected) {
+                              if (profDiasTrabalho.length === 1) {
+                                alert('O profissional deve atender em pelo menos 1 dia.');
+                                return;
+                              }
+                              setProfDiasTrabalho(profDiasTrabalho.filter((item) => item !== d.dia));
+                            } else {
+                              setProfDiasTrabalho([...profDiasTrabalho, d.dia]);
+                            }
+                          }}
+                          className={`py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                            isSelected
+                              ? 'border-accent bg-accent text-white shadow-xs'
+                              : 'border-border bg-card text-muted hover:text-foreground'
+                          }`}
+                          title={d.full}
+                        >
+                          {d.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[11px] text-muted/70 mt-1">
+                    O link público de agendamento bloqueará automaticamente os dias não marcados.
+                  </p>
+                </div>
               </div>
 
-              <div className="pt-2 flex gap-2">
+              <div className="pt-3 border-t border-border/40 flex gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsProfModalOpen(false)}
@@ -1273,7 +1276,7 @@ export default function AjustesPage() {
                 <button
                   type="submit"
                   disabled={criarProfissional.isPending || atualizarProfissional.isPending}
-                  className="flex-1 py-2.5 rounded-xl bg-accent text-xs font-bold text-white hover:bg-accent/90 disabled:opacity-50 cursor-pointer"
+                  className="flex-1 py-2.5 rounded-xl bg-accent text-xs font-bold text-white hover:bg-accent/90 disabled:opacity-50 cursor-pointer shadow-md shadow-accent/20"
                 >
                   {editingProf
                     ? (atualizarProfissional.isPending ? 'Atualizando...' : 'Atualizar')
@@ -1287,13 +1290,14 @@ export default function AjustesPage() {
 
       {/* MODAL: SERVIÇO (CRIAR / EDITAR) */}
       {isServModalOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-sm bg-modal border border-slate-300 rounded-3xl p-5 space-y-4 shadow-2xl shadow-slate-950/25 ring-1 ring-black/5 animate-fade-in-up">
-            <div className="flex items-center justify-between">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
+          <div className="w-full max-w-md bg-modal border border-slate-300 rounded-3xl p-5 shadow-2xl shadow-slate-950/25 ring-1 ring-black/5 animate-fade-in-up max-h-[90vh] flex flex-col my-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-border/40 shrink-0">
               <h3 className="text-base font-bold text-foreground">
                 {editingServ ? 'Editar Serviço' : 'Cadastrar Serviço'}
               </h3>
               <button
+                type="button"
                 onClick={() => {
                   setIsServModalOpen(false);
                   setEditingServ(null);
@@ -1304,158 +1308,161 @@ export default function AjustesPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmitServico} className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-muted mb-1">
-                  Nome do Serviço
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ex: Corte Degradê"
-                  value={servNome}
-                  onChange={(e) => setServNome(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-border text-sm text-foreground focus:outline-none focus:border-accent shadow-2xs"
-                />
-              </div>
+            <form onSubmit={handleSubmitServico} className="flex flex-col flex-1 min-h-0">
+              <div className="flex-1 overflow-y-auto pr-1 py-3 space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-muted mb-1">
+                    Nome do Serviço
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: Corte Degradê"
+                    value={servNome}
+                    onChange={(e) => setServNome(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-border text-sm text-foreground focus:outline-none focus:border-accent shadow-2xs"
+                  />
+                </div>
 
-              <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block text-xs font-semibold text-muted mb-1">
                     Preço (R$)
                   </label>
                   <input
-                    type="number"
-                    step="0.01"
+                    type="text"
                     required
-                    placeholder="45.00"
+                    placeholder="35,00"
                     value={servPreco}
                     onChange={(e) => setServPreco(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-border text-sm text-foreground focus:outline-none focus:border-accent shadow-2xs"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-muted mb-1">
-                    Duração (minutos)
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    step="5"
-                    placeholder="30"
-                    value={servDuracao}
-                    onChange={(e) => setServDuracao(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-border text-sm text-foreground focus:outline-none focus:border-accent shadow-2xs"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-muted mb-1">
-                  Categoria
-                </label>
-                <select
-                  value={servCategoria}
-                  onChange={(e) => setServCategoria(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-border text-sm text-foreground focus:outline-none focus:border-accent shadow-2xs"
-                >
-                  <option value="Cabelo">Cabelo</option>
-                  <option value="Barba">Barba</option>
-                  <option value="Combo">Combo</option>
-                  <option value="Tratamento">Tratamento</option>
-                  <option value="Unhas">Unhas</option>
-                  <option value="Estética">Estética</option>
-                  <option value="Outros">Outros</option>
-                </select>
-              </div>
-
-              {/* Seção de Sinal / Adiantamento */}
-              {temModuloSinal ? (
-                <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-                        <Zap size={14} className="fill-amber-500" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-foreground">Exigir Sinal (Adiantamento)</p>
-                        <p className="text-[10px] text-muted">Cliente paga uma parte para reservar</p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setServExigeSinal(!servExigeSinal)}
-                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                        servExigeSinal ? 'bg-amber-500' : 'bg-muted/40'
-                      }`}
-                    >
-                      <span
-                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
-                          servExigeSinal ? 'translate-x-4' : 'translate-x-0'
-                        }`}
-                      />
-                    </button>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-muted mb-1">
+                      Duração (min)
+                    </label>
+                    <input
+                      type="number"
+                      step="5"
+                      min="5"
+                      required
+                      value={servDuracao}
+                      onChange={(e) => setServDuracao(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-border text-sm text-foreground focus:outline-none focus:border-accent shadow-2xs"
+                    />
                   </div>
 
-                  {servExigeSinal && (
-                    <div className="space-y-2 pt-1 border-t border-amber-500/20 animate-fade-in">
-                      <div>
-                        <label className="block text-[11px] font-semibold text-muted mb-1">
-                          Porcentagem de Adiantamento:
-                        </label>
-                        <div className="grid grid-cols-4 gap-1.5">
-                          {['20', '30', '40', '50'].map((pct) => (
-                            <button
-                              key={pct}
-                              type="button"
-                              onClick={() => setServPorcentagemSinal(pct)}
-                              className={`py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                                servPorcentagemSinal === pct
-                                  ? 'bg-amber-500 text-white border-amber-500 shadow-xs'
-                                  : 'bg-white border-border text-foreground hover:bg-slate-50'
-                              }`}
-                            >
-                              {pct}%
-                            </button>
-                          ))}
+                  <div>
+                    <label className="block text-xs font-semibold text-muted mb-1">
+                      Categoria
+                    </label>
+                    <select
+                      value={servCategoria}
+                      onChange={(e) => setServCategoria(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-border text-sm text-foreground focus:outline-none focus:border-accent shadow-2xs"
+                    >
+                      <option value="Cabelo">Cabelo</option>
+                      <option value="Barba">Barba</option>
+                      <option value="Combo">Combo</option>
+                      <option value="Tratamento">Tratamento</option>
+                      <option value="Unhas">Unhas</option>
+                      <option value="Estética">Estética</option>
+                      <option value="Sobrancelha">Sobrancelha</option>
+                      <option value="Depilação">Depilação</option>
+                      <option value="Outros">Outros</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Seção de Sinal / Adiantamento */}
+                {temModuloSinal ? (
+                  <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                          <Zap size={14} className="fill-amber-500" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-foreground">Exigir Sinal (Adiantamento)</p>
+                          <p className="text-[10px] text-muted">Cliente paga uma parte para reservar</p>
                         </div>
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => setServExigeSinal(!servExigeSinal)}
+                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                          servExigeSinal ? 'bg-amber-500' : 'bg-muted/40'
+                        }`}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                            servExigeSinal ? 'translate-x-4' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                    </div>
 
-                      {servPreco && !isNaN(parseFloat(servPreco.replace(',', '.'))) && (
-                        <p className="text-[11px] text-amber-700 dark:text-amber-300 font-semibold bg-amber-500/15 p-2 rounded-xl text-center">
-                          💰 Sinal de R${' '}
-                          {(
-                            (parseFloat(servPreco.replace(',', '.')) *
-                              (parseInt(servPorcentagemSinal, 10) || 30)) /
-                            100
-                          )
-                            .toFixed(2)
-                            .replace('.', ',')}{' '}
-                          ({servPorcentagemSinal}%) no agendamento.
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="p-3 rounded-2xl bg-slate-100 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 flex items-center justify-between opacity-80">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-500 flex items-center justify-center">
-                      <Zap size={14} />
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-foreground">Cobrança de Sinal</p>
-                      <p className="text-[10px] text-muted">Módulo desativado no painel admin</p>
-                    </div>
+                    {servExigeSinal && (
+                      <div className="space-y-2 pt-1 border-t border-amber-500/20 animate-fade-in">
+                        <div>
+                          <label className="block text-[11px] font-semibold text-muted mb-1">
+                            Porcentagem de Adiantamento:
+                          </label>
+                          <div className="grid grid-cols-4 gap-1.5">
+                            {['20', '30', '40', '50'].map((pct) => (
+                              <button
+                                key={pct}
+                                type="button"
+                                onClick={() => setServPorcentagemSinal(pct)}
+                                className={`py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                                  servPorcentagemSinal === pct
+                                    ? 'bg-amber-500 text-white border-amber-500 shadow-xs'
+                                    : 'bg-white border-border text-foreground hover:bg-slate-50'
+                                }`}
+                              >
+                                {pct}%
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {servPreco && !isNaN(parseFloat(servPreco.replace(',', '.'))) && (
+                          <p className="text-[11px] text-amber-700 dark:text-amber-300 font-semibold bg-amber-500/15 p-2 rounded-xl text-center">
+                            💰 Sinal de R${' '}
+                            {(
+                              (parseFloat(servPreco.replace(',', '.')) *
+                                (parseInt(servPorcentagemSinal, 10) || 30)) /
+                              100
+                            )
+                              .toFixed(2)
+                              .replace('.', ',')}{' '}
+                            ({servPorcentagemSinal}%) no agendamento.
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <span className="text-[10px] font-bold text-muted uppercase tracking-wider px-2 py-0.5 rounded-md bg-slate-200 dark:bg-slate-700">
-                    Bloqueado
-                  </span>
-                </div>
-              )}
+                ) : (
+                  <div className="p-3 rounded-2xl bg-slate-100 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 flex items-center justify-between opacity-80">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-500 flex items-center justify-center">
+                        <Zap size={14} />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-foreground">Cobrança de Sinal</p>
+                        <p className="text-[10px] text-muted">Módulo desativado no painel admin</p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-bold text-muted uppercase tracking-wider px-2 py-0.5 rounded-md bg-slate-200 dark:bg-slate-700">
+                      Bloqueado
+                    </span>
+                  </div>
+                )}
+              </div>
 
-              <div className="pt-2 flex gap-2">
+              <div className="pt-3 border-t border-border/40 flex gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={() => {
@@ -1469,7 +1476,7 @@ export default function AjustesPage() {
                 <button
                   type="submit"
                   disabled={criarServico.isPending || atualizarServico.isPending}
-                  className="flex-1 py-2.5 rounded-xl bg-accent text-xs font-bold text-white hover:bg-accent/90 disabled:opacity-50 cursor-pointer"
+                  className="flex-1 py-2.5 rounded-xl bg-accent text-xs font-bold text-white hover:bg-accent/90 disabled:opacity-50 cursor-pointer shadow-md shadow-accent/20"
                 >
                   {editingServ
                     ? (atualizarServico.isPending ? 'Atualizando...' : 'Atualizar')
@@ -1483,9 +1490,9 @@ export default function AjustesPage() {
 
       {/* MODAL: PRODUTO EXTRA (CRIAR / EDITAR) */}
       {isProdModalOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-sm bg-modal border border-slate-300 rounded-3xl p-5 space-y-4 shadow-2xl shadow-slate-950/25 ring-1 ring-black/5 animate-fade-in-up">
-            <div className="flex items-center justify-between">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
+          <div className="w-full max-w-sm bg-modal border border-slate-300 rounded-3xl p-5 shadow-2xl shadow-slate-950/25 ring-1 ring-black/5 animate-fade-in-up max-h-[90vh] flex flex-col my-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-border/40 shrink-0">
               <h3 className="text-base font-bold text-foreground">
                 {editingProd ? 'Editar Produto Extra' : 'Cadastrar Produto Extra'}
               </h3>
@@ -1500,12 +1507,13 @@ export default function AjustesPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmitProduto} className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-muted mb-1">
-                  Nome do Produto
-                </label>
-                <input
+            <form onSubmit={handleSubmitProduto} className="flex flex-col flex-1 min-h-0">
+              <div className="flex-1 overflow-y-auto pr-1 py-3 space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-muted mb-1">
+                    Nome do Produto
+                  </label>
+                  <input
                   type="text"
                   required
                   placeholder="Ex: Shampoo Nutritivo 300ml"
@@ -1605,7 +1613,9 @@ export default function AjustesPage() {
                 </div>
               )}
 
-              <div className="pt-2 flex gap-2">
+              </div>
+
+              <div className="pt-3 border-t border-border/40 flex gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={() => {
@@ -1619,7 +1629,7 @@ export default function AjustesPage() {
                 <button
                   type="submit"
                   disabled={criarProduto.isPending || atualizarProduto.isPending}
-                  className="flex-1 py-2.5 rounded-xl bg-accent text-xs font-bold text-white hover:bg-accent/90 disabled:opacity-50 cursor-pointer"
+                  className="flex-1 py-2.5 rounded-xl bg-accent text-xs font-bold text-white hover:bg-accent/90 disabled:opacity-50 cursor-pointer shadow-md shadow-accent/20"
                 >
                   {editingProd
                     ? (atualizarProduto.isPending ? 'Atualizando...' : 'Atualizar')
@@ -1633,9 +1643,9 @@ export default function AjustesPage() {
 
       {/* MODAL: EDITAR PERFIL DO SALÃO */}
       {isSalaoModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
-          <div className="w-full max-w-md bg-modal border border-slate-300 rounded-3xl p-6 space-y-5 shadow-2xl shadow-slate-950/25 ring-1 ring-black/5 animate-scale-up">
-            <div className="flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-fade-in overflow-y-auto">
+          <div className="w-full max-w-md bg-modal border border-slate-300 rounded-3xl p-5 shadow-2xl shadow-slate-950/25 ring-1 ring-black/5 animate-scale-up max-h-[90vh] flex flex-col my-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-border/40 shrink-0">
               <div className="flex items-center gap-2.5">
                 <div className="w-10 h-10 rounded-2xl bg-accent/10 flex items-center justify-center text-accent">
                   <Building2 size={20} />
@@ -1657,7 +1667,8 @@ export default function AjustesPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSaveSalao} className="space-y-4">
+            <form onSubmit={handleSaveSalao} className="flex flex-col flex-1 min-h-0">
+              <div className="flex-1 overflow-y-auto pr-1 py-3 space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-muted mb-1.5">
                   Nome do Salão / Estabelecimento <span className="text-accent">*</span>
@@ -1841,7 +1852,9 @@ export default function AjustesPage() {
                 </div>
               )}
 
-              <div className="pt-3 flex gap-2">
+              </div>
+
+              <div className="pt-3 border-t border-border/40 flex gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsSalaoModalOpen(false)}
