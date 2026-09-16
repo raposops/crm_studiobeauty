@@ -5,9 +5,9 @@ FROM base AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Install dependencies
+# Install dependencies with cache mount and deterministic npm ci
 COPY package.json package-lock.json* ./
-RUN npm install
+RUN --mount=type=cache,target=/root/.npm npm ci --prefer-offline
 
 # Rebuild the source code only when needed
 FROM base AS builder
@@ -24,7 +24,6 @@ ARG NEXT_PUBLIC_EVOLUTION_INSTANCE_NAME
 ARG ASAAS_API_KEY
 ARG ASAAS_API_URL
 ARG ASAAS_ENVIRONMENT
-ARG GIT_SHA
 
 ENV NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL:-https://zcfvfrslpvjubyuigiig.supabase.co}
 ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpjZnZmcnNscHZqdWJ5dWlnaWlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk2MzI2ODMsImV4cCI6MjA4NTIwODY4M30.mvLR6RgtpQlx7kf9pta_zgrYz63wNGEqsE5a1oZ1kyU}
@@ -38,8 +37,11 @@ ENV ASAAS_ENVIRONMENT=${ASAAS_ENVIRONMENT:-sandbox}
 # Next.js telemetry is disabled
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Run the build
-RUN npm run build
+# Otimização de memória para evitar swap thrashing em VPS de 1GB/2GB
+ENV NODE_OPTIONS="--max-old-space-size=1536"
+
+# Run the build com cache persistente do Next.js
+RUN --mount=type=cache,target=/app/.next/cache npm run build
 
 # Production image, copy all the files and run next
 FROM base AS runner

@@ -6,3 +6,8 @@ README.md
 .next
 .git
 .env*.local
+*.sql
+*.mjs
+scratch
+.system_generated
+tsconfig.tsbuildinfo
