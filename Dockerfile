@@ -7,7 +7,7 @@ WORKDIR /app
 
 # Install dependencies with cache mount and deterministic npm ci
 COPY package.json package-lock.json* ./
-RUN --mount=type=cache,target=/root/.npm npm ci --prefer-offline
+RUN --mount=type=cache,target=/root/.npm npm ci --include=dev --prefer-offline
 
 # Rebuild the source code only when needed
 FROM base AS builder
@@ -40,8 +40,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # Otimização de memória para evitar swap thrashing em VPS de 1GB/2GB
 ENV NODE_OPTIONS="--max-old-space-size=1536"
 
-# Run the build com cache persistente do Next.js
-RUN --mount=type=cache,target=/app/.next/cache npm run build
+# Run clean build
+RUN npm run build
 
 # Production image, copy all the files and run next
 FROM base AS runner

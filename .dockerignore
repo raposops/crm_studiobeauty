@@ -7,7 +7,14 @@ README.md
 .git
 .env*.local
 *.sql
-*.mjs
+test-*.mjs
+check-*.mjs
+inspect-*.mjs
+fix-*.mjs
+run-*.mjs
+query_*.mjs
+!postcss.config.mjs
+!eslint.config.mjs
 scratch
 .system_generated
 tsconfig.tsbuildinfo
