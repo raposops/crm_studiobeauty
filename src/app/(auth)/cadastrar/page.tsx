@@ -211,20 +211,32 @@ function CadastrarSalaoContent() {
         },
       ]);
 
-      // Notificar Super Admin via WhatsApp (Server API Route)
+      // Notificar Super Admin via WhatsApp (Server API Route - rota segura contra adblockers)
       try {
-        await fetch('/api/notify-admin', {
+        const payload = JSON.stringify({
+          salaoNome: salaoNome.trim(),
+          ownerNome: ownerNome.trim(),
+          email: email.trim(),
+          phone: phone.trim(),
+          plano: planoEscolhido,
+          isTrialMode,
+        });
+
+        // Tenta rota segura /api/admin/novo-cadastro (não bloqueada por adblockers como uBlock/Brave)
+        const resAdmin = await fetch('/api/admin/novo-cadastro', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            salaoNome: salaoNome.trim(),
-            ownerNome: ownerNome.trim(),
-            email: email.trim(),
-            phone: phone.trim(),
-            plano: planoEscolhido,
-            isTrialMode,
-          }),
-        });
+          body: payload,
+        }).catch(() => null);
+
+        if (!resAdmin || !resAdmin.ok) {
+          // Fallback para /api/notify-admin
+          await fetch('/api/notify-admin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: payload,
+          }).catch(() => null);
+        }
       } catch (notifyErr) {
         console.warn('Erro ao notificar super-admin via WhatsApp:', notifyErr);
       }

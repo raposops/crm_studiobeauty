@@ -193,62 +193,67 @@ export async function sendDirectWhatsAppMessage({
   message: string;
 }): Promise<{ success: boolean; data?: any; error?: string }> {
   try {
-    const formattedPhone = formatPhone(phone);
+    const rawDigits = phone.replace(/\D/g, '');
+    const formattedPhone = rawDigits.startsWith('55')
+      ? rawDigits
+      : (rawDigits.length === 10 || rawDigits.length === 11 ? `55${rawDigits}` : rawDigits);
+
     if (!formattedPhone) return { success: false, error: 'Telefone inválido' };
 
-    const evolutionApiUrl =
+    const evolutionApiUrl = (
       process.env.NEXT_PUBLIC_EVOLUTION_API_URL ||
       process.env.EVOLUTION_API_URL ||
-      'https://evo.fidustecnologia.com.br';
-    const evolutionApiKey =
-      process.env.NEXT_PUBLIC_EVOLUTION_API_KEY ||
-      process.env.EVOLUTION_API_KEY ||
-      '9858375C8262-4CCB-83D2-E66974D498A1';
-    const instanceName =
+      'https://evo.fidustecnologia.com.br'
+    ).replace(/\/$/, '');
+
+    const primaryInstance =
       process.env.NEXT_PUBLIC_EVOLUTION_INSTANCE_NAME ||
       process.env.EVOLUTION_INSTANCE_NAME ||
       'fidus';
 
-    let targetUrl = `${evolutionApiUrl.replace(/\/$/, '')}/message/sendText/${instanceName}`;
-    let res = await fetch(targetUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: evolutionApiKey,
+    const instances = [
+      {
+        name: primaryInstance,
+        key: primaryInstance === 'meu_acessor'
+          ? '306435C88588-4EE6-AD53-E5882B4EE2AD'
+          : (process.env.NEXT_PUBLIC_EVOLUTION_API_KEY || process.env.EVOLUTION_API_KEY || '9858375C8262-4CCB-83D2-E66974D498A1'),
       },
-      body: JSON.stringify({
-        number: formattedPhone,
-        text: message,
-        options: { delay: 1000, presence: 'composing', linkPreview: false },
-      }),
-    });
+      {
+        name: primaryInstance === 'fidus' ? 'meu_acessor' : 'fidus',
+        key: primaryInstance === 'fidus'
+          ? '306435C88588-4EE6-AD53-E5882B4EE2AD'
+          : '9858375C8262-4CCB-83D2-E66974D498A1',
+      },
+    ];
 
-    let data = await res.json().catch(() => null);
+    for (const inst of instances) {
+      try {
+        const targetUrl = `${evolutionApiUrl}/message/sendText/${inst.name}`;
+        const res = await fetch(targetUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: inst.key,
+          },
+          body: JSON.stringify({
+            number: formattedPhone,
+            text: message,
+            options: { delay: 1000, presence: 'composing', linkPreview: false },
+          }),
+        });
 
-    // Se falhar ou der erro na instancia primária 'fidus', tenta a secundária 'meu_acessor'
-    if (!res.ok || (data && data.status >= 400)) {
-      console.warn(`[WhatsApp Direct] Instância ${instanceName} retornou erro, tentando fallback 'meu_acessor'...`);
-      const fallbackUrl = `${evolutionApiUrl.replace(/\/$/, '')}/message/sendText/meu_acessor`;
-      const fallbackRes = await fetch(fallbackUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          apikey: '306435C88588-4EE6-AD53-E5882B4EE2AD',
-        },
-        body: JSON.stringify({
-          number: formattedPhone,
-          text: message,
-          options: { delay: 1000, presence: 'composing', linkPreview: false },
-        }),
-      });
+        const data = await res.json().catch(() => null);
 
-      const fallbackData = await fallbackRes.json().catch(() => null);
-      if (fallbackRes.ok) {
-        return { success: true, data: fallbackData };
+        if (res.ok && (!data || !data.status || data.status < 400)) {
+          return { success: true, data };
+        }
+        console.warn(`[WhatsApp Direct] Falha ao enviar via instância '${inst.name}', tentando próxima...`, data);
+      } catch (instErr: any) {
+        console.warn(`[WhatsApp Direct] Erro de rede na instância '${inst.name}':`, instErr?.message);
       }
     }
 
-    return { success: res.ok, data };
+    return { success: false, error: 'Falha em todas as instâncias da Evolution API' };
   } catch (err: any) {
     console.error('Erro ao enviar mensagem WhatsApp direta:', err);
     return { success: false, error: err?.message };
