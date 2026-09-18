@@ -597,6 +597,15 @@ export default function AgendarPublicSlugPage({ params }: { params: Promise<{ sl
             <div className="space-y-2.5">
               {servicos.map((servico) => {
                 const isSelected = selectedServiceIds.includes(servico.id);
+                const isCabelo = Boolean(
+                  servico.categoria &&
+                    servico.categoria
+                      .toLowerCase()
+                      .normalize('NFD')
+                      .replace(/[\u0300-\u036f]/g, '')
+                      .includes('cabelo')
+                );
+
                 return (
                   <div
                     key={servico.id}
@@ -630,9 +639,16 @@ export default function AgendarPublicSlugPage({ params }: { params: Promise<{ sl
                     </div>
 
                     <div className="text-right flex items-center gap-3">
-                      <span className="font-bold text-sm text-accent">
-                        R$ {(servico.preco / 100).toFixed(2).replace('.', ',')}
-                      </span>
+                      <div className="text-right">
+                        {isCabelo && (
+                          <span className="text-[11px] font-medium text-muted mr-1 whitespace-nowrap block sm:inline">
+                            A partir de:{' '}
+                          </span>
+                        )}
+                        <span className="font-bold text-sm text-accent whitespace-nowrap">
+                          R$ {(servico.preco / 100).toFixed(2).replace('.', ',')}
+                        </span>
+                      </div>
                       <div
                         className={`w-6 h-6 rounded-full border flex items-center justify-center transition-all ${
                           isSelected

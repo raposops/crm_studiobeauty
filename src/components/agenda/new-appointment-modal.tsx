@@ -537,6 +537,21 @@ export default function NewAppointmentModal({
                           const isSelected = selectedServiceIds.includes(
                             service.id
                           );
+                          const isCabelo =
+                            category
+                              .toLowerCase()
+                              .normalize('NFD')
+                              .replace(/[\u0300-\u036f]/g, '')
+                              .includes('cabelo') ||
+                            Boolean(
+                              service.categoria &&
+                                service.categoria
+                                  .toLowerCase()
+                                  .normalize('NFD')
+                                  .replace(/[\u0300-\u036f]/g, '')
+                                  .includes('cabelo')
+                            );
+
                           return (
                             <button
                               key={service.id}
@@ -568,9 +583,16 @@ export default function NewAppointmentModal({
                                   </span>
                                 </div>
                               </div>
-                              <span className="text-sm font-bold text-foreground shrink-0">
-                                {formatCurrency(service.preco)}
-                              </span>
+                              <div className="text-right shrink-0">
+                                {isCabelo && (
+                                  <span className="text-[11px] font-medium text-muted mr-1 whitespace-nowrap block sm:inline">
+                                    A partir de:{' '}
+                                  </span>
+                                )}
+                                <span className="text-sm font-bold text-foreground whitespace-nowrap">
+                                  {formatCurrency(service.preco)}
+                                </span>
+                              </div>
                             </button>
                           );
                         })}
