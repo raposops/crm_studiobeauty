@@ -25,6 +25,8 @@ import {
   Mail,
   Copy,
   Clock,
+  BellRing,
+  MessageSquare,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabaseService } from '@/services/supabaseService';
@@ -91,6 +93,91 @@ export default function AdminPage() {
       setTimeout(() => setCopiedTrialLink(false), 2500);
     }
   }
+
+  // Renewal alerts state & handlers
+  const [isSendingRenewalAlerts, setIsSendingRenewalAlerts] = useState(false);
+  const [sendingSalaoId, setSendingSalaoId] = useState<string | null>(null);
+
+  function getRenewalInfo(salao: SalaoRow) {
+    const status = salao.status_assinatura || 'ativo';
+    const today = new Date();
+    today.setHours(12, 0, 0, 0);
+
+    if (status === 'trial' && salao.trial_ate) {
+      const trialDate = new Date(salao.trial_ate);
+      trialDate.setHours(12, 0, 0, 0);
+      const diffDays = Math.round((trialDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      const dateFormatted = `${String(trialDate.getDate()).padStart(2, '0')}/${String(trialDate.getMonth() + 1).padStart(2, '0')}`;
+      return {
+        label: diffDays < 0 ? `Trial Expirado (${Math.abs(diffDays)}d)` : `Trial (${diffDays}d - ${dateFormatted})`,
+        isExpired: diffDays < 0,
+        diffDays,
+        dateFormatted,
+      };
+    }
+
+    const baseDate = salao.criado_em ? new Date(salao.criado_em) : new Date();
+    const day = Math.min(Math.max(baseDate.getDate(), 1), 28);
+    let nextDate = new Date(today.getFullYear(), today.getMonth(), day, 12, 0, 0, 0);
+    if (Math.round((nextDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)) < 0) {
+      nextDate = new Date(today.getFullYear(), today.getMonth() + 1, day, 12, 0, 0, 0);
+    }
+    const diffDays = Math.round((nextDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    const dateFormatted = `${String(nextDate.getDate()).padStart(2, '0')}/${String(nextDate.getMonth() + 1).padStart(2, '0')}`;
+    return {
+      label: `Renova em ${diffDays}d (${dateFormatted})`,
+      isExpired: false,
+      diffDays,
+      dateFormatted,
+    };
+  }
+
+  async function handleSendAllRenewalAlerts() {
+    const confirmSend = window.confirm(
+      'Deseja verificar e disparar agora as notificações no WhatsApp para todos os salões com vencimento em 3 dias ou hoje?'
+    );
+    if (!confirmSend) return;
+
+    setIsSendingRenewalAlerts(true);
+    try {
+      const res = await fetch('/api/cron/renovacao-planos', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        alert(`✅ ${data.message}`);
+      } else {
+        alert(`❌ Erro: ${data.error || 'Falha ao processar avisos.'}`);
+      }
+    } catch (err: any) {
+      alert(`❌ Erro de conexão: ${err?.message}`);
+    } finally {
+      setIsSendingRenewalAlerts(false);
+    }
+  }
+
+  async function handleSendSingleRenewalAlert(salao: SalaoRow) {
+    const confirmSend = window.confirm(
+      `Deseja enviar agora a mensagem de lembrete de renovação no WhatsApp do salão "${salao.nome}"?`
+    );
+    if (!confirmSend) return;
+
+    setSendingSalaoId(salao.id);
+    try {
+      const res = await fetch(`/api/cron/renovacao-planos?salaoId=${salao.id}&force=true`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success && data.totalEnviados > 0) {
+        alert(`✅ Notificação enviada com sucesso no WhatsApp do salão "${salao.nome}"!`);
+      } else if (data.falhas && data.falhas.length > 0) {
+        alert(`⚠️ Não foi possível enviar: ${data.falhas[0].motivo}`);
+      } else {
+        alert(`❌ Erro: ${data.error || data.message || 'Falha ao enviar.'}`);
+      }
+    } catch (err: any) {
+      alert(`❌ Erro de conexão: ${err?.message}`);
+    } finally {
+      setSendingSalaoId(null);
+    }
+  }
+
 
   const fetchSaloes = async () => {
     setIsLoading(true);
@@ -496,15 +583,27 @@ export default function AdminPage() {
             </p>
           </div>
 
-          <div className="relative w-full sm:w-64">
-            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
-            <input
-              type="text"
-              placeholder="Buscar salão por nome ou ID..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-purple-500 transition-all"
-            />
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto">
+            <button
+              onClick={handleSendAllRenewalAlerts}
+              disabled={isSendingRenewalAlerts}
+              className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/20 transition-all active:scale-95 disabled:opacity-50 shrink-0 cursor-pointer"
+              title="Dispara avisos no WhatsApp para todos os salões com vencimento em 3 dias ou hoje"
+            >
+              <BellRing size={15} />
+              <span>{isSendingRenewalAlerts ? 'Enviando avisos...' : 'Lembretes de Vencimento'}</span>
+            </button>
+
+            <div className="relative w-full sm:w-64">
+              <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+              <input
+                type="text"
+                placeholder="Buscar salão por nome ou ID..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-purple-500 transition-all"
+              />
+            </div>
           </div>
         </div>
 
@@ -524,7 +623,7 @@ export default function AdminPage() {
                 <tr className="border-b border-slate-800 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                   <th className="py-3 px-4">Salão / Tenant</th>
                   <th className="py-3 px-4">Plano</th>
-                  <th className="py-3 px-4">Status Assinatura</th>
+                  <th className="py-3 px-4">Status / Vencimento</th>
                   <th className="py-3 px-4">Módulos Habilitados</th>
                   <th className="py-3 px-4 text-right">Ações</th>
                 </tr>
@@ -537,24 +636,26 @@ export default function AdminPage() {
                     <tr key={salao.id} className="hover:bg-slate-800/30 transition-colors">
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center font-bold text-white text-xs shrink-0 shadow-md">
-                            {salao.nome.slice(0, 2).toUpperCase()}
+                          <div className="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center font-bold text-xs shrink-0">
+                            {salao.nome ? salao.nome.slice(0, 2).toUpperCase() : 'SB'}
                           </div>
-                          <div>
-                            <p className="font-bold text-white text-sm">{salao.nome}</p>
-                            <div className="flex flex-wrap items-center gap-2 mt-0.5">
-                              <p className="text-[10px] font-mono text-slate-500">ID: {salao.id.slice(0, 8)}...</p>
-                              {salao.telefone_whatsapp && (
-                                <span className="text-[10px] text-slate-400">
-                                  • {salao.telefone_whatsapp}
-                                </span>
-                              )}
-                              {salao.asaas_customer_id && (
-                                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                                  Asaas: {salao.asaas_customer_id}
-                                </span>
-                              )}
-                            </div>
+                          <div className="min-w-0">
+                            <p className="font-bold text-white text-sm truncate max-w-[200px]" title={salao.nome}>
+                              {salao.nome}
+                            </p>
+                            <p className="text-[11px] text-slate-400 font-mono truncate max-w-[200px]" title={salao.id}>
+                              ID: {salao.id.slice(0, 8)}...
+                            </p>
+                            {salao.telefone_whatsapp && (
+                              <span className="text-[10px] text-slate-400">
+                                • {salao.telefone_whatsapp}
+                              </span>
+                            )}
+                            {salao.asaas_customer_id && (
+                              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                Asaas: {salao.asaas_customer_id}
+                              </span>
+                            )}
                             {salao.email ? (
                               <p className="text-[11px] text-purple-300 font-mono flex items-center gap-1.5 mt-0.5">
                                 <Mail size={11} className="text-purple-400 shrink-0" />
@@ -576,42 +677,50 @@ export default function AdminPage() {
                       <td className="py-3.5 px-4">
                         {(() => {
                           const status = salao.status_assinatura || 'ativo';
-                          if (status === 'trial') {
-                            const isExpired = salao.trial_ate ? new Date().getTime() > new Date(salao.trial_ate).getTime() : false;
-                            const diffDays = salao.trial_ate
-                              ? Math.max(0, Math.ceil((new Date(salao.trial_ate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
-                              : 0;
+                          const renewal = getRenewalInfo(salao);
 
-                            return isExpired ? (
-                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20" title="14 dias de teste expirados">
-                                <Clock size={13} className="text-amber-400" />
-                                Trial Expirado ({diffDays}d)
-                              </span>
+                          if (status === 'trial') {
+                            return renewal.isExpired ? (
+                              <div className="space-y-1">
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20" title="14 dias de teste expirados">
+                                  <Clock size={13} className="text-amber-400" />
+                                  Trial Expirado
+                                </span>
+                                <p className="text-[10px] text-amber-500/80 font-medium">Expirou em {renewal.dateFormatted}</p>
+                              </div>
                             ) : (
-                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20" title="Em período de teste de 14 dias">
-                                <Sparkles size={13} className="text-purple-400" />
-                                Trial 14 Dias ({diffDays}d)
-                              </span>
+                              <div className="space-y-1">
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20" title="Em período de teste de 14 dias">
+                                  <Sparkles size={13} className="text-purple-400" />
+                                  Trial 14 Dias
+                                </span>
+                                <p className="text-[10px] text-purple-300 font-medium">Vence em {renewal.diffDays}d ({renewal.dateFormatted})</p>
+                              </div>
                             );
                           }
 
                           return (
-                            <button
-                              onClick={() => handleToggleStatusSalao(salao)}
-                              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                                status === 'ativo'
-                                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 active:scale-95'
-                                  : 'bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 active:scale-95'
-                              }`}
-                              title={status === 'ativo' ? 'Clique para bloquear/desativar acesso' : 'Clique para ativamento/liberar acesso'}
-                            >
-                              {status === 'ativo' ? (
-                                <Power size={13} className="text-emerald-400" />
-                              ) : (
-                                <PowerOff size={13} className="text-rose-400" />
+                            <div className="space-y-1">
+                              <button
+                                onClick={() => handleToggleStatusSalao(salao)}
+                                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                                  status === 'ativo'
+                                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 active:scale-95'
+                                    : 'bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 active:scale-95'
+                                }`}
+                                title={status === 'ativo' ? 'Clique para bloquear/desativar acesso' : 'Clique para ativamento/liberar acesso'}
+                              >
+                                {status === 'ativo' ? (
+                                  <Power size={13} className="text-emerald-400" />
+                                ) : (
+                                  <PowerOff size={13} className="text-rose-400" />
+                                )}
+                                {status === 'ativo' ? 'Ativo (Liberado)' : 'Bloqueado / Inativo'}
+                              </button>
+                              {status === 'ativo' && (
+                                <p className="text-[10px] text-slate-400 font-medium">Renova em {renewal.diffDays}d ({renewal.dateFormatted})</p>
                               )}
-                              {status === 'ativo' ? 'Ativo (Liberado)' : 'Bloqueado / Inativo'}
-                            </button>
+                            </div>
                           );
                         })()}
                       </td>
@@ -625,8 +734,20 @@ export default function AdminPage() {
                       <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <button
+                            onClick={() => handleSendSingleRenewalAlert(salao)}
+                            disabled={sendingSalaoId === salao.id}
+                            className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 transition-all active:scale-90 disabled:opacity-50 cursor-pointer"
+                            title="Enviar lembrete de renovação no WhatsApp deste salão"
+                          >
+                            {sendingSalaoId === salao.id ? (
+                              <RefreshCw size={15} className="animate-spin text-emerald-300" />
+                            ) : (
+                              <MessageSquare size={15} />
+                            )}
+                          </button>
+                          <button
                             onClick={() => handleOpenManageModal(salao)}
-                            className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md transition-all active:scale-95"
+                            className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md transition-all active:scale-95 cursor-pointer"
                             title="Gerenciar módulos e plano"
                           >
                             <SlidersHorizontal size={14} />
@@ -634,7 +755,7 @@ export default function AdminPage() {
                           </button>
                           <button
                             onClick={() => setDeletingSalao(salao)}
-                            className="p-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20 transition-all active:scale-90"
+                            className="p-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20 transition-all active:scale-90 cursor-pointer"
                             title="Excluir conta do salão"
                           >
                             <Trash2 size={15} />
