@@ -159,9 +159,9 @@ export default function NovoLancamentoModal({
         comissaoPct,
       });
       handleClose();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro ao salvar lançamento:', err);
-      alert('Erro ao salvar lançamento. Tente novamente.');
+      alert(err?.message ? `Erro ao salvar lançamento: ${err.message}` : 'Erro ao salvar lançamento. Tente novamente.');
     } finally {
       setIsSubmitting(false);
     }

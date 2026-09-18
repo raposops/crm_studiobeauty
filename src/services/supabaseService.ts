@@ -114,6 +114,7 @@ export const supabaseService = {
       .select(`
         *,
         profissional:profissionais(*),
+        cliente:clientes(*),
         agendamento:agendamentos(
           *,
           cliente:clientes(*),
@@ -133,7 +134,7 @@ export const supabaseService = {
 
     return (result || []).map((l: any) => {
       const ag = l.agendamento || {};
-      const clienteNome = ag.cliente?.nome || l.cliente_nome || 'Cliente Avulso';
+      const clienteNome = ag.cliente?.nome || l.cliente?.nome || 'Cliente Avulso';
       
       let mappedServicos = ag.servicos?.map((s: any) => s.servico?.nome).filter(Boolean) || [];
       if (mappedServicos.length === 0 && ag.servico?.nome) {
@@ -185,11 +186,44 @@ export const supabaseService = {
     const comissaoVal = Math.round((payload.valorTotal * payload.comissaoPct) / 100);
     const liquidoVal = payload.valorTotal - comissaoVal;
 
+    // 1. Localizar ou cadastrar o cliente na tabela de clientes
+    let clienteId: string | null = null;
+    const nomeCliente = (payload.clienteNome || '').trim();
+
+    if (nomeCliente) {
+      const { data: clienteExistente } = await supabase
+        .from('clientes')
+        .select('id')
+        .eq('salao_id', payload.salaoId)
+        .ilike('nome', nomeCliente)
+        .limit(1)
+        .maybeSingle();
+
+      if (clienteExistente?.id) {
+        clienteId = clienteExistente.id;
+      } else {
+        const { data: novoCliente, error: errCli } = await supabase
+          .from('clientes')
+          .insert({
+            salao_id: payload.salaoId,
+            nome: nomeCliente,
+            telefone_whatsapp: '',
+          })
+          .select('id')
+          .maybeSingle();
+
+        if (!errCli && novoCliente?.id) {
+          clienteId = novoCliente.id;
+        }
+      }
+    }
+
+    // 2. Inserir em lancamentos_financeiros com cliente_id
     const { data, error } = await supabase
       .from('lancamentos_financeiros')
       .insert({
         salao_id: payload.salaoId,
-        cliente_nome: payload.clienteNome.trim() || 'Cliente Avulso',
+        cliente_id: clienteId,
         profissional_id: payload.profissionalId,
         valor_total: payload.valorTotal,
         forma_pagamento: payload.formaPagamento,
