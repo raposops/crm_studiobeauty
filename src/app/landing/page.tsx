@@ -714,9 +714,11 @@ export default function LandingPage() {
                   {[
                     { title: 'Tudo do Plano Básico incluso', desc: 'Agenda, WhatsApp, Profissionais e Clientes', highlight: true },
                     { title: 'Fluxo de Caixa Completo', desc: 'Controle de despesas fixas (aluguel, contas, insumos)', highlight: true },
+                    { title: 'Controle de Estoque', desc: 'Com gestão de produtos e baixa automática', highlight: true },
+                    { title: 'Carteira de Crédito', desc: 'Saldos e créditos para o cliente usar em serviços futuros', highlight: true },
                     { title: 'Lançamentos Avulsos Diários', desc: 'Registro manual de entradas e saídas extras no caixa', highlight: true },
                     { title: 'Relatórios Financeiros Avançados', desc: 'Métricas de lucratividade, ticket médio e gráficos', highlight: true },
-                    { title: 'Controle de Formas de Pagamento', desc: 'PIX, Cartão, Dinheiro e Saldo/Crédito de clientes', highlight: false },
+                    { title: 'Controle de Formas de Pagamento', desc: 'PIX, Cartão e Dinheiro com taxas e conciliação', highlight: false },
                     { title: 'Suporte Prioritário VIP', desc: 'Atendimento prioritário via WhatsApp', highlight: true },
                     { title: 'Atualizações Gratuitas Contínuas', desc: 'Novas funcionalidades liberadas em primeira mão', highlight: false },
                   ].map((feat, i) => (

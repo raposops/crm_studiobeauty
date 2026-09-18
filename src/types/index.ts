@@ -239,11 +239,12 @@ export const PLANOS_SAAS: Record<'basico' | 'pro', PlanoSaaS> = {
     nome: 'Plano PRO Completo',
     preco: 69.90,
     precoFormatado: 'R$ 69,90',
-    descricao: 'Tudo do plano básico + Fluxo de Caixa completo, despesas fixas, lançamentos avulsos e Controle de Estoque.',
+    descricao: 'Tudo do plano básico + Fluxo de Caixa completo, despesas fixas, lançamentos avulsos, Controle de Estoque e Carteira de Crédito.',
     destaque: true,
     recursos: [
       'Todos os benefícios do Plano Básico',
       'Controle de Estoque com baixa automática na comanda',
+      'Carteira de Crédito de clientes para serviços futuros',
       'Cobrança de Sinal / Adiantamento nos agendamentos online',
       'Encaixe inteligente e atendimento simultâneo na agenda',
       'Fluxo de Caixa com controle de receitas e despesas fixas',
