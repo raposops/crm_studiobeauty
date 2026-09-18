@@ -112,14 +112,19 @@ export default function CheckoutModal({
   const [isSavingTime, setIsSavingTime] = useState(false);
   const [timeSaveSuccess, setTimeSaveSuccess] = useState(false);
 
+  const { salaoId, salao, hasModule } = useAuth();
+  const temModuloSinal = hasModule('cobranca_sinal');
+  const isPlanoPro = salao?.plano !== 'basico';
+  const temCarteiraCredito = isPlanoPro && hasModule('carteira_credito');
+
   useEffect(() => {
     if (agendamento?.profissional) {
       setComissaoPct(
         agendamento.profissional.comissao_padrao_pct ?? COMISSAO_PERCENTUAL
       );
     }
-    // Auto sugerir usar crédito se a cliente tiver saldo
-    if (agendamento?.cliente?.saldo_credito && agendamento.cliente.saldo_credito > 0) {
+    // Auto sugerir usar crédito se a cliente tiver saldo e salão tiver plano PRO
+    if (temCarteiraCredito && agendamento?.cliente?.saldo_credito && agendamento.cliente.saldo_credito > 0) {
       setUsarCredito(true);
     } else {
       setUsarCredito(false);
@@ -131,10 +136,8 @@ export default function CheckoutModal({
       setIsEditingTime(false);
       setTimeSaveSuccess(false);
     }
-  }, [agendamento]);
+  }, [agendamento, temCarteiraCredito]);
 
-  const { salaoId, hasModule } = useAuth();
-  const temModuloSinal = hasModule('cobranca_sinal');
   const { concluirAtendimento } = useCaixa(salaoId, agendamento?.data || '');
   const { deletarAgendamento, atualizarHorario, confirmarSinal } = useAgenda(salaoId, agendamento?.data || '');
   const { servicos: catalogoServicos, isLoading: loadingCatalogoServicos } = useServicos(salaoId);
@@ -229,8 +232,8 @@ export default function CheckoutModal({
 
   const valorTotalBruto = Math.max(0, valorServicos + valorProdutos - valorDescontoCentavos);
   
-  // Saldo da cliente disponível
-  const saldoCliente = agendamento?.cliente?.saldo_credito || 0;
+  // Saldo da cliente disponível (apenas se o salão possuir a Carteira de Crédito do Plano PRO)
+  const saldoCliente = temCarteiraCredito ? (agendamento?.cliente?.saldo_credito || 0) : 0;
   
   // Abatimento de Sinal pré-pago
   const exigeSinal = temModuloSinal && Boolean(agendamento?.exige_sinal);
@@ -238,13 +241,13 @@ export default function CheckoutModal({
   const valorAposSinal = Math.max(0, valorTotalBruto - valorSinalAbatido);
 
   // Abatimento de crédito
-  const valorCreditoAbatido = usarCredito ? Math.min(saldoCliente, valorAposSinal) : 0;
+  const valorCreditoAbatido = (temCarteiraCredito && usarCredito) ? Math.min(saldoCliente, valorAposSinal) : 0;
   const valorRestanteAPagar = Math.max(0, valorAposSinal - valorCreditoAbatido);
 
   // Se o saldo ou sinal cobrir 100% da conta
   useEffect(() => {
     if (valorRestanteAPagar === 0 && valorTotalBruto > 0) {
-      if (usarCredito && valorCreditoAbatido > 0) {
+      if (temCarteiraCredito && usarCredito && valorCreditoAbatido > 0) {
         setFormaPagamento('saldo');
       } else if (valorSinalAbatido >= valorTotalBruto) {
         setFormaPagamento('pix');
@@ -252,7 +255,7 @@ export default function CheckoutModal({
     } else if (formaPagamento === 'saldo' && valorRestanteAPagar > 0) {
       setFormaPagamento(null);
     }
-  }, [valorRestanteAPagar, valorTotalBruto, usarCredito, valorCreditoAbatido, valorSinalAbatido, formaPagamento]);
+  }, [valorRestanteAPagar, valorTotalBruto, usarCredito, valorCreditoAbatido, valorSinalAbatido, formaPagamento, temCarteiraCredito]);
 
   // Cálculo de troco quando em dinheiro
   const valorDinheiroEntregueCentavos = useMemo(() => {
@@ -266,7 +269,7 @@ export default function CheckoutModal({
     return Math.max(0, valorDinheiroEntregueCentavos - valorRestanteAPagar);
   }, [formaPagamento, valorDinheiroEntregueCentavos, valorRestanteAPagar]);
 
-  const creditoGerado = formaPagamento === 'dinheiro' && deixarTrocoComoCredito ? trocoCentavos : 0;
+  const creditoGerado = (temCarteiraCredito && formaPagamento === 'dinheiro' && deixarTrocoComoCredito) ? trocoCentavos : 0;
 
   // Comissão: aplicada sobre o valor bruto dos serviços (incluindo serviços extras)
   const { comissao } = calcularComissao(valorServicos, comissaoPct);
@@ -1095,23 +1098,25 @@ export default function CheckoutModal({
                         </span>
                       </div>
 
-                      <label className="flex items-center gap-2.5 pt-1 border-t border-accent/20 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={deixarTrocoComoCredito}
-                          onChange={(e) => setDeixarTrocoComoCredito(e.target.checked)}
-                          className="w-4 h-4 rounded accent-accent cursor-pointer"
-                        />
-                        <div className="text-xs">
-                          <p className="font-bold text-foreground flex items-center gap-1">
-                            <Sparkles size={12} className="text-accent" />
-                            Deixar troco como Crédito da cliente
-                          </p>
-                          <p className="text-[11px] text-muted">
-                            Adiciona {formatCurrency(trocoCentavos)} ao saldo para o próximo serviço
-                          </p>
-                        </div>
-                      </label>
+                      {temCarteiraCredito && (
+                        <label className="flex items-center gap-2.5 pt-1 border-t border-accent/20 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={deixarTrocoComoCredito}
+                            onChange={(e) => setDeixarTrocoComoCredito(e.target.checked)}
+                            className="w-4 h-4 rounded accent-accent cursor-pointer"
+                          />
+                          <div className="text-xs">
+                            <p className="font-bold text-foreground flex items-center gap-1">
+                              <Sparkles size={12} className="text-accent" />
+                              Deixar troco como Crédito da cliente
+                            </p>
+                            <p className="text-[11px] text-muted">
+                              Adiciona {formatCurrency(trocoCentavos)} ao saldo para o próximo serviço
+                            </p>
+                          </div>
+                        </label>
+                      )}
                     </div>
                   )}
                 </div>

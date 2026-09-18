@@ -17,13 +17,16 @@ import {
   Pencil,
   Sparkles,
 } from 'lucide-react';
+import Link from 'next/link';
 import { useClientes } from '@/hooks/useClientes';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatCurrency } from '@/data/mock';
 import type { Cliente } from '@/types';
 
 export default function ClientesPage() {
-  const { salaoId } = useAuth();
+  const { salaoId, salao, hasModule } = useAuth();
+  const isPlanoPro = salao?.plano !== 'basico';
+  const temCarteiraCredito = isPlanoPro && hasModule('carteira_credito');
   const { clientes, isLoading, criarCliente, atualizarCliente, deletarCliente } = useClientes(salaoId);
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -83,7 +86,9 @@ export default function ClientesPage() {
     }
 
     setFormError('');
-    const saldoCentavos = Math.max(0, Math.round((parseFloat(saldoCredito.replace(',', '.')) || 0) * 100));
+    const saldoCentavos = temCarteiraCredito
+      ? Math.max(0, Math.round((parseFloat(saldoCredito.replace(',', '.')) || 0) * 100))
+      : undefined;
 
     try {
       if (editingCliente) {
@@ -94,7 +99,7 @@ export default function ClientesPage() {
             telefone_whatsapp: whatsapp.trim(),
             data_nascimento: dataNascimento || undefined,
             observacoes: observacoes || undefined,
-            saldo_credito: saldoCentavos,
+            ...(saldoCentavos !== undefined ? { saldo_credito: saldoCentavos } : {}),
           },
         });
       } else {
@@ -103,7 +108,7 @@ export default function ClientesPage() {
           telefone_whatsapp: whatsapp.trim(),
           data_nascimento: dataNascimento || undefined,
           observacoes: observacoes || undefined,
-          saldo_credito: saldoCentavos,
+          ...(saldoCentavos !== undefined ? { saldo_credito: saldoCentavos } : {}),
         });
       }
 
@@ -243,7 +248,7 @@ export default function ClientesPage() {
 
                 {/* Additional Info & Crédito */}
                 <div className="space-y-2 pt-2 border-t border-border/40 text-xs">
-                  {cliente.saldo_credito !== undefined && cliente.saldo_credito > 0 && (
+                  {temCarteiraCredito && cliente.saldo_credito !== undefined && cliente.saldo_credito > 0 && (
                     <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400 font-bold w-fit">
                       <Sparkles size={13} className="text-emerald-500" />
                       <span>Crédito: {formatCurrency(cliente.saldo_credito)}</span>
@@ -386,34 +391,70 @@ export default function ClientesPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-1">
-                    Nascimento
-                  </label>
-                  <input
-                    type="date"
-                    value={dataNascimento}
-                    onChange={(e) => setDataNascimento(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-sm text-foreground focus:outline-none focus:border-accent/60 focus:ring-2 focus:ring-accent/20 transition-all"
-                  />
-                </div>
+              {temCarteiraCredito ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-1">
+                      Nascimento
+                    </label>
+                    <input
+                      type="date"
+                      value={dataNascimento}
+                      onChange={(e) => setDataNascimento(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-sm text-foreground focus:outline-none focus:border-accent/60 focus:ring-2 focus:ring-accent/20 transition-all"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-1 flex items-center justify-between">
-                    <span>Crédito (R$)</span>
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={saldoCredito}
-                    onChange={(e) => setSaldoCredito(e.target.value)}
-                    placeholder="0.00"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-sm text-foreground focus:outline-none focus:border-accent/60 focus:ring-2 focus:ring-accent/20 transition-all font-mono"
-                  />
+                  <div>
+                    <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-1 flex items-center justify-between">
+                      <span>Crédito (R$)</span>
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={saldoCredito}
+                      onChange={(e) => setSaldoCredito(e.target.value)}
+                      placeholder="0.00"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-sm text-foreground focus:outline-none focus:border-accent/60 focus:ring-2 focus:ring-accent/20 transition-all font-mono"
+                    />
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-1">
+                      Nascimento
+                    </label>
+                    <input
+                      type="date"
+                      value={dataNascimento}
+                      onChange={(e) => setDataNascimento(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-sm text-foreground focus:outline-none focus:border-accent/60 focus:ring-2 focus:ring-accent/20 transition-all"
+                    />
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <Sparkles size={16} className="text-purple-400 shrink-0" />
+                      <div>
+                        <p className="text-xs font-bold text-purple-200">
+                          Carteira de Crédito
+                        </p>
+                        <p className="text-[11px] text-purple-300/80">
+                          Recurso exclusivo do Plano PRO para gerenciar créditos e fidelizar clientes.
+                        </p>
+                      </div>
+                    </div>
+                    <Link
+                      href={`/assinar?salaoId=${salao?.id}&plano=pro`}
+                      className="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-[11px] font-bold shrink-0 transition-all cursor-pointer"
+                    >
+                      Mudar para PRO
+                    </Link>
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-1">

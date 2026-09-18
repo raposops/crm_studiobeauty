@@ -195,6 +195,11 @@ export const MODULOS_DISPONIVEIS: Array<{ key: string; nome: string; descricao: 
     nome: 'Relatórios Financeiros Avançados',
     descricao: 'Acesso a métricas executivas, faturamento detalhado e gráficos do salão',
   },
+  {
+    key: 'carteira_credito',
+    nome: 'Carteira de Crédito de Clientes',
+    descricao: 'Permite gerenciar saldo e créditos de clientes para abater em serviços futuros e lançar troco como crédito',
+  },
 ];
 
 export interface PlanoSaaS {
@@ -232,6 +237,7 @@ export const PLANOS_SAAS: Record<'basico' | 'pro', PlanoSaaS> = {
       fluxo_de_caixa: false,
       fluxo_caixa_avancado: false,
       estoque: false,
+      carteira_credito: false,
     },
   },
   pro: {
@@ -261,6 +267,7 @@ export const PLANOS_SAAS: Record<'basico' | 'pro', PlanoSaaS> = {
       fluxo_de_caixa: true,
       fluxo_caixa_avancado: true,
       estoque: true,
+      carteira_credito: true,
     },
   },
 };
