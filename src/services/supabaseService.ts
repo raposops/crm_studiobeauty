@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { generateUUID } from '@/lib/uuid';
-import { getTodayDateString } from '@/lib/dateUtils';
+import { getTodayDateString, getLocalDateString, getStartOfDayBR, getEndOfDayBR, toISOFromBR } from '@/lib/dateUtils';
 import type { Agendamento, LancamentoFinanceiro, NovoAgendamentoForm, FormaPagamento, ModulosSalao, MovimentacaoFluxoCaixa, ProdutoExtra, BloqueioAgenda, Profissional } from '@/types';
 
 export const supabaseService = {
@@ -101,12 +101,13 @@ export const supabaseService = {
       const [yearStr, monthStr] = filterStr.split('-');
       const year = parseInt(yearStr, 10);
       const month = parseInt(monthStr, 10);
-      const lastDay = new Date(year, month, 0).getDate();
-      startIso = `${filterStr}-01T00:00:00.000Z`;
-      endIso = `${filterStr}-${String(lastDay).padStart(2, '0')}T23:59:59.999Z`;
+      startIso = `${filterStr}-01T03:00:00.000Z`;
+      const nextMonthDate = new Date(year, month, 1);
+      const nextMonthStr = getLocalDateString(nextMonthDate);
+      endIso = `${nextMonthStr}T02:59:59.999Z`;
     } else {
-      startIso = `${filterStr}T00:00:00.000Z`;
-      endIso = `${filterStr}T23:59:59.999Z`;
+      startIso = getStartOfDayBR(filterStr);
+      endIso = getEndOfDayBR(filterStr);
     }
 
     const { data: result, error } = await supabase
@@ -145,8 +146,13 @@ export const supabaseService = {
       }
 
       const timeDate = l.data_fechamento ? new Date(l.data_fechamento) : new Date();
-      const timeStr = `${String(timeDate.getHours()).padStart(2, '0')}:${String(timeDate.getMinutes()).padStart(2, '0')}`;
-      const dateOnlyStr = l.data_fechamento ? l.data_fechamento.split('T')[0] : getTodayDateString();
+      const timeStr = new Intl.DateTimeFormat('pt-BR', {
+        timeZone: 'America/Sao_Paulo',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      }).format(timeDate);
+      const dateOnlyStr = l.data_fechamento ? getLocalDateString(new Date(l.data_fechamento)) : getTodayDateString();
 
       return {
         id: l.id,
@@ -456,15 +462,40 @@ export const supabaseService = {
     console.warn('RPC concluir_atendimento error/missing, using direct table fallback:', error.message);
 
     // 1. Update agendamento status to 'concluido' and sync final valor_total
-    const { error: agErr } = await supabase
+    // 1. Update agendamento status to 'concluido' and sync final valor_total
+    const { data: agData, error: agErr } = await supabase
       .from('agendamentos')
       .update({ status: 'concluido', valor_total: valorTotal })
-      .eq('id', agendamentoId);
+      .eq('id', agendamentoId)
+      .select('data, hora_fim, hora_inicio, cliente_id')
+      .single();
 
     if (agErr) throw agErr;
 
-    // 2. Insert/Upsert into lancamentos_financeiros
-    const nowIso = new Date().toISOString();
+    // 2. Determinar data_fechamento vinculada à data do atendimento no fuso de Brasília
+    let fechamentoIso: string;
+    if (agData?.data) {
+      const hoje = getTodayDateString();
+      if (agData.data === hoje) {
+        // Atendimento de hoje: usa o horário atual no fuso de Brasília
+        const horaAtual = new Intl.DateTimeFormat('pt-BR', {
+          timeZone: 'America/Sao_Paulo',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false,
+        }).format(new Date());
+        fechamentoIso = toISOFromBR(agData.data, horaAtual);
+      } else {
+        // Atendimento de dia anterior (retroativo): mantém na data original do agendamento
+        const horaAg = agData.hora_fim || agData.hora_inicio || '18:00';
+        fechamentoIso = toISOFromBR(agData.data, horaAg);
+      }
+    } else {
+      fechamentoIso = new Date().toISOString();
+    }
+
+    // 3. Insert/Upsert into lancamentos_financeiros
     const comissaoPctCalculada = valorTotal > 0 ? Math.round((comissaoProfissional / valorTotal) * 100) : 50;
 
     const { data: lancamento, error: finErr } = await supabase
@@ -474,13 +505,14 @@ export const supabaseService = {
           salao_id: salaoId,
           agendamento_id: agendamentoId,
           profissional_id: profissionalId,
+          cliente_id: agData?.cliente_id || null,
           valor_total: valorTotal,
           forma_pagamento: formaPagamento,
           comissao_pct: comissaoPctCalculada,
           valor_comissao_profissional: comissaoProfissional,
           valor_liquido_salao: valorLiquidoSalao,
           status_pago_profissional: false,
-          data_fechamento: nowIso,
+          data_fechamento: fechamentoIso,
         },
         { onConflict: 'agendamento_id' }
       )
@@ -1711,8 +1743,8 @@ export const supabaseService = {
       .from('lancamentos_financeiros')
       .select('*, agendamento:agendamentos(servico:servicos!agendamentos_servico_id_fkey(nome), servicos:agendamento_servicos(servico:servicos!agendamento_servicos_servico_id_fkey(nome)))')
       .eq('salao_id', salaoId)
-      .gte('data_fechamento', `${dataInicio}T00:00:00.000Z`)
-      .lte('data_fechamento', `${dataFim}T23:59:59.999Z`);
+      .gte('data_fechamento', getStartOfDayBR(dataInicio))
+      .lte('data_fechamento', getEndOfDayBR(dataFim));
 
     if (agErr) console.error(agErr);
     if (lanErr) console.error(lanErr);

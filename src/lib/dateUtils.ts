@@ -55,3 +55,32 @@ export function formatBRDate(dateStr: string): string {
   }
   return dateStr;
 }
+
+/**
+ * Retorna o ISO string correspondente ao início do dia (00:00:00.000) no horário de Brasília (UTC-3).
+ * Ex: '2026-09-17' -> '2026-09-17T03:00:00.000Z'
+ */
+export function getStartOfDayBR(dateStr: string): string {
+  return `${dateStr}T03:00:00.000Z`;
+}
+
+/**
+ * Retorna o ISO string correspondente ao fim do dia (23:59:59.999) no horário de Brasília (UTC-3).
+ * Ex: '2026-09-17' -> '2026-09-18T02:59:59.999Z'
+ */
+export function getEndOfDayBR(dateStr: string): string {
+  const d = parseLocalDateString(dateStr);
+  d.setDate(d.getDate() + 1);
+  const nextDayStr = getLocalDateString(d);
+  return `${nextDayStr}T02:59:59.999Z`;
+}
+
+/**
+ * Converte data ('YYYY-MM-DD') e hora ('HH:MM' ou 'HH:MM:SS') no horário de Brasília para ISO UTC.
+ * Ex: ('2026-09-17', '19:30') -> '2026-09-17T22:30:00.000Z'
+ */
+export function toISOFromBR(dateStr: string, timeStr: string = '12:00'): string {
+  const safeTime = timeStr.length === 5 ? `${timeStr}:00` : timeStr;
+  return new Date(`${dateStr}T${safeTime}-03:00`).toISOString();
+}
+

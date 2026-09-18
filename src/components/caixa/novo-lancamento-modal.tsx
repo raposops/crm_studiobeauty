@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import type { FormaPagamento, Profissional } from '@/types';
 import { formatCurrency, COMISSAO_PERCENTUAL } from '@/data/mock';
-import { getTodayDateString } from '@/lib/dateUtils';
+import { getTodayDateString, toISOFromBR } from '@/lib/dateUtils';
 
 interface NovoLancamentoModalProps {
   isOpen: boolean;
@@ -148,7 +148,7 @@ export default function NovoLancamentoModal({
 
     setIsSubmitting(true);
     try {
-      const dataFechamento = `${dateStr}T${timeStr}:00.000Z`;
+      const dataFechamento = toISOFromBR(dateStr, timeStr);
       await onSubmit({
         clienteNome: clienteNome.trim(),
         profissionalId,
