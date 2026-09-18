@@ -61,6 +61,7 @@ export const ATIVIDADES_PROFISSIONAL_COMUNS = [
   'Designer de Sobrancelhas',
   'Maquiadora',
   'Lash Designer (Cílios)',
+  'Nails Designer (Unhas)',
   'Depiladora',
   'Esteticista',
   'Barbeiro',
