@@ -5,7 +5,7 @@ import { calcularProximoVencimento, formatPhone } from '@/lib/assinaturas';
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-api-key, X-Requested-With',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-api-key, X-API-KEY, x-api-secret, X-API-SECRET, X-Requested-With',
 };
 
 export async function OPTIONS() {
@@ -18,9 +18,13 @@ export async function OPTIONS() {
 function validarAutenticacao(req: NextRequest): boolean {
   const expectedKey = process.env.FIDUS_CONNECT_API_KEY || 'fidus_sec_studiobeauty_2026_x9k2';
 
-  // 1. Header x-api-key
+  // 1. Header x-api-key ou x-api-secret (case-insensitive via req.headers.get)
   const headerApiKey = req.headers.get('x-api-key');
-  if (headerApiKey && headerApiKey.trim() === expectedKey.trim()) {
+  const headerApiSecret = req.headers.get('x-api-secret');
+  if (
+    (headerApiKey && headerApiKey.trim() === expectedKey.trim()) ||
+    (headerApiSecret && headerApiSecret.trim() === expectedKey.trim())
+  ) {
     return true;
   }
 
@@ -33,9 +37,9 @@ function validarAutenticacao(req: NextRequest): boolean {
     }
   }
 
-  // 3. Query param opcional ?api_key= (facilita testes de browser/GET direto)
+  // 3. Query param opcional ?api_key= ou ?api_secret= (facilita testes diretos)
   const url = new URL(req.url);
-  const queryApiKey = url.searchParams.get('api_key');
+  const queryApiKey = url.searchParams.get('api_key') || url.searchParams.get('api_secret');
   if (queryApiKey && queryApiKey.trim() === expectedKey.trim()) {
     return true;
   }

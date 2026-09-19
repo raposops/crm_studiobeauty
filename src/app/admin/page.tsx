@@ -1134,9 +1134,9 @@ export default function AdminPage() {
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
                   <Key size={14} className="text-amber-400" />
-                  Chave Secreta de API (API Key)
+                  Chave Secreta de API (API Key / API Secret)
                 </label>
-                <span className="text-[10px] text-amber-400/80 font-medium">Header: x-api-key ou Bearer</span>
+                <span className="text-[10px] text-amber-400/80 font-medium">Header: X-API-KEY, X-API-SECRET ou Bearer</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="flex-1 relative">
@@ -1260,10 +1260,12 @@ export default function AdminPage() {
                 Exemplo de Requisição no Fidus Connect (JavaScript / Fetch)
               </h4>
               <pre className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-[11px] font-mono text-slate-300 overflow-x-auto select-all leading-relaxed">
-{`const res = await fetch("${getFidusEndpoint()}", {
+{`// Chamada via fetch (aceita /api/v1/saloes ou /api/integracao/fidus-connect/saloes)
+const res = await fetch("https://crmstudio.fidustecnologia.com.br/api/v1/saloes", {
   method: "GET",
   headers: {
-    "x-api-key": "${fidusApiKey}"
+    "X-API-KEY": "${fidusApiKey}"
+    // Ou se preferir: "X-API-SECRET": "${fidusApiKey}"
   }
 });
 const data = await res.json();
