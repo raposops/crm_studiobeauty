@@ -27,6 +27,13 @@ import {
   Clock,
   BellRing,
   MessageSquare,
+  Globe,
+  Key,
+  Terminal,
+  ExternalLink,
+  Eye,
+  EyeOff,
+  Code2,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabaseService } from '@/services/supabaseService';
@@ -91,6 +98,65 @@ export default function AdminPage() {
       navigator.clipboard.writeText(trialUrl);
       setCopiedTrialLink(true);
       setTimeout(() => setCopiedTrialLink(false), 2500);
+    }
+  }
+
+  // Fidus Connect API Integration state & handlers
+  const [showFidusModal, setShowFidusModal] = useState(false);
+  const [copiedFidusKey, setCopiedFidusKey] = useState(false);
+  const [copiedFidusEndpoint, setCopiedFidusEndpoint] = useState(false);
+  const [showSecretKey, setShowSecretKey] = useState(false);
+  const [testingFidusApi, setTestingFidusApi] = useState(false);
+  const [fidusTestResponse, setFidusTestResponse] = useState<any>(null);
+
+  const fidusApiKey = 'fidus_sec_studiobeauty_2026_x9k2';
+
+  function getFidusEndpoint() {
+    if (typeof window !== 'undefined') {
+      return `${window.location.origin}/api/integracao/fidus-connect/saloes`;
+    }
+    return 'https://crmstudio.fidustecnologia.com.br/api/integracao/fidus-connect/saloes';
+  }
+
+  function handleCopyFidusEndpoint() {
+    if (typeof window !== 'undefined' && navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(getFidusEndpoint());
+      setCopiedFidusEndpoint(true);
+      setTimeout(() => setCopiedFidusEndpoint(false), 2500);
+    }
+  }
+
+  function handleCopyFidusKey() {
+    if (typeof window !== 'undefined' && navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(fidusApiKey);
+      setCopiedFidusKey(true);
+      setTimeout(() => setCopiedFidusKey(false), 2500);
+    }
+  }
+
+  async function handleTestFidusConnection() {
+    setTestingFidusApi(true);
+    setFidusTestResponse(null);
+    try {
+      const res = await fetch('/api/integracao/fidus-connect/saloes', {
+        headers: {
+          'x-api-key': fidusApiKey,
+        },
+      });
+      const data = await res.json();
+      setFidusTestResponse({
+        status: res.status,
+        ok: res.ok,
+        data,
+      });
+    } catch (err: any) {
+      setFidusTestResponse({
+        status: 0,
+        ok: false,
+        error: err?.message || 'Erro de conexão',
+      });
+    } finally {
+      setTestingFidusApi(false);
     }
   }
 
@@ -594,6 +660,15 @@ export default function AdminPage() {
               <span>{isSendingRenewalAlerts ? 'Enviando avisos...' : 'Lembretes de Vencimento'}</span>
             </button>
 
+            <button
+              onClick={() => setShowFidusModal(true)}
+              className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-indigo-600/20 transition-all active:scale-95 shrink-0 cursor-pointer"
+              title="Configurar e testar a sincronização online com o Fidus Connect via API REST"
+            >
+              <Globe size={15} />
+              <span>Integração Fidus Connect</span>
+            </button>
+
             <div className="relative w-full sm:w-64">
               <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
               <input
@@ -966,6 +1041,244 @@ export default function AdminPage() {
                 className="flex-1 py-2.5 rounded-xl bg-rose-600 text-xs font-bold text-white hover:bg-rose-500 transition-all shadow-lg shadow-rose-600/30 disabled:opacity-50"
               >
                 {isDeleting ? 'Excluindo...' : 'Sim, Excluir Salão'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: INTEGRAÇÃO FIDUS CONNECT */}
+      {showFidusModal && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md overflow-y-auto">
+          <div className="w-full max-w-2xl bg-slate-900 border border-indigo-500/30 rounded-3xl p-6 md:p-7 space-y-6 shadow-2xl animate-fade-in-up my-8">
+            {/* Header */}
+            <div className="flex items-start justify-between gap-4 pb-4 border-b border-slate-800">
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0">
+                  <Globe size={24} className="animate-pulse" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-bold text-white tracking-tight">
+                      Integração REST API — Fidus Connect
+                    </h3>
+                    <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      Online 24/7
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Sincronização em tempo real de salões, planos, renovações e follow-ups de WhatsApp
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowFidusModal(false)}
+                className="w-8 h-8 rounded-xl bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Info Box */}
+            <div className="p-4 rounded-2xl bg-indigo-950/40 border border-indigo-500/20 text-xs text-indigo-200/90 space-y-1.5">
+              <p className="font-semibold text-white flex items-center gap-1.5">
+                <Sparkles size={14} className="text-indigo-400" />
+                O que esta API compartilha com seu CRM Fidus Connect?
+              </p>
+              <ul className="list-disc list-inside space-y-1 text-slate-300 text-[11px] leading-relaxed">
+                <li><strong>Salões Cadastrados:</strong> Dados completos (Nome, CNPJ/CPF, WhatsApp, Cidade, Status e Data de Criação).</li>
+                <li><strong>Planos e Assinatura:</strong> Identificação de Plano Básico ou PRO, status (ativo, trial, inadimplente).</li>
+                <li><strong>Previsão de Renovação:</strong> Data exata do próximo ciclo mensal ou fim do trial, e dias restantes.</li>
+                <li><strong>Follow-ups Enviados:</strong> Histórico de avisos disparados no WhatsApp (3 dias antes e no dia do vencimento).</li>
+                <li><strong>Métricas de Uso:</strong> Total de profissionais cadastrados e volume de agendamentos.</li>
+              </ul>
+            </div>
+
+            {/* Endpoint Box */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                  <Terminal size={14} className="text-indigo-400" />
+                  URL do Endpoint Oficial (GET)
+                </label>
+                <span className="text-[10px] text-slate-500 font-mono">CORS Habilitado (*)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-indigo-300 truncate select-all">
+                  {getFidusEndpoint()}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCopyFidusEndpoint}
+                  className="px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center gap-1.5 border border-slate-700 transition-all active:scale-95 cursor-pointer shrink-0"
+                >
+                  {copiedFidusEndpoint ? (
+                    <>
+                      <Check size={14} className="text-emerald-400" />
+                      <span className="text-emerald-400">Copiado!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={14} />
+                      <span>Copiar URL</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* API Key Box */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                  <Key size={14} className="text-amber-400" />
+                  Chave Secreta de API (API Key)
+                </label>
+                <span className="text-[10px] text-amber-400/80 font-medium">Header: x-api-key ou Bearer</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 relative">
+                  <input
+                    type={showSecretKey ? 'text' : 'password'}
+                    readOnly
+                    value={fidusApiKey}
+                    className="w-full px-3.5 py-2.5 pr-10 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-amber-300 select-all focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowSecretKey(!showSecretKey)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 cursor-pointer"
+                    title={showSecretKey ? 'Ocultar chave' : 'Mostrar chave'}
+                  >
+                    {showSecretKey ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCopyFidusKey}
+                  className="px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center gap-1.5 border border-slate-700 transition-all active:scale-95 cursor-pointer shrink-0"
+                >
+                  {copiedFidusKey ? (
+                    <>
+                      <Check size={14} className="text-emerald-400" />
+                      <span className="text-emerald-400">Copiada!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={14} />
+                      <span>Copiar Chave</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Live Test Button & Box */}
+            <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <CheckCircle2 size={14} className="text-emerald-400" />
+                    Diagnóstico e Teste em Tempo Real
+                  </h4>
+                  <p className="text-[11px] text-slate-400">
+                    Dispara uma chamada autenticada ao endpoint para validar a resposta
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleTestFidusConnection}
+                  disabled={testingFidusApi}
+                  className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-purple-600/30 transition-all active:scale-95 disabled:opacity-50 cursor-pointer shrink-0"
+                >
+                  <RefreshCw size={13} className={testingFidusApi ? 'animate-spin' : ''} />
+                  <span>{testingFidusApi ? 'Testando...' : 'Testar Conexão Agora'}</span>
+                </button>
+              </div>
+
+              {fidusTestResponse && (
+                <div
+                  className={`p-3.5 rounded-xl border text-xs space-y-2 animate-fade-in ${
+                    fidusTestResponse.ok
+                      ? 'bg-emerald-950/30 border-emerald-500/30 text-emerald-200'
+                      : 'bg-rose-950/30 border-rose-500/30 text-rose-200'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 font-bold">
+                      <span
+                        className={`w-2 h-2 rounded-full ${
+                          fidusTestResponse.ok ? 'bg-emerald-400' : 'bg-rose-400'
+                        }`}
+                      />
+                      <span>
+                        Status: HTTP {fidusTestResponse.status}{' '}
+                        {fidusTestResponse.ok ? '(OK - Conectado com Sucesso)' : '(Falha na Conexão)'}
+                      </span>
+                    </div>
+                    {fidusTestResponse.data?.total_saloes !== undefined && (
+                      <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300">
+                        {fidusTestResponse.data.total_saloes} salão(ões) retornados
+                      </span>
+                    )}
+                  </div>
+
+                  {fidusTestResponse.data?.resumo && (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-[11px]">
+                      <div className="bg-slate-900/60 p-2 rounded-lg border border-slate-800">
+                        <span className="text-slate-400 block">Ativos:</span>
+                        <strong className="text-emerald-400 text-sm">{fidusTestResponse.data.resumo.ativos}</strong>
+                      </div>
+                      <div className="bg-slate-900/60 p-2 rounded-lg border border-slate-800">
+                        <span className="text-slate-400 block">Trial:</span>
+                        <strong className="text-purple-400 text-sm">{fidusTestResponse.data.resumo.trial}</strong>
+                      </div>
+                      <div className="bg-slate-900/60 p-2 rounded-lg border border-slate-800">
+                        <span className="text-slate-400 block">A Vencer (≤3d):</span>
+                        <strong className="text-amber-400 text-sm">{fidusTestResponse.data.resumo.a_vencer_em_breve}</strong>
+                      </div>
+                      <div className="bg-slate-900/60 p-2 rounded-lg border border-slate-800">
+                        <span className="text-slate-400 block">Vencidos:</span>
+                        <strong className="text-rose-400 text-sm">{fidusTestResponse.data.resumo.vencidos}</strong>
+                      </div>
+                    </div>
+                  )}
+
+                  {fidusTestResponse.error && (
+                    <p className="text-rose-300 text-[11px]">Erro: {fidusTestResponse.error}</p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Code Snippets Section */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                <Code2 size={14} className="text-indigo-400" />
+                Exemplo de Requisição no Fidus Connect (JavaScript / Fetch)
+              </h4>
+              <pre className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-[11px] font-mono text-slate-300 overflow-x-auto select-all leading-relaxed">
+{`const res = await fetch("${getFidusEndpoint()}", {
+  method: "GET",
+  headers: {
+    "x-api-key": "${fidusApiKey}"
+  }
+});
+const data = await res.json();
+console.log(data.saloes);`}
+              </pre>
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end pt-3 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setShowFidusModal(false)}
+                className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 transition-colors cursor-pointer"
+              >
+                Concluído / Fechar
               </button>
             </div>
           </div>

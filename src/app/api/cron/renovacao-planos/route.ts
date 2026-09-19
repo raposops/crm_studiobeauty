@@ -1,15 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import { getLocalDateString, parseLocalDateString, formatBRDate } from '@/lib/dateUtils';
-
-function formatPhone(phone: string): string {
-  if (!phone) return '';
-  const digits = phone.replace(/\D/g, '');
-  if (digits.length === 10 || digits.length === 11) {
-    return `55${digits}`;
-  }
-  return digits;
-}
+import { formatBRDate } from '@/lib/dateUtils';
+import { formatPhone, calcularProximoVencimento } from '@/lib/assinaturas';
 
 interface NotificationCandidate {
   salaoId: string;
@@ -22,53 +14,6 @@ interface NotificationCandidate {
   planoNome: string;
   telefone: string;
   motivo: string;
-}
-
-function calcularProximoVencimento(salao: any): {
-  tipo: 'trial' | 'convencional';
-  dataVencimentoStr: string;
-  diffDays: number;
-} {
-  const todayStr = getLocalDateString(new Date());
-  const today = parseLocalDateString(todayStr);
-
-  const status = salao.status_assinatura || 'ativo';
-
-  if (status === 'trial' && salao.trial_ate) {
-    const dataVencimentoStr = getLocalDateString(new Date(salao.trial_ate));
-    const vencDate = parseLocalDateString(dataVencimentoStr);
-    const diffDays = Math.round((vencDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    return {
-      tipo: 'trial',
-      dataVencimentoStr,
-      diffDays,
-    };
-  }
-
-  // Plano convencional ativo ou inadimplente (ciclo mensal de renovação)
-  const baseDate = salao.criado_em ? new Date(salao.criado_em) : new Date();
-  const anniversaryDay = Math.min(Math.max(baseDate.getDate(), 1), 28); // Limita até dia 28 para evitar estouros de mês
-
-  const year = today.getFullYear();
-  const month = today.getMonth();
-
-  // Candidato de renovação para o mês atual
-  let candidateDate = new Date(year, month, anniversaryDay, 12, 0, 0, 0);
-
-  // Se a data deste mês já passou há mais de 1 dia, o próximo ciclo é no mês seguinte
-  const diffFromThisMonth = Math.round((candidateDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-  if (diffFromThisMonth < 0) {
-    candidateDate = new Date(year, month + 1, anniversaryDay, 12, 0, 0, 0);
-  }
-
-  const dataVencimentoStr = getLocalDateString(candidateDate);
-  const diffDays = Math.round((candidateDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-
-  return {
-    tipo: 'convencional',
-    dataVencimentoStr,
-    diffDays,
-  };
 }
 
 async function processarNotificacoes(req: NextRequest) {
@@ -256,6 +201,39 @@ Muito obrigado pela confiança e parceria! ✨`;
             tipo: cand.tipo,
             diffDays: cand.diffDays,
           });
+
+          // Persistir follow-up no banco de dados (saloes.modulos_ativos._followups)
+          try {
+            const followupKey = cand.diffDays === 3 ? 'aviso_3_dias' : cand.diffDays === 0 ? 'aviso_dia_vencimento' : `aviso_${cand.diffDays}_dias`;
+            const salaoOriginal = saloes.find((s: any) => s.id === cand.salaoId);
+            const currentModulos = (salaoOriginal?.modulos_ativos && typeof salaoOriginal.modulos_ativos === 'object')
+              ? { ...salaoOriginal.modulos_ativos }
+              : {};
+            const existingFollowups = (currentModulos._followups && typeof currentModulos._followups === 'object')
+              ? { ...currentModulos._followups }
+              : {};
+
+            existingFollowups[followupKey] = {
+              enviado: true,
+              data_envio: new Date().toISOString(),
+              telefone: cand.telefone,
+              tipo: cand.tipo,
+              diffDays: cand.diffDays,
+            };
+
+            currentModulos._followups = existingFollowups;
+
+            await supabase
+              .from('saloes')
+              .update({ modulos_ativos: currentModulos })
+              .eq('id', cand.salaoId);
+
+            if (salaoOriginal) {
+              salaoOriginal.modulos_ativos = currentModulos;
+            }
+          } catch (persErr) {
+            console.error('[Cron Renovação Planos] Erro ao persistir followup:', persErr);
+          }
         } else {
           const errBody = await evoRes.text();
           falhas.push({
