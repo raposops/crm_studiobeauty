@@ -78,14 +78,13 @@ export async function triggerWhatsAppNotification(
       process.env.NEXT_PUBLIC_EVOLUTION_API_URL ||
       process.env.EVOLUTION_API_URL ||
       'https://evo.fidustecnologia.com.br';
-    const evolutionApiKey =
-      process.env.NEXT_PUBLIC_EVOLUTION_API_KEY ||
-      process.env.EVOLUTION_API_KEY ||
-      'E82B9CB836AA-4A8E-808C-3B25D7B3C1A8';
-    const instanceName =
-      process.env.NEXT_PUBLIC_EVOLUTION_INSTANCE_NAME ||
-      process.env.EVOLUTION_INSTANCE_NAME ||
-      'fidusnovo';
+    const rawInstance = process.env.NEXT_PUBLIC_EVOLUTION_INSTANCE_NAME || process.env.EVOLUTION_INSTANCE_NAME;
+    const instanceName = (!rawInstance || rawInstance === 'fidus') ? 'fidusnovo' : rawInstance;
+
+    const rawApiKey = process.env.NEXT_PUBLIC_EVOLUTION_API_KEY || process.env.EVOLUTION_API_KEY;
+    const evolutionApiKey = (!rawApiKey || rawApiKey === '9858375C8262-4CCB-83D2-E66974D498A1')
+      ? 'E82B9CB836AA-4A8E-808C-3B25D7B3C1A8'
+      : rawApiKey;
 
     if (evolutionApiUrl && evolutionApiKey) {
       const dataFormatada = formatDate(payload.data);
@@ -206,17 +205,17 @@ export async function sendDirectWhatsAppMessage({
       'https://evo.fidustecnologia.com.br'
     ).replace(/\/$/, '');
 
-    const primaryInstance =
-      process.env.NEXT_PUBLIC_EVOLUTION_INSTANCE_NAME ||
-      process.env.EVOLUTION_INSTANCE_NAME ||
-      'fidusnovo';
+    const rawInstance = process.env.NEXT_PUBLIC_EVOLUTION_INSTANCE_NAME || process.env.EVOLUTION_INSTANCE_NAME;
+    const primaryInstance = (!rawInstance || rawInstance === 'fidus') ? 'fidusnovo' : rawInstance;
 
     const instances = [
       {
         name: primaryInstance,
         key: primaryInstance === 'fidusnovo'
-          ? (process.env.NEXT_PUBLIC_EVOLUTION_API_KEY || process.env.EVOLUTION_API_KEY || 'E82B9CB836AA-4A8E-808C-3B25D7B3C1A8')
-          : (process.env.NEXT_PUBLIC_EVOLUTION_API_KEY || process.env.EVOLUTION_API_KEY || '9858375C8262-4CCB-83D2-E66974D498A1'),
+          ? (process.env.NEXT_PUBLIC_EVOLUTION_API_KEY && process.env.NEXT_PUBLIC_EVOLUTION_API_KEY !== '9858375C8262-4CCB-83D2-E66974D498A1'
+              ? process.env.NEXT_PUBLIC_EVOLUTION_API_KEY
+              : 'E82B9CB836AA-4A8E-808C-3B25D7B3C1A8')
+          : (process.env.NEXT_PUBLIC_EVOLUTION_API_KEY || process.env.EVOLUTION_API_KEY || 'E82B9CB836AA-4A8E-808C-3B25D7B3C1A8'),
       },
       {
         name: 'meu_acessor',

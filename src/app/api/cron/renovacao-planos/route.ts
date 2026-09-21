@@ -107,14 +107,15 @@ async function processarNotificacoes(req: NextRequest) {
       process.env.NEXT_PUBLIC_EVOLUTION_API_URL ||
       process.env.EVOLUTION_API_URL ||
       'https://evo.fidustecnologia.com.br';
-    const evolutionApiKey =
-      process.env.NEXT_PUBLIC_EVOLUTION_API_KEY ||
-      process.env.EVOLUTION_API_KEY ||
-      'E82B9CB836AA-4A8E-808C-3B25D7B3C1A8';
-    const instanceName =
-      process.env.NEXT_PUBLIC_EVOLUTION_INSTANCE_NAME ||
-      process.env.EVOLUTION_INSTANCE_NAME ||
-      'fidusnovo';
+
+    // Se o ambiente de deploy (ex: CapRover/Docker) tiver a variável antiga 'fidus', substitui por 'fidusnovo'
+    const rawInstance = process.env.NEXT_PUBLIC_EVOLUTION_INSTANCE_NAME || process.env.EVOLUTION_INSTANCE_NAME;
+    const instanceName = (!rawInstance || rawInstance === 'fidus') ? 'fidusnovo' : rawInstance;
+
+    const rawApiKey = process.env.NEXT_PUBLIC_EVOLUTION_API_KEY || process.env.EVOLUTION_API_KEY;
+    const evolutionApiKey = (!rawApiKey || rawApiKey === '9858375C8262-4CCB-83D2-E66974D498A1')
+      ? 'E82B9CB836AA-4A8E-808C-3B25D7B3C1A8'
+      : rawApiKey;
 
     const targetUrl = `${evolutionApiUrl.replace(/\/$/, '')}/message/sendText/${instanceName}`;
     const enviados: any[] = [];
@@ -200,6 +201,7 @@ Muito obrigado pela confiança e parceria! ✨`;
             telefone: cand.telefone,
             tipo: cand.tipo,
             diffDays: cand.diffDays,
+            instancia: instanceName,
           });
 
           // Persistir follow-up no banco de dados (saloes.modulos_ativos._followups)
