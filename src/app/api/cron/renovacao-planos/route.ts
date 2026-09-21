@@ -102,20 +102,21 @@ async function processarNotificacoes(req: NextRequest) {
       });
     }
 
-    // 3. Configurações da Evolution API
+    // 3. Configurações da Evolution API exclusivamente para Cobrança e Renovação de Planos (fidusnovo)
     const evolutionApiUrl =
+      process.env.EVOLUTION_COBRANCA_API_URL ||
       process.env.NEXT_PUBLIC_EVOLUTION_API_URL ||
       process.env.EVOLUTION_API_URL ||
       'https://evo.fidustecnologia.com.br';
 
-    // Se o ambiente de deploy (ex: CapRover/Docker) tiver a variável antiga 'fidus', substitui por 'fidusnovo'
-    const rawInstance = process.env.NEXT_PUBLIC_EVOLUTION_INSTANCE_NAME || process.env.EVOLUTION_INSTANCE_NAME;
-    const instanceName = (!rawInstance || rawInstance === 'fidus') ? 'fidusnovo' : rawInstance;
+    // Instância exclusiva para notificações de cobrança/renovação (fidusnovo - 51 98110-8170)
+    const instanceName =
+      process.env.EVOLUTION_COBRANCA_INSTANCE_NAME ||
+      'fidusnovo';
 
-    const rawApiKey = process.env.NEXT_PUBLIC_EVOLUTION_API_KEY || process.env.EVOLUTION_API_KEY;
-    const evolutionApiKey = (!rawApiKey || rawApiKey === '9858375C8262-4CCB-83D2-E66974D498A1')
-      ? 'E82B9CB836AA-4A8E-808C-3B25D7B3C1A8'
-      : rawApiKey;
+    const evolutionApiKey =
+      process.env.EVOLUTION_COBRANCA_API_KEY ||
+      'E82B9CB836AA-4A8E-808C-3B25D7B3C1A8';
 
     const targetUrl = `${evolutionApiUrl.replace(/\/$/, '')}/message/sendText/${instanceName}`;
     const enviados: any[] = [];
