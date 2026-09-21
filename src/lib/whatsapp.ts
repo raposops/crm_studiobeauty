@@ -81,11 +81,11 @@ export async function triggerWhatsAppNotification(
     const evolutionApiKey =
       process.env.NEXT_PUBLIC_EVOLUTION_API_KEY ||
       process.env.EVOLUTION_API_KEY ||
-      '9858375C8262-4CCB-83D2-E66974D498A1';
+      'E82B9CB836AA-4A8E-808C-3B25D7B3C1A8';
     const instanceName =
       process.env.NEXT_PUBLIC_EVOLUTION_INSTANCE_NAME ||
       process.env.EVOLUTION_INSTANCE_NAME ||
-      'fidus';
+      'fidusnovo';
 
     if (evolutionApiUrl && evolutionApiKey) {
       const dataFormatada = formatDate(payload.data);
@@ -209,20 +209,18 @@ export async function sendDirectWhatsAppMessage({
     const primaryInstance =
       process.env.NEXT_PUBLIC_EVOLUTION_INSTANCE_NAME ||
       process.env.EVOLUTION_INSTANCE_NAME ||
-      'fidus';
+      'fidusnovo';
 
     const instances = [
       {
         name: primaryInstance,
-        key: primaryInstance === 'meu_acessor'
-          ? '306435C88588-4EE6-AD53-E5882B4EE2AD'
+        key: primaryInstance === 'fidusnovo'
+          ? (process.env.NEXT_PUBLIC_EVOLUTION_API_KEY || process.env.EVOLUTION_API_KEY || 'E82B9CB836AA-4A8E-808C-3B25D7B3C1A8')
           : (process.env.NEXT_PUBLIC_EVOLUTION_API_KEY || process.env.EVOLUTION_API_KEY || '9858375C8262-4CCB-83D2-E66974D498A1'),
       },
       {
-        name: primaryInstance === 'fidus' ? 'meu_acessor' : 'fidus',
-        key: primaryInstance === 'fidus'
-          ? '306435C88588-4EE6-AD53-E5882B4EE2AD'
-          : '9858375C8262-4CCB-83D2-E66974D498A1',
+        name: 'meu_acessor',
+        key: '306435C88588-4EE6-AD53-E5882B4EE2AD',
       },
     ];
 
