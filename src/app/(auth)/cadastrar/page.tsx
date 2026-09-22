@@ -227,6 +227,7 @@ function CadastrarSalaoContent() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: payload,
+          keepalive: true,
         }).catch(() => null);
 
         if (!resAdmin || !resAdmin.ok) {
@@ -235,6 +236,7 @@ function CadastrarSalaoContent() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: payload,
+            keepalive: true,
           }).catch(() => null);
         }
       } catch (notifyErr) {

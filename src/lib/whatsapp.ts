@@ -78,14 +78,18 @@ export async function triggerWhatsAppNotification(
       process.env.NEXT_PUBLIC_EVOLUTION_API_URL ||
       process.env.EVOLUTION_API_URL ||
       'https://evo.fidustecnologia.com.br';
-    const evolutionApiKey =
-      process.env.NEXT_PUBLIC_EVOLUTION_API_KEY ||
-      process.env.EVOLUTION_API_KEY ||
-      '9858375C8262-4CCB-83D2-E66974D498A1';
     const instanceName =
       process.env.NEXT_PUBLIC_EVOLUTION_INSTANCE_NAME ||
       process.env.EVOLUTION_INSTANCE_NAME ||
       'fidus';
+
+    // Sempre garante a chave correspondente à instância utilizada para evitar 401
+    const evolutionApiKey =
+      instanceName === 'fidus'
+        ? '9858375C8262-4CCB-83D2-E66974D498A1'
+        : instanceName === 'fidusnovo'
+        ? (process.env.EVOLUTION_COBRANCA_API_KEY || 'E82B9CB836AA-4A8E-808C-3B25D7B3C1A8')
+        : (process.env.NEXT_PUBLIC_EVOLUTION_API_KEY || process.env.EVOLUTION_API_KEY || '9858375C8262-4CCB-83D2-E66974D498A1');
 
     if (evolutionApiUrl && evolutionApiKey) {
       const dataFormatada = formatDate(payload.data);
@@ -206,25 +210,44 @@ export async function sendDirectWhatsAppMessage({
       'https://evo.fidustecnologia.com.br'
     ).replace(/\/$/, '');
 
-    const primaryInstance =
-      process.env.NEXT_PUBLIC_EVOLUTION_INSTANCE_NAME ||
-      process.env.EVOLUTION_INSTANCE_NAME ||
-      'fidus';
+    // Mapeamento seguro das instâncias conhecidas e suas chaves oficiais
+    const KNOWN_KEYS: Record<string, string> = {
+      fidus: '9858375C8262-4CCB-83D2-E66974D498A1',
+      fidusnovo: 'E82B9CB836AA-4A8E-808C-3B25D7B3C1A8',
+      meu_acessor: '306435C88588-4EE6-AD53-E5882B4EE2AD',
+    };
 
-    const instances = [
+    // Monta candidatos com suas chaves correspondentes
+    const candidates = [
+      // 1. fidusnovo (conectada ao número 51 98110-8170)
       {
-        name: primaryInstance,
-        key: primaryInstance === 'meu_acessor'
-          ? '306435C88588-4EE6-AD53-E5882B4EE2AD'
-          : (process.env.NEXT_PUBLIC_EVOLUTION_API_KEY || process.env.EVOLUTION_API_KEY || '9858375C8262-4CCB-83D2-E66974D498A1'),
+        name: process.env.EVOLUTION_COBRANCA_INSTANCE_NAME || 'fidusnovo',
+        key: process.env.EVOLUTION_COBRANCA_API_KEY || KNOWN_KEYS['fidusnovo'],
       },
+      // 2. fidus (conectada ao número 51 99791-2672)
       {
-        name: primaryInstance === 'fidus' ? 'meu_acessor' : 'fidus',
-        key: primaryInstance === 'fidus'
-          ? '306435C88588-4EE6-AD53-E5882B4EE2AD'
-          : '9858375C8262-4CCB-83D2-E66974D498A1',
+        name: 'fidus',
+        key: KNOWN_KEYS['fidus'],
+      },
+      // 3. Instância configurada no ambiente (se houver outra)
+      {
+        name: process.env.NEXT_PUBLIC_EVOLUTION_INSTANCE_NAME || process.env.EVOLUTION_INSTANCE_NAME || 'fidus',
+        key: process.env.NEXT_PUBLIC_EVOLUTION_API_KEY || process.env.EVOLUTION_API_KEY || KNOWN_KEYS['fidus'],
+      },
+      // 4. Fallback legado
+      {
+        name: 'meu_acessor',
+        key: KNOWN_KEYS['meu_acessor'],
       },
     ];
+
+    // Garante que instâncias conhecidas usem SEMPRE suas chaves correspondentes
+    const instances = candidates
+      .map((c) => ({
+        name: c.name,
+        key: KNOWN_KEYS[c.name] || c.key,
+      }))
+      .filter((item, idx, arr) => arr.findIndex((t) => t.name === item.name) === idx);
 
     for (const inst of instances) {
       try {
@@ -244,7 +267,11 @@ export async function sendDirectWhatsAppMessage({
 
         const data = await res.json().catch(() => null);
 
-        if (res.ok && (!data || !data.status || data.status < 400)) {
+        const isHttpSuccess = res.ok;
+        const isEvolutionError = Boolean(data?.error || (typeof data?.status === 'number' && data.status >= 400));
+
+        if (isHttpSuccess && !isEvolutionError) {
+          console.log(`[WhatsApp Direct] Mensagem enviada com sucesso via instância '${inst.name}'!`);
           return { success: true, data };
         }
         console.warn(`[WhatsApp Direct] Falha ao enviar via instância '${inst.name}', tentando próxima...`, data);
