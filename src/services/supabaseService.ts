@@ -1485,28 +1485,75 @@ export const supabaseService = {
   },
 
   async fetchMovimentacoesFluxoCaixa(salaoId: string, dataInicio?: string, dataFim?: string): Promise<MovimentacaoFluxoCaixa[]> {
-    let query = supabase
-      .from('fluxo_caixa')
-      .select('*')
-      .eq('salao_id', salaoId)
-      .order('data', { ascending: false });
+    const localItens = this.getLocalStorageFluxoCaixa(salaoId);
 
-    if (dataInicio) {
-      query = query.gte('data', dataInicio);
-    }
-    if (dataFim) {
-      query = query.lte('data', dataFim);
-    }
+    try {
+      let query = supabase
+        .from('fluxo_caixa')
+        .select('*')
+        .eq('salao_id', salaoId)
+        .order('data', { ascending: false });
 
-    const { data, error } = await query;
-    if (error) {
-      // Fallback para localStorage caso a tabela ainda não exista no Supabase
-      let localItens = this.getLocalStorageFluxoCaixa(salaoId);
-      if (dataInicio) localItens = localItens.filter((m) => m.data >= dataInicio);
-      if (dataFim) localItens = localItens.filter((m) => m.data <= dataFim);
-      return localItens;
+      if (dataInicio) {
+        query = query.gte('data', dataInicio);
+      }
+      if (dataFim) {
+        query = query.lte('data', dataFim);
+      }
+
+      const { data: supaData, error } = await query;
+
+      if (error) {
+        console.warn('[FluxoCaixa] Erro ao consultar Supabase, usando dados locais:', error.message);
+        let filtrados = localItens;
+        if (dataInicio) filtrados = filtrados.filter((m) => m.data >= dataInicio);
+        if (dataFim) filtrados = filtrados.filter((m) => m.data <= dataFim);
+        return filtrados;
+      }
+
+      // Mesclamos os registros retornados do Supabase com eventuais registros locais ainda não sincronizados
+      const map = new Map<string, MovimentacaoFluxoCaixa>();
+      (supaData || []).forEach((item: MovimentacaoFluxoCaixa) => {
+        map.set(item.id, item);
+      });
+
+      const unSynced: MovimentacaoFluxoCaixa[] = [];
+      localItens.forEach((localItem) => {
+        if (!map.has(localItem.id)) {
+          map.set(localItem.id, localItem);
+          unSynced.push(localItem);
+        }
+      });
+
+      // Tenta sincronizar registros pendentes para o Supabase em background
+      if (unSynced.length > 0) {
+        supabase
+          .from('fluxo_caixa')
+          .insert(unSynced)
+          .then(({ error: syncErr }) => {
+            if (!syncErr) {
+              console.log(`[FluxoCaixa] ${unSynced.length} itens locais sincronizados com o Supabase.`);
+            }
+          })
+          .catch(() => {});
+      }
+
+      // Atualiza o cache local com todos os itens do salão
+      this.setLocalStorageFluxoCaixa(salaoId, Array.from(map.values()));
+
+      let todos = Array.from(map.values());
+      if (dataInicio) todos = todos.filter((m) => m.data >= dataInicio);
+      if (dataFim) todos = todos.filter((m) => m.data <= dataFim);
+      todos.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+
+      return todos;
+    } catch (err) {
+      console.warn('[FluxoCaixa] Falha na busca, retornando dados locais:', err);
+      let filtrados = localItens;
+      if (dataInicio) filtrados = filtrados.filter((m) => m.data >= dataInicio);
+      if (dataFim) filtrados = filtrados.filter((m) => m.data <= dataFim);
+      return filtrados;
     }
-    return data || [];
   },
 
   async criarMovimentacaoFluxoCaixa(salaoId: string, item: Omit<MovimentacaoFluxoCaixa, 'id' | 'salao_id'>): Promise<MovimentacaoFluxoCaixa> {
@@ -1514,33 +1561,39 @@ export const supabaseService = {
       id: generateUUID(),
       salao_id: salaoId,
       ...item,
+      criado_em: new Date().toISOString(),
     };
 
-    const { data, error } = await supabase
-      .from('fluxo_caixa')
-      .insert(novoItem)
-      .select()
-      .single();
+    // Salva imediatamente no armazenamento local para que a visualização seja instantânea e à prova de falhas
+    const localItens = this.getLocalStorageFluxoCaixa(salaoId);
+    const atualizados = [novoItem, ...localItens.filter((m) => m.id !== novoItem.id)];
+    this.setLocalStorageFluxoCaixa(salaoId, atualizados);
 
-    if (error) {
-      // Fallback gracioso para localStorage
-      console.warn('Salvo no modo local (tabela fluxo_caixa pendente no Supabase):', error.message);
-      const localItens = this.getLocalStorageFluxoCaixa(salaoId);
-      localItens.unshift(novoItem);
-      this.setLocalStorageFluxoCaixa(salaoId, localItens);
+    try {
+      const { data, error } = await supabase
+        .from('fluxo_caixa')
+        .insert(novoItem)
+        .select()
+        .single();
+
+      if (error) {
+        console.warn('[FluxoCaixa] Salvo no cache local (aguardando liberação RLS no Supabase):', error.message);
+        return novoItem;
+      }
+      return data || novoItem;
+    } catch (err: any) {
+      console.warn('[FluxoCaixa] Erro de rede ao salvar no Supabase, mantido em cache local:', err?.message);
       return novoItem;
     }
-    return data || novoItem;
   },
 
-  async deletarMovimentacaoFluxoCaixa(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('fluxo_caixa')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      // Fallback local
+  async deletarMovimentacaoFluxoCaixa(id: string, salaoId?: string): Promise<void> {
+    // 1. Remove sempre do localStorage imediatamente
+    if (salaoId) {
+      const localItens = this.getLocalStorageFluxoCaixa(salaoId);
+      this.setLocalStorageFluxoCaixa(salaoId, localItens.filter((m) => m.id !== id));
+    }
+    if (typeof window !== 'undefined') {
       const keys = Object.keys(localStorage).filter((k) => k.startsWith('fluxo_caixa_'));
       keys.forEach((key) => {
         try {
@@ -1549,6 +1602,16 @@ export const supabaseService = {
           localStorage.setItem(key, JSON.stringify(filtered));
         } catch {}
       });
+    }
+
+    // 2. Remove do Supabase
+    try {
+      await supabase
+        .from('fluxo_caixa')
+        .delete()
+        .eq('id', id);
+    } catch (err) {
+      console.warn('[FluxoCaixa] Erro ao deletar no Supabase:', err);
     }
   },
 

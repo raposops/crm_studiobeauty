@@ -77,8 +77,10 @@ export function useFluxoCaixa(salaoId: string, periodo: PeriodoFiltro = 'mes') {
   const todasMovimentacoes = useMemo(() => {
     const lista = [...movimentacoesAuto, ...movimentacoesManuais];
     return lista.sort((a, b) => {
-      const timeA = new Date(a.criado_em || a.data).getTime();
-      const timeB = new Date(b.criado_em || b.data).getTime();
+      const dateA = a.data ? `${a.data}T12:00:00` : '';
+      const dateB = b.data ? `${b.data}T12:00:00` : '';
+      const timeA = new Date(a.criado_em || dateA).getTime();
+      const timeB = new Date(b.criado_em || dateB).getTime();
       return timeB - timeA;
     });
   }, [movimentacoesManuais, movimentacoesAuto]);
@@ -107,13 +109,13 @@ export function useFluxoCaixa(salaoId: string, periodo: PeriodoFiltro = 'mes') {
     data: string;
   }) => {
     const salvo = await supabaseService.criarMovimentacaoFluxoCaixa(salaoId, novo);
-    setMovimentacoesManuais((prev) => [salvo, ...prev]);
+    setMovimentacoesManuais((prev) => [salvo, ...prev.filter((m) => m.id !== salvo.id)]);
     return salvo;
   };
 
   // Delete transaction
   const excluirMovimentacao = async (id: string) => {
-    await supabaseService.deletarMovimentacaoFluxoCaixa(id);
+    await supabaseService.deletarMovimentacaoFluxoCaixa(id, salaoId);
     setMovimentacoesManuais((prev) => prev.filter((m) => m.id !== id));
   };
 

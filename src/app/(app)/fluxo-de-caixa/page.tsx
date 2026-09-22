@@ -27,7 +27,8 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useFluxoCaixa, PeriodoFiltro } from '@/hooks/useFluxoCaixa';
 import { CATEGORIAS_FLUXO_CAIXA, CategoriaMovimentacao } from '@/types';
-import { getTodayDateString } from '@/lib/dateUtils';
+import { getTodayDateString, formatBRDate } from '@/lib/dateUtils';
+import { useMemo } from 'react';
 
 function formatarMoeda(centavos: number) {
   return (centavos / 100).toLocaleString('pt-BR', {
@@ -64,6 +65,8 @@ export default function FluxoCaixaPage() {
   const temModuloFluxo = hasModule('fluxo_de_caixa');
 
   const [periodo, setPeriodo] = useState<PeriodoFiltro>('mes');
+  const [filtroTipo, setFiltroTipo] = useState<'todos' | 'entrada' | 'saida'>('todos');
+
   const {
     movimentacoes,
     totalEntradas,
@@ -76,6 +79,14 @@ export default function FluxoCaixaPage() {
     excluirMovimentacao,
     refetch,
   } = useFluxoCaixa(salaoId, periodo);
+
+  const movimentacoesFiltradas = useMemo(() => {
+    if (filtroTipo === 'todos') return movimentacoes;
+    return movimentacoes.filter((m) => m.tipo === filtroTipo);
+  }, [movimentacoes, filtroTipo]);
+
+  const qtdEntradas = useMemo(() => movimentacoes.filter((m) => m.tipo === 'entrada').length, [movimentacoes]);
+  const qtdSaidas = useMemo(() => movimentacoes.filter((m) => m.tipo === 'saida').length, [movimentacoes]);
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -322,33 +333,77 @@ export default function FluxoCaixaPage() {
 
       {/* Transactions History List */}
       <div className="rounded-3xl bg-card border border-border p-4 space-y-3 shadow-xs">
-        <div className="flex items-center justify-between pb-2 border-b border-border">
-          <h2 className="text-xs font-bold text-foreground uppercase tracking-wider">
-            Movimentações do Período ({movimentacoes.length})
-          </h2>
-          <button
-            onClick={refetch}
-            disabled={isLoading}
-            className="p-1 text-muted hover:text-foreground transition-all"
-            title="Atualizar dados"
-          >
-            <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
-          </button>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-border">
+          <div className="flex items-center gap-2">
+            <h2 className="text-xs font-bold text-foreground uppercase tracking-wider">
+              Extrato de Movimentações ({movimentacoes.length})
+            </h2>
+            <button
+              onClick={refetch}
+              disabled={isLoading}
+              className="p-1 text-muted hover:text-foreground transition-all"
+              title="Atualizar dados"
+            >
+              <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
+            </button>
+          </div>
+
+          {/* Quick Filter Tabs: Todas / Entradas / Saídas */}
+          <div className="flex items-center gap-1 bg-background/60 p-1 rounded-xl border border-border text-[11px] self-start sm:self-auto">
+            <button
+              onClick={() => setFiltroTipo('todos')}
+              className={`px-2.5 py-1 rounded-lg font-bold transition-all ${
+                filtroTipo === 'todos'
+                  ? 'bg-card text-foreground shadow-xs border border-border'
+                  : 'text-muted hover:text-foreground'
+              }`}
+            >
+              Todas ({movimentacoes.length})
+            </button>
+            <button
+              onClick={() => setFiltroTipo('entrada')}
+              className={`px-2.5 py-1 rounded-lg font-bold transition-all ${
+                filtroTipo === 'entrada'
+                  ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                  : 'text-muted hover:text-emerald-400'
+              }`}
+            >
+              Receitas ({qtdEntradas})
+            </button>
+            <button
+              onClick={() => setFiltroTipo('saida')}
+              className={`px-2.5 py-1 rounded-lg font-bold transition-all ${
+                filtroTipo === 'saida'
+                  ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
+                  : 'text-muted hover:text-rose-400'
+              }`}
+            >
+              Despesas ({qtdSaidas})
+            </button>
+          </div>
         </div>
 
         {isLoading ? (
           <div className="py-8 text-center text-xs text-muted animate-pulse">
             Carregando movimentações...
           </div>
-        ) : movimentacoes.length === 0 ? (
+        ) : movimentacoesFiltradas.length === 0 ? (
           <div className="py-8 text-center text-xs text-muted space-y-1">
             <TrendingUp size={28} className="mx-auto text-muted/50" />
-            <p className="font-semibold text-foreground">Nenhuma movimentação registrada no período</p>
-            <p className="text-[11px]">Clique nos botões acima para registrar despesas ou receitas.</p>
+            <p className="font-semibold text-foreground">
+              {movimentacoes.length === 0
+                ? 'Nenhuma movimentação registrada no período'
+                : 'Nenhuma movimentação com o filtro selecionado'}
+            </p>
+            <p className="text-[11px]">
+              {movimentacoes.length === 0
+                ? 'Clique nos botões acima para registrar despesas ou receitas.'
+                : 'Selecione "Todas" para visualizar o extrato completo.'}
+            </p>
           </div>
         ) : (
           <div className="space-y-2">
-            {movimentacoes.map((item) => {
+            {movimentacoesFiltradas.map((item) => {
               const catConfig = CATEGORIAS_FLUXO_CAIXA[item.categoria] || {
                 label: item.categoria,
                 tipo: item.tipo,
@@ -368,14 +423,21 @@ export default function FluxoCaixaPage() {
                         {item.descricao}
                       </p>
                       <div className="flex items-center gap-2 text-[10px] text-muted">
-                        <span>{item.data}</span>
+                        <span className="font-medium text-foreground/80">{formatBRDate(item.data)}</span>
                         <span>&middot;</span>
                         <span className="font-semibold">{catConfig.label}</span>
-                        {item.origem_caixa_auto && (
+                        {item.origem_caixa_auto ? (
                           <>
                             <span>&middot;</span>
                             <span className="px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">
                               Automático do Caixa
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <span>&middot;</span>
+                            <span className="px-1.5 py-0.2 rounded bg-slate-500/10 text-muted font-medium border border-border">
+                              Manual
                             </span>
                           </>
                         )}
@@ -393,8 +455,12 @@ export default function FluxoCaixaPage() {
                     </span>
                     {!item.origem_caixa_auto && (
                       <button
-                        onClick={() => excluirMovimentacao(item.id)}
-                        className="p-1.5 text-muted/60 hover:text-rose-400 transition-colors"
+                        onClick={() => {
+                          if (confirm(`Deseja realmente excluir o lançamento "${item.descricao}"?`)) {
+                            excluirMovimentacao(item.id);
+                          }
+                        }}
+                        className="p-1.5 text-muted/60 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all"
                         title="Excluir lançamento"
                       >
                         <Trash2 size={14} />
